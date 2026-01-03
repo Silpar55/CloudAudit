@@ -22,3 +22,15 @@ CloudAudit provides a dashboard where users:
 - STARTER: $49/month ($500-2K spend, anomaly alerts + email reports)
 - PRO: $99/month ($2K+ spend, 1-click implementation + team allocation)
 - ENTERPRISE: Custom pricing (multi-cloud, SLA)
+
+## License
+
+This project is licensed under the Polyform Noncommercial License 1.0.0.
+
+You may use this software for personal, educational, and other
+non-commercial purposes for free.
+
+Commercial use, including use in revenue-generating products or services,
+requires a separate paid license.
+
+Contact: asilva.tech@gmail.com
