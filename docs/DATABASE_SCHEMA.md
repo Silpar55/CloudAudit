@@ -18,14 +18,6 @@ Clients will inherently required a cloud provide credentials, so by only request
 
 ##### Note: This user information is only for our page. For the user to be able to connect their cloud provider into our application it is required their respective data to access.
 
-## Team_members
-
-- team_member_id **UUID** **\*PK**
-- team_id --> **UUID** **\*FK**
-- user_id --> **UUID** **\*FK**
-- role --> **string**
-- created_at --> **Timestamp**
-
 ## Team
 
 - team_id --> **UUID** **\*PK**
@@ -33,6 +25,14 @@ Clients will inherently required a cloud provide credentials, so by only request
 - created_at --> **Timestamp**
 
 ##### Note: This is the workplace where the business can add the team staff responsible to monitor and check the cost of the cloud provider. Each employee will need to create a **User** to be able to joing a **Team**
+
+## Team_members
+
+- team_member_id **UUID** **\*PK**
+- team_id --> **UUID** **\*FK**
+- user_id --> **UUID** **\*FK**
+- role --> **string**
+- created_at --> **Timestamp**
 
 ## AWS_account
 
@@ -78,7 +78,7 @@ Clients will inherently required a cloud provide credentials, so by only request
 
 ##### Note: This table is to easy do a look up at resources without the necessity to go through cost_data
 
-## Daily_cost_summary (Derived from Cost_data)
+## Daily_cost_summaries (Derived from Cost_data)
 
 - daily_cost_id --> **UUID** **\*PK**
 - aws_account_id --> **UUID** **\*FK**
