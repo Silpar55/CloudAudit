@@ -1,10 +1,14 @@
-const express = require("express");
-const dotenv = require("dotenv");
+import express from "express";
+import { config } from "dotenv";
+
+// Routes
+import healthcheckRouter from "./routes/healthcheck.js";
+
+// App Setup
 const app = express();
-dotenv.config();
+config();
 const port = process.env.PORT || 3000;
 
-// Health Check Route
-app.use("/healthcheck", require("./routes/healthcheck.js"));
-
+// Healthcheck Route
+app.use("/healthcheck", healthcheckRouter);
 app.listen(port, () => console.log("App listening on port", port));
