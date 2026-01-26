@@ -27,11 +27,27 @@ export async function createUser(user) {
   const query = `
     INSERT INTO users (${columns})
     VALUES (${placeholders})
-    RETURNING *
+    RETURNING *;
     `;
 
   try {
     const { rows } = await pool.query(query, values);
+    return rows[0];
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function findUser(email) {
+  const query = `
+    SELECT *
+    FROM users
+    WHERE email = $1;
+    `;
+
+  try {
+    const { rows } = await pool.query(query, [email]);
     return rows[0];
   } catch (error) {
     console.error(error);
