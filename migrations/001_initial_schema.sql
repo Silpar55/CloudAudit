@@ -18,10 +18,11 @@ CREATE TABLE users (
 	user_id UUID PRIMARY KEY,
 	first_name TEXT NOT NULL,
 	last_name TEXT NOT NULL,
-	email TEXT NOT NULL,
+	email TEXT NOT NULL UNIQUE,
 	password_hash TEXT NOT NULL,
 	phone TEXT NOT NULL,
-	created_at TIMESTAMP NOT NULL
+	created_at TIMESTAMP NOT NULL,
+	UNIQUE(user_id, email)
 );
 
 -- TEAMS TABLE
