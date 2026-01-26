@@ -15,47 +15,47 @@ DROP TABLE IF EXISTS teams;
 -- USERS TABLE
 
 CREATE TABLE users (
-	user_id UUID PRIMARY KEY,
+	user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	first_name TEXT NOT NULL,
 	last_name TEXT NOT NULL,
 	email TEXT NOT NULL UNIQUE,
-	password_hash TEXT NOT NULL,
+	password TEXT NOT NULL,
 	phone TEXT NOT NULL,
-	created_at TIMESTAMP NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE(user_id, email)
 );
 
 -- TEAMS TABLE
 
 CREATE TABLE teams (
-	team_id  UUID PRIMARY KEY,
+	team_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	name TEXT NOT NULL,
-	created_at TIMESTAMP NOT NULL
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- TEAM_MEMBERS TABLE
 
 CREATE TABLE team_members (
-	team_member_id UUID PRIMARY KEY,
+	team_member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	team_id  UUID REFERENCES teams (team_id) NOT NULL,
 	user_id UUID REFERENCES users (user_id) NOT NULL,
 	role TEXT NOT NULL,
-	created_at TIMESTAMP NOT NULL
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- AWS_ACCOUNT TABLE
 
 CREATE TABLE aws_accounts (
-	aws_account_id UUID PRIMARY KEY,
+	aws_account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	team_id UUID REFERENCES teams (team_id) NOT NULL,
 	iam_role_arn TEXT NOT NULL,
-	connected_at TIMESTAMP NOT NULL
+	connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- COST_DATA TABLE
 
 CREATE TABLE cost_data (
-	cost_data_id UUID PRIMARY KEY,
+	cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	time_interval TIMESTAMP NOT NULL,
 	product_code TEXT NOT NULL,
@@ -79,35 +79,35 @@ CREATE TABLE cost_data (
 -- DAILY_COST_SUMMARIES TABLE
 
 CREATE TABLE daily_cost_summaries (
-	daily_cost_id UUID PRIMARY KEY,
+	daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	time_start TIMESTAMP NOT NULL,
 	time_end TIMESTAMP NOT NULL,
 	service TEXT NOT NULL,
 	region TEXT NOT NULL,
 	total_cost DECIMAL NOT NULL,
-	created_at TIMESTAMP NOT NULL
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- RESOURCES TABLE
 
 CREATE TABLE resources (
-	resource_id TEXT PRIMARY KEY,
+	resource_id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	service TEXT NOT NULL,
 	instance_type TEXT NOT NULL,
 	region TEXT NOT NULL,
-	last_seen TIMESTAMP NOT NULL
+	last_seen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- COST_ANOMALIES TABLE
 
 CREATE TABLE cost_anomalies (
-	anomaly_id UUID PRIMARY KEY,
+	anomaly_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) NOT NULL,
 	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
-	detected_at TIMESTAMP NOT NULL,
+	detected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	expected_cost DECIMAL NOT NULL,
 	deviation_pct DECIMAL NOT NULL,
 	severity INT NOT NULL, 
@@ -117,10 +117,10 @@ CREATE TABLE cost_anomalies (
 -- RECOMMENDATIONS TABLE
 
 CREATE TABLE recommendations (
-	recommendation_id UUID PRIMARY KEY,
+	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts (aws_account_id )NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
-	created_at TIMESTAMP NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
 	recommendation_type TEXT NOT NULL, 
 	description TEXT NOT NULL,
 	estimated_monthly_savings DECIMAL NOT NULL, 
@@ -131,10 +131,10 @@ CREATE TABLE recommendations (
 -- AUDIT_LOGS TABLES
 
 CREATE TABLE audit_logs (
-	audit_log_id UUID PRIMARY KEY,
+	audit_log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	team_id  UUID REFERENCES teams (team_id) NOT NULL,
 	user_id UUID REFERENCES users (user_id) NOT NULL,
 	action TEXT NOT NULL,
 	details JSONB NOT NULL,
-	created_at TIMESTAMP NOT NULL
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
