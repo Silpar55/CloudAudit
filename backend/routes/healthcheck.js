@@ -1,4 +1,4 @@
-import connect from "../config/database.js";
+import pool from "../config/database.js";
 import { Router } from "express";
 const router = Router({});
 
@@ -12,7 +12,6 @@ router.get("/", async (_req, res, _next) => {
 
   try {
     // Check Database
-    const pool = await connect();
     await pool.query("SELECT 1");
     healthcheck.database = "healthy";
     res.status(200).send(healthcheck);
