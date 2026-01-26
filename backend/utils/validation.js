@@ -8,13 +8,13 @@ var phoneRegex =
 
 var countryCodeRegex = /^(\+?\d{1,3}|\d{1,4})$/;
 
-export function validText(input) {
+export function validText(input = "") {
   if (!input) return false;
 
   return true;
 }
 
-export function validPassword(password) {
+export function validPassword(password = "") {
   const noSpacesRule = {
     code: "NO_SPACES",
     message: "Password must not contain spaces.",
@@ -39,7 +39,7 @@ export function validPassword(password) {
   }
 }
 
-export function validPhone(phone) {
+export function validPhone(phone = "") {
   if (!phone) return false;
 
   if (phone.length > 10) return false;
@@ -50,7 +50,7 @@ export function validPhone(phone) {
   return true;
 }
 
-export function validCountryCode(countryCode) {
+export function validCountryCode(countryCode = "") {
   if (!countryCode) return false;
 
   if (countryCode.length > 5) return false;
@@ -61,7 +61,7 @@ export function validCountryCode(countryCode) {
   return true;
 }
 
-export function validEmail(email) {
+export function validEmail(email = "") {
   if (!email) return false;
 
   if (email.length > 254) return false;
