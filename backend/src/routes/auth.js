@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 import {
   validEmail,
   validPhone,
-  validCountryCode,
   validPassword,
   validName,
 } from "../utils/validation.js";
