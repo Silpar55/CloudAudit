@@ -121,6 +121,16 @@ describe("validEmail()", () => {
     invalidEmails.forEach((email) => expect(validEmail(email)).toBe(false));
   });
 
+  test("Invalid length email", () => {
+    const emailTooLong = "a".repeat(245) + "@example.com"; // length > 254
+    const usernamePartTooLong = "a".repeat(65) + "@example.com"; // length > 64
+    const domainPartTooLong = "ale@example." + "a".repeat(65); // length > 64
+
+    expect(validEmail(emailTooLong)).toBe(false);
+    expect(validEmail(usernamePartTooLong)).toBe(false);
+    expect(validEmail(domainPartTooLong)).toBe(false);
+  });
+
   test("valid emails", () => {
     const validEmails = [
       "ale@gmail.com",
