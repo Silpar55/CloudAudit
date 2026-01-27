@@ -5,7 +5,7 @@ import pool from "../../../src/config/database.js";
 
 describe("GET /healthcheck/", () => {
   const endpoint = "/healthcheck";
-  test("Should show the server is up", async () => {
+  it("Should show the server is up", async () => {
     const response = await request(app).get(endpoint);
     const jsonResponse = JSON.parse(response.text);
     const { message, server } = jsonResponse;
@@ -14,7 +14,7 @@ describe("GET /healthcheck/", () => {
     expect(server).toBe("up");
   });
 
-  test("Should show the database is healthy", async () => {
+  it("Should show the database is healthy", async () => {
     const response = await request(app).get(endpoint + "/database");
     const jsonResponse = JSON.parse(response.text);
     const { message, database } = jsonResponse;
@@ -23,7 +23,7 @@ describe("GET /healthcheck/", () => {
     expect(database).toBe("healthy");
   });
 
-  test("Should throw error when user does not has a token", async () => {
+  it("Should throw error when user does not has a token", async () => {
     const response = await request(app).get(endpoint + "/auth");
     const jsonResponse = JSON.parse(response.text);
     const { message, token } = jsonResponse;
@@ -31,7 +31,7 @@ describe("GET /healthcheck/", () => {
     expect(token).toBe("invalid");
   });
 
-  test("Should throw error when user does not has a valid token", async () => {
+  it("Should throw error when user does not has a valid token", async () => {
     const response = await request(app)
       .get(endpoint + "/auth")
       .set("Authorization", "Bearer TOKEN");
@@ -41,7 +41,7 @@ describe("GET /healthcheck/", () => {
     expect(token).toBe("invalid");
   });
 
-  test("Should show the token is valid", async () => {
+  it("Should show the token is valid", async () => {
     const mockToken = jwt.sign({ mock: "Example" }, process.env.SECRETKEY, {
       expiresIn: "10s",
     });

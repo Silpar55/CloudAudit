@@ -40,6 +40,7 @@ export async function createUser(user) {
 }
 
 export async function findUser(email) {
+  console.log("Find user called with email:", email);
   const query = `
     SELECT *
     FROM users

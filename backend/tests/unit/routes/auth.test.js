@@ -6,7 +6,8 @@ jest.mock("../../../src/models/user.model.js");
 jest.mock("../../../src/utils/password.js");
 
 import { hashPassword, comparePassword } from "../../../src/utils/password.js";
-import { createUser, findUser } from "../../../src/models/user.model.js";
+import { findUser, createUser } from "../../../src/models/user.model.js";
+
 import app from "../../../src/app.js";
 
 describe("POST /auth/", () => {
@@ -22,7 +23,7 @@ describe("POST /auth/", () => {
       password: "CloudAudit11!",
     };
 
-    test("Should handle invalid inputs", async () => {
+    it("Should handle invalid inputs", async () => {
       hashPassword.mockResolvedValue("Hashed");
       createUser.mockResolvedValue(null);
 
@@ -66,7 +67,7 @@ describe("POST /auth/", () => {
         );
     });
 
-    test("Should not accept emails that are in the database", async () => {
+    it("Should not accept emails that are in the database", async () => {
       findUser.mockResolvedValue(correctBody);
       hashPassword.mockResolvedValue("Hashed");
       createUser.mockResolvedValue(null); // safe default
@@ -82,7 +83,7 @@ describe("POST /auth/", () => {
         );
     });
 
-    test("Should create a user", async () => {
+    it("Should create a user", async () => {
       findUser.mockResolvedValue(false);
       hashPassword.mockResolvedValue("Hashed");
       createUser.mockResolvedValue({ message: "User registered succesfully" });
@@ -102,7 +103,7 @@ describe("POST /auth/", () => {
       email: "test@example.com",
       password: "Example0!",
     };
-    test("Should handle invalid inputs", async () => {
+    it("Should handle invalid inputs", async () => {
       // Invalid email
       await request(app)
         .post(endpoint + "/login")
@@ -120,7 +121,7 @@ describe("POST /auth/", () => {
         );
     });
 
-    test("Login with invalid credentials", async () => {
+    it("Login with invalid credentials", async () => {
       findUser.mockResolvedValue(false);
       comparePassword.mockResolvedValue(false);
 
@@ -133,7 +134,7 @@ describe("POST /auth/", () => {
         );
     });
 
-    test("Login with valid credentials", async () => {
+    it("Login with valid credentials", async () => {
       // User exist and verify token is valid
       findUser.mockResolvedValue({
         user_id: 1321,
