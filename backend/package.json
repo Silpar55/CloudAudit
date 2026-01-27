@@ -5,8 +5,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --watch server.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "start": "node --watch src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +22,8 @@
     "passport": "^0.7.0",
     "password-validator-pro": "^1.1.2",
     "pg": "^8.17.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
