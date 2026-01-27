@@ -1,6 +1,7 @@
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import app from "../../../src/server.js";
+import pool from "../../../src/config/database.js";
 
 describe("GET /healthcheck/", () => {
   const endpoint = "/healthcheck";
@@ -52,4 +53,8 @@ describe("GET /healthcheck/", () => {
     expect(message).toBe("OK");
     expect(token).toBe("valid");
   });
+});
+
+afterAll(async () => {
+  await pool.end();
 });
