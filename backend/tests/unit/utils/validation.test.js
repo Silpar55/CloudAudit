@@ -6,20 +6,20 @@ import {
 } from "../../../src/utils/validation";
 
 describe("validName()", () => {
-  test("Empty name", () => {
+  it("Empty name", () => {
     expect(validName("")).toBe(false);
   });
-  test("Invalid name with numbers", () => {
+  it("Invalid name with numbers", () => {
     const invalidName = "Hell0";
     expect(validName(invalidName)).toBe(false);
   });
 
-  test("Normal name", () => {
+  it("Normal name", () => {
     const firstName = "John";
     expect(validName(firstName)).toBe(true);
   });
 
-  test("Names with accents and some specials characters", () => {
+  it("Names with accents and some specials characters", () => {
     const validNames = [
       "Nyankómàgó",
       "Mǎnu",
@@ -43,12 +43,12 @@ describe("validName()", () => {
 });
 
 describe("validPassword()", () => {
-  test("Empty password", () => {
+  it("Empty password", () => {
     // If there is something in the array, it means there are errors
     expect(validPassword("").length > 0).toBe(true);
   });
 
-  test("Invalid passwords", () => {
+  it("Invalid passwords", () => {
     const shortPassword = "Pass1!"; // Min 8
     const longPassword = "Passw0rdPassw0rdPassw0rd!"; // Max 20
     const noUpperCase = "passw0rd!";
@@ -72,7 +72,7 @@ describe("validPassword()", () => {
     expect(noEspecialCharMessage.includes("NO_SPECIAL_CHARS")).toBe(true);
   });
 
-  test("Valid passwords", () => {
+  it("Valid passwords", () => {
     const validPasswords = ["Passw0rd!", "11_Secret_Key!", "$Cl0udAudit"];
 
     validPasswords.forEach((pass) => {
@@ -83,11 +83,11 @@ describe("validPassword()", () => {
 });
 
 describe("validPhone()", () => {
-  test("Empty phone", () => {
+  it("Empty phone", () => {
     expect(validPhone("")).toBe(false);
   });
 
-  test("Invalid phones", () => {
+  it("Invalid phones", () => {
     const invalidPhones = ["1322", "437-456-abc", "111-111-11111"];
     const validCountryCodes = ["US", "FR", "MX"];
 
@@ -98,7 +98,7 @@ describe("validPhone()", () => {
     }
   });
 
-  test("Valid phones", () => {
+  it("Valid phones", () => {
     const validPhones = [
       "2125551234",
       "612345678",
@@ -115,13 +115,13 @@ describe("validPhone()", () => {
 });
 
 describe("validEmail()", () => {
-  test("Empty email", () => expect(validEmail("")).toBe(false));
-  test("Invalid email", () => {
+  it("Empty email", () => expect(validEmail("")).toBe(false));
+  it("Invalid email", () => {
     const invalidEmails = ["alesj.com", "alesj@gmail", "@gmail.com"];
     invalidEmails.forEach((email) => expect(validEmail(email)).toBe(false));
   });
 
-  test("Invalid length email", () => {
+  it("Invalid length email", () => {
     const emailTooLong = "a".repeat(245) + "@example.com"; // length > 254
     const usernamePartTooLong = "a".repeat(65) + "@example.com"; // length > 64
     const domainPartTooLong = "ale@example." + "a".repeat(65); // length > 64
@@ -131,7 +131,7 @@ describe("validEmail()", () => {
     expect(validEmail(domainPartTooLong)).toBe(false);
   });
 
-  test("valid emails", () => {
+  it("valid emails", () => {
     const validEmails = [
       "ale@gmail.com",
       "ale@hotmail.com",
