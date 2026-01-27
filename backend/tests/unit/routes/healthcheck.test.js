@@ -1,6 +1,6 @@
 import request from "supertest";
 import jwt from "jsonwebtoken";
-import app from "../../../src/server.js";
+import app from "../../../src/app.js";
 import pool from "../../../src/config/database.js";
 
 describe("GET /healthcheck/", () => {

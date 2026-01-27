@@ -2,22 +2,12 @@ import request from "supertest";
 import jwt from "jsonwebtoken";
 import { describe, expect, jest } from "@jest/globals";
 
-jest.unstable_mockModule("../../../src/models/user.model.js", () => ({
-  createUser: jest.fn(),
-  findUser: jest.fn(),
-}));
+jest.mock("../../../src/models/user.model.js");
+jest.mock("../../../src/utils/password.js");
 
-// 1. Mock your new Password Wrapper
-jest.unstable_mockModule("../../../src/utils/password.js", () => ({
-  hashPassword: jest.fn(),
-  comparePassword: jest.fn(),
-}));
-
-const { hashPassword, comparePassword } =
-  await import("../../../src/utils/password.js");
-const { createUser, findUser } =
-  await import("../../../src/models/user.model.js");
-const app = (await import("../../../src/server.js")).default;
+import { hashPassword, comparePassword } from "../../../src/utils/password.js";
+import { createUser, findUser } from "../../../src/models/user.model.js";
+import app from "../../../src/app.js";
 
 describe("POST /auth/", () => {
   const endpoint = "/auth";
