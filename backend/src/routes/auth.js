@@ -6,7 +6,7 @@ import {
   validPhone,
   validCountryCode,
   validPassword,
-  validText,
+  validName,
 } from "../utils/validation.js";
 import { createUser, findUser } from "../models/user.model.js";
 const router = Router();
@@ -16,20 +16,18 @@ router.post("/signup", async (req, res, _next) => {
     const { firstName, lastName, email, password, phone, countryCode } =
       req.body;
 
-    if (!validText(firstName))
+    if (!validName(firstName))
       return res.status(400).send({ message: "First name is invalid" });
 
-    if (!validText(lastName))
+    if (!validName(lastName))
       return res.status(400).send({ message: "Last name is invalid" });
 
     if (!validEmail(email))
       return res.status(400).send({ message: "Email is invalid" });
 
-    if (!validPhone(phone))
-      return res.status(400).send({ message: "Phone is invalid" });
-
-    if (!validCountryCode(countryCode))
-      return res.status(400).send({ message: "Country code is invalid" });
+    if (!validPhone(phone, countryCode))
+      // Country code should be ISO-2
+      return res.status(400).send({ message: "Phone number is invalid" });
 
     const passwordResults = validPassword(password);
     if (passwordResults.length > 0)
