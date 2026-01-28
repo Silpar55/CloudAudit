@@ -3,6 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
+  "imports": {
+    "#app": "./src/app.js",
+    "#utils": "./src/utils/index.js",
+    "#config": "./src/config/index.js",
+    "#middleware": "./src/middleware/index.js",
+    "#models": "./src/models/index.js",
+    "#services": "./src/services/index.js",
+    "#controllers": "./src/controllers/index.js",
+    "#routes": "./src/routes/index.js"
+  },
   "main": "index.js",
   "scripts": {
     "test": "npx jest",

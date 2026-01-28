@@ -1,9 +1,4 @@
-import {
-  validEmail,
-  validName,
-  validPassword,
-  validPhone,
-} from "../../../src/utils/validation";
+import { validEmail, validName, validPassword, validPhone } from "#utils";
 
 describe("validName()", () => {
   it("Empty name", () => {

@@ -2,13 +2,21 @@ import request from "supertest";
 import jwt from "jsonwebtoken";
 import { describe, expect, jest } from "@jest/globals";
 
-jest.mock("../../../src/models/user.model.js");
-jest.mock("../../../src/utils/password.js");
+jest.mock("#models");
+jest.mock("#utils", () => {
+  const actual = jest.requireActual("#utils");
 
-import { hashPassword, comparePassword } from "../../../src/utils/password.js";
-import { findUser, createUser } from "../../../src/models/user.model.js";
+  return {
+    ...actual,
+    hashPassword: jest.fn(),
+    comparePassword: jest.fn(),
+  };
+});
 
-import app from "../../../src/app.js";
+import { hashPassword, comparePassword } from "#utils";
+import { findUser, createUser } from "#models";
+
+import app from "#app";
 
 describe("POST /auth/", () => {
   const endpoint = "/auth";
@@ -70,7 +78,7 @@ describe("POST /auth/", () => {
     it("Should not accept emails that are in the database", async () => {
       findUser.mockResolvedValue(correctBody);
       hashPassword.mockResolvedValue("Hashed");
-      createUser.mockResolvedValue(null); // safe default
+      createUser.mockResolvedValue(null);
 
       await request(app)
         .post(endpoint + "/signup")
