@@ -1,19 +1,18 @@
 import express from "express";
 import { config } from "dotenv";
 
-// Routes
-import healthcheckRouter from "./routes/healthcheck.js";
-import authRouter from "./routes/auth.js";
+import { authRoutes, healthcheckRoutes } from "#routes";
+import { errorHandler } from "#middleware";
 
 // App Setup
 const app = express();
 app.use(express.json());
 config();
 
-// Healthcheck Route
-app.use("/healthcheck", healthcheckRouter);
+app.use("/healthcheck", healthcheckRoutes);
+app.use("/auth", authRoutes);
 
-// Auth routes
-app.use("/auth", authRouter);
+// Error handling
+app.use(errorHandler);
 
 export default app;

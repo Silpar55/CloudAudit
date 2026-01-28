@@ -1,7 +1,15 @@
+import { expect } from "@jest/globals";
 import request from "supertest";
 import jwt from "jsonwebtoken";
-import app from "../../../src/app.js";
-import pool from "../../../src/config/database.js";
+
+jest.mock("#config");
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+import { pool } from "#config";
+import app from "#app";
+process.env.SECRETKEY = "test-secret";
 
 describe("GET /healthcheck/", () => {
   const endpoint = "/healthcheck";
@@ -19,6 +27,7 @@ describe("GET /healthcheck/", () => {
     const jsonResponse = JSON.parse(response.text);
     const { message, database } = jsonResponse;
 
+    expect(pool.query).toHaveBeenCalledTimes(1);
     expect(message).toBe("OK");
     expect(database).toBe("healthy");
   });
@@ -45,6 +54,7 @@ describe("GET /healthcheck/", () => {
     const mockToken = jwt.sign({ mock: "Example" }, process.env.SECRETKEY, {
       expiresIn: "10s",
     });
+
     const response = await request(app)
       .get(endpoint + "/auth")
       .set("Authorization", `Bearer ${mockToken}`);
@@ -53,8 +63,4 @@ describe("GET /healthcheck/", () => {
     expect(message).toBe("OK");
     expect(token).toBe("valid");
   });
-});
-
-afterAll(async () => {
-  await pool.end();
 });

@@ -1,13 +1,13 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-jest.mock("../../../src/config/database.js");
+jest.mock("#config");
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-import pool from "../../../src/config/database";
-import { createUser, findUser } from "../../../src/models/user.model";
+import { pool } from "#config";
+import { createUser, findUser } from "#models";
 
 describe("User model", () => {
   describe("createUser", () => {

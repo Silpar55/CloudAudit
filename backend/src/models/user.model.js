@@ -1,4 +1,4 @@
-import pool from "../config/database.js";
+import { pool } from "#config";
 
 const allowedFields = [
   "firstName",
@@ -34,13 +34,12 @@ export async function createUser(user) {
     const { rows } = await pool.query(query, values);
     return rows[0];
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     return null;
   }
 }
 
 export async function findUser(email) {
-  console.log("Find user called with email:", email);
   const query = `
     SELECT *
     FROM users
@@ -51,7 +50,7 @@ export async function findUser(email) {
     const { rows } = await pool.query(query, [email]);
     return rows[0];
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     return null;
   }
 }

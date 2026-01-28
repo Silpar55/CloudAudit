@@ -1,17 +1,9 @@
 import { PasswordValidator } from "password-validator-pro";
 import libphonenumber from "google-libphonenumber";
 
-const phoneUtil = libphonenumber.PhoneNumberUtil.getInstance();
-var phoneRegex = /[a-zA-Z]/;
-
-var nameRegex = /^[\p{L}\p{M}]+(?:[ -][\p{L}\p{M}]+)*$/u;
-
-var emailRegex =
-  /^[-!#$%&'*+\/0-9=?A-Z^_a-z{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
-
-var countryCodeRegex = /^(\+?\d{1,3}|\d{1,4})$/;
-
 export function validName(name = "") {
+  const nameRegex = /^[\p{L}\p{M}]+(?:[ -][\p{L}\p{M}]+)*$/u;
+
   if (!name) return false;
   var valid = nameRegex.test(name);
 
@@ -47,6 +39,9 @@ export function validPassword(password = "") {
 
 export function validPhone(phone = "", countryCode = "") {
   try {
+    const phoneUtil = libphonenumber.PhoneNumberUtil.getInstance();
+    var phoneRegex = /[a-zA-Z]/;
+
     if (phoneRegex.test(phone)) return false;
     const number = phoneUtil.parse(phone, countryCode);
     return phoneUtil.isValidNumber(number);
@@ -56,6 +51,9 @@ export function validPhone(phone = "", countryCode = "") {
 }
 
 export function validEmail(email = "") {
+  const emailRegex =
+    /^[-!#$%&'*+\/0-9=?A-Z^_a-z{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
+
   if (!email) return false;
 
   if (email.length > 254) return false;

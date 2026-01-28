@@ -1,4 +1,4 @@
-import { hashPassword, comparePassword } from "../../../src/utils/password";
+import { hashPassword, comparePassword } from "#utils";
 import { describe, expect } from "@jest/globals";
 
 describe("Password functions ", () => {
