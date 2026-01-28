@@ -1,4 +1,4 @@
--- Database: cloudaudit v1.0
+-- Database: cloudaudit v2.0
 
 -- DROP FIRST TABLES WITH FOREIGN KEYS
 DROP TABLE IF EXISTS cost_anomalies;
@@ -49,6 +49,7 @@ CREATE TABLE aws_accounts (
 	aws_account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	team_id UUID REFERENCES teams (team_id) NOT NULL,
 	iam_role_arn TEXT NOT NULL,
+	is_active BOOL NOT NULL DEFAULT TRUE, 
 	connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
