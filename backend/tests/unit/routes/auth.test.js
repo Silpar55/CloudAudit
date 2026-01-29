@@ -2,7 +2,7 @@ import request from "supertest";
 import jwt from "jsonwebtoken";
 import { describe, expect, jest } from "@jest/globals";
 
-jest.mock("#models");
+jest.mock("#modules/auth/auth.model.js");
 jest.mock("#utils", () => {
   const actual = jest.requireActual("#utils");
 
@@ -14,7 +14,7 @@ jest.mock("#utils", () => {
 });
 
 import { hashPassword, comparePassword } from "#utils";
-import { findUser, createUser } from "#models";
+import { findUser, createUser } from "#modules/auth/auth.model.js";
 
 import app from "#app";
 

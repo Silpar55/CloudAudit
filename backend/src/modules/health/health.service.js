@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { pool } from "#config";
 
-export async function healthCheckServer() {
+export const checkServerStatus = async () => {
   const healthcheck = {
     uptime: process.uptime(),
     message: "OK",
@@ -10,9 +10,9 @@ export async function healthCheckServer() {
   };
 
   return healthcheck;
-}
+};
 
-export async function healthCheckDatabase() {
+export const checkDatabaseStatus = async () => {
   const healthcheck = {
     uptime: process.uptime(),
     message: "OK",
@@ -28,9 +28,9 @@ export async function healthCheckDatabase() {
     healthcheck.message = "Database connection failed";
     return healthcheck;
   }
-}
+};
 
-export async function healthCheckAuth(authHeader) {
+export const checkAuthStatus = async (authHeader) => {
   const healthcheck = {
     uptime: process.uptime(),
     timestamp: Date.now(),
@@ -57,4 +57,4 @@ export async function healthCheckAuth(authHeader) {
       message: "Invalid or expire token",
     };
   }
-}
+};

@@ -1,8 +1,8 @@
-import { registerUser, loginUser } from "#services";
+import * as authService from "./auth.service.js";
 
-export async function register(req, res, next) {
+export const registerUser = async (req, res, next) => {
   try {
-    const result = await registerUser(req.body);
+    const result = await authService.registerUser(req.body);
 
     if (!result)
       return res.status(422).send({ message: "Unable to create a user" });
@@ -11,13 +11,12 @@ export async function register(req, res, next) {
   } catch (err) {
     next(err);
   }
-}
-
-export async function login(req, res, next) {
+};
+export const loginUser = async (req, res, next) => {
   try {
-    const token = await loginUser(req.body);
+    const token = await authService.loginUser(req.body);
     return res.status(200).send({ token });
   } catch (err) {
     next(err);
   }
-}
+};
