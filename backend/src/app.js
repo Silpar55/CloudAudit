@@ -1,8 +1,8 @@
 import express from "express";
 import { config } from "dotenv";
 
-import { authRoutes, healthcheckRoutes } from "#routes";
-import { errorHandler } from "#middleware";
+import { authRoutes, awsRoutes, healthcheckRoutes } from "#routes";
+import { errorHandler, verifyToken } from "#middleware";
 
 // App Setup
 const app = express();
@@ -11,6 +11,7 @@ config();
 
 app.use("/healthcheck", healthcheckRoutes);
 app.use("/auth", authRoutes);
+app.use("/aws", verifyToken, awsRoutes);
 
 // Error handling
 app.use(errorHandler);

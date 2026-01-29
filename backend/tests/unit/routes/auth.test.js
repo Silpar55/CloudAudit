@@ -18,7 +18,7 @@ import { findUser, createUser } from "#models";
 
 import app from "#app";
 
-describe("POST /auth/", () => {
+describe("/auth", () => {
   const endpoint = "/auth";
 
   describe("POST /auth/signup", () => {

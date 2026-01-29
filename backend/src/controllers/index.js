@@ -4,3 +4,4 @@ export {
   databaseCheck,
   serverCheck,
 } from "./healthcheck.controller.js";
+export { connect, accounts, disconnect } from "./aws.controller.js";
