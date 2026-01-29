@@ -1,4 +1,4 @@
--- Database: cloudaudit v2.1
+-- Database: cloudaudit v4.0
 
 -- DROP FIRST TABLES WITH FOREIGN KEYS
 DROP TABLE IF EXISTS cost_anomalies;
@@ -21,6 +21,7 @@ CREATE TABLE users (
 	email TEXT NOT NULL UNIQUE,
 	password TEXT NOT NULL,
 	phone TEXT NOT NULL,
+	country_code VARCHAR(2) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE(user_id, email)
 );
@@ -46,7 +47,7 @@ CREATE TABLE team_members (
 -- AWS_ACCOUNT TABLE
 
 CREATE TABLE aws_accounts (
-	aws_account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	aws_account_id VARCHAR(12) PRIMARY KEY,
 	team_id UUID REFERENCES teams (team_id) NOT NULL,
 	iam_role_arn TEXT NOT NULL,
 	is_active BOOL NOT NULL DEFAULT TRUE, 
@@ -58,7 +59,7 @@ CREATE TABLE aws_accounts (
 
 CREATE TABLE cost_data (
 	cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
+	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	time_interval TIMESTAMP NOT NULL,
 	product_code TEXT NOT NULL,
 	usage_type TEXT NOT NULL,
@@ -82,7 +83,7 @@ CREATE TABLE cost_data (
 
 CREATE TABLE daily_cost_summaries (
 	daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
+	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	time_start TIMESTAMP NOT NULL,
 	time_end TIMESTAMP NOT NULL,
 	service TEXT NOT NULL,
@@ -95,7 +96,7 @@ CREATE TABLE daily_cost_summaries (
 
 CREATE TABLE resources (
 	resource_id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
+	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	service TEXT NOT NULL,
 	instance_type TEXT NOT NULL,
 	region TEXT NOT NULL,
@@ -107,7 +108,7 @@ CREATE TABLE resources (
 CREATE TABLE cost_anomalies (
 	anomaly_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) NOT NULL,
-	aws_account_id UUID REFERENCES aws_accounts (aws_account_id) NOT NULL,
+	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
 	detected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	expected_cost DECIMAL NOT NULL,
@@ -120,7 +121,7 @@ CREATE TABLE cost_anomalies (
 
 CREATE TABLE recommendations (
 	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id UUID REFERENCES aws_accounts (aws_account_id )NOT NULL,
+	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id )NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
 	recommendation_type TEXT NOT NULL, 
