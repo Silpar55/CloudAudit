@@ -1,4 +1,11 @@
-import { validEmail, validName, validPassword, validPhone } from "#utils";
+import {
+  validARN,
+  validAWSAccId,
+  validEmail,
+  validName,
+  validPassword,
+  validPhone,
+} from "#utils";
 
 describe("validName()", () => {
   it("Empty name", () => {
@@ -134,5 +141,42 @@ describe("validEmail()", () => {
       "ale@yahoo.com",
     ];
     validEmails.forEach((email) => expect(validEmail(email)).toBe(true));
+  });
+});
+
+describe("validAWSAccId()", () => {
+  it("Should handle invalid AWSAccId", () => {
+    const invalidAWSACCIds = ["", "abcdefghijkl", "1234"];
+    invalidAWSACCIds.forEach((acc) => expect(validAWSAccId(acc)).toBe(false));
+  });
+
+  it("Should handle valid AWSAccId", () => {
+    const validAWSAccIds = ["123456789012", "012345678901"];
+    validAWSAccIds.forEach((acc) => expect(validAWSAccId(acc)).toBe(true));
+  });
+});
+
+describe("validARN()", () => {
+  it("Should handle invalid ARNs", () => {
+    const invalidARNs = [
+      "aws:iam::123456789012:user/jdoe",
+      "arn:aws:iam::12345678901:user/jdoe",
+      "arn:aws:iam::1234567890AB:user/jdoe",
+      "arn-aws-s3-mybucket",
+      null,
+    ];
+
+    invalidARNs.forEach((arn) => expect(validARN(arn)).toBe(false));
+  });
+
+  it("Should handle valid ARNs", () => {
+    const validARNs = [
+      "arn:aws:iam::123456789012:policy/UsersManageOwnCredentials",
+      "arn:aws:s3:::my-production-bucket-2024",
+      "arn:aws:lambda:us-east-1:123456789012:function:my-process-service",
+      "arn:aws:ec2:us-west-2:123456789012:instance/i-0abcdef1234567890",
+    ];
+
+    validARNs.forEach((arn) => expect(validARN(arn)).toBe(true));
   });
 });

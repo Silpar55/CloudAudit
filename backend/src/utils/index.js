@@ -3,6 +3,8 @@ export {
   validEmail,
   validPassword,
   validPhone,
+  validAWSAccId,
+  validARN,
 } from "./validation.js";
 export { AppError } from "./AppError.js";
 export { hashPassword, comparePassword } from "./password.js";

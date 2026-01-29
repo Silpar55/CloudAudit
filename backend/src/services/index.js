@@ -4,3 +4,4 @@ export {
   healthCheckDatabase,
   healthCheckAuth,
 } from "./healthcheck.service.js";
+export { connectAWS, getAWSAccounts, disconnectAWS } from "./aws.service.js";
