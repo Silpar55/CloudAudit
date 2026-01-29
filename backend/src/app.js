@@ -1,15 +1,15 @@
 import express from "express";
 import { config } from "dotenv";
 
-import { authRoutes, awsRoutes, healthcheckRoutes } from "#routes";
 import { errorHandler, verifyToken } from "#middleware";
+import { healthRoutes, authRoutes, awsRoutes } from "#modules";
 
 // App Setup
 const app = express();
 app.use(express.json());
 config();
 
-app.use("/healthcheck", healthcheckRoutes);
+app.use("/health", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/aws", verifyToken, awsRoutes);
 

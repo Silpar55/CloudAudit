@@ -5,13 +5,11 @@
   "type": "module",
   "imports": {
     "#app": "./src/app.js",
-    "#utils": "./src/utils/index.js",
     "#config": "./src/config/index.js",
     "#middleware": "./src/middleware/index.js",
-    "#models": "./src/models/index.js",
-    "#services": "./src/services/index.js",
-    "#controllers": "./src/controllers/index.js",
-    "#routes": "./src/routes/index.js"
+    "#modules/*": "./src/modules/*",
+    "#modules": "./src/modules/index.js",
+    "#utils": "./src/utils/index.js"
   },
   "main": "index.js",
   "scripts": {

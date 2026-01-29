@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 import {
   validName,
   validEmail,
@@ -8,17 +10,16 @@ import {
   comparePassword,
 } from "#utils";
 
-import { findUser, createUser } from "#models";
-import jwt from "jsonwebtoken";
+import { findUser, createUser } from "#modules/auth/auth.model.js";
 
-export async function registerUser({
+export const registerUser = async ({
   firstName,
   lastName,
   email,
   password,
   phone,
   countryCode,
-}) {
+}) => {
   if (!validName(firstName)) throw new AppError("First name is invalid", 400);
 
   if (!validName(lastName)) throw new AppError("Last name is invalid", 400);
@@ -56,9 +57,9 @@ export async function registerUser({
   const result = await createUser(user);
 
   return result;
-}
+};
 
-export async function loginUser({ email, password }) {
+export const loginUser = async ({ email, password }) => {
   // Input validation
   if (!validEmail(email)) throw new AppError("Email is invalid", 400);
 
@@ -79,4 +80,4 @@ export async function loginUser({ email, password }) {
   });
 
   return token;
-}
+};

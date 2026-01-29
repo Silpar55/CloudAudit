@@ -7,7 +7,7 @@ beforeEach(() => {
 });
 
 import { pool } from "#config";
-import { createUser, findUser } from "#models";
+import { createUser, findUser } from "#modules/auth/auth.model.js";
 
 describe("User model", () => {
   describe("createUser", () => {
