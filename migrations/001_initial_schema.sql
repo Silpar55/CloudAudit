@@ -1,4 +1,4 @@
--- Database: cloudaudit v4.0
+-- Database: cloudaudit v5.0
 
 -- DROP FIRST TABLES WITH FOREIGN KEYS
 DROP TABLE IF EXISTS cost_anomalies;
@@ -38,17 +38,31 @@ CREATE TABLE teams (
 
 CREATE TABLE team_members (
 	team_member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	team_id  UUID REFERENCES teams (team_id) NOT NULL,
-	user_id UUID REFERENCES users (user_id) NOT NULL,
-	role TEXT NOT NULL,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	
+	team_id UUID NOT NULL
+		REFERENCES teams (team_id)
+		ON DELETE CASCADE,
+	
+	user_id UUID NOT NULL
+		REFERENCES users (user_id)
+		ON DELETE CASCADE,
+	
+	role TEXT NOT NULL
+	CHECK (role IN ('owner', 'admin', 'member')),
+	
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	
+	UNIQUE (team_id, user_id)
 );
+
 
 -- AWS_ACCOUNT TABLE
 
 CREATE TABLE aws_accounts (
 	aws_account_id VARCHAR(12) PRIMARY KEY,
-	team_id UUID REFERENCES teams (team_id) NOT NULL,
+	team_id UUID NOT NULL
+		REFERENCES teams (team_id)
+		ON DELETE CASCADE,
 	iam_role_arn TEXT NOT NULL,
 	is_active BOOL NOT NULL DEFAULT TRUE, 
 	disconnected_at TIMESTAMP,
@@ -96,7 +110,9 @@ CREATE TABLE daily_cost_summaries (
 
 CREATE TABLE resources (
 	resource_id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
+	aws_account_id VARCHAR(12)
+		REFERENCES aws_accounts (aws_account_id)
+		ON DELETE CASCADE,
 	service TEXT NOT NULL,
 	instance_type TEXT NOT NULL,
 	region TEXT NOT NULL,
