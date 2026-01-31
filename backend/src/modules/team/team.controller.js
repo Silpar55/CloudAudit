@@ -2,21 +2,43 @@ import * as teamService from "./team.service.js";
 
 export const createTeam = async (req, res, next) => {
   try {
-    await teamService.createTeam();
+    const teamId = await teamService.createTeam(req);
+
+    return res
+      .status(201)
+      .send({ message: "Team created successfully", teamId });
   } catch (err) {
     next(err);
   }
 };
 export const deleteTeam = async (req, res, next) => {
   try {
-    await teamService.deleteTeam();
+    const teamId = await teamService.deleteTeam(req);
+    return res
+      .status(201)
+      .send({ message: "Team deleted successfully", teamId });
   } catch (err) {
     next(err);
   }
 };
+
 export const addTeamMember = async (req, res, next) => {
   try {
-    await teamService.addTeamMember();
+    const teamMemberId = await teamService.addTeamMember(req);
+    return res
+      .status(201)
+      .send({ message: "Member added into the team", teamMemberId });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const removeTeamMember = async (req, res, next) => {
+  try {
+    const teamMemberId = await teamService.removeTeamMember(req);
+    return res
+      .status(201)
+      .send({ message: "Member removed into the team", teamMemberId });
   } catch (err) {
     next(err);
   }

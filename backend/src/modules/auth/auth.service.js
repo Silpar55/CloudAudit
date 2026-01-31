@@ -10,7 +10,7 @@ import {
   comparePassword,
 } from "#utils";
 
-import { findUser, createUser } from "#modules/auth/auth.model.js";
+import * as authModel from "#modules/auth/auth.model.js";
 
 export const registerUser = async ({
   firstName,
@@ -27,7 +27,7 @@ export const registerUser = async ({
   if (!validEmail(email)) throw new AppError("Email is invalid", 400);
 
   // Check if email exist in the database
-  const userInDB = await findUser(email);
+  const userInDB = await authModel.findUser(email);
 
   if (userInDB)
     throw new AppError("Email already registered, try other email", 400);
@@ -54,7 +54,9 @@ export const registerUser = async ({
     countryCode,
   };
 
-  const result = await createUser(user);
+  const result = await authModel.createUser(user);
+
+  if (!result) throw new AppError("Unable to create a user", 422);
 
   return result;
 };
@@ -71,7 +73,7 @@ export const loginUser = async ({ email, password }) => {
     );
 
   // Database validation
-  const user = await findUser(email);
+  const user = await authModel.findUser(email);
   if (!user || !(await comparePassword(password, user.password || "")))
     throw new AppError("Invalid credentials, try again", 404);
 

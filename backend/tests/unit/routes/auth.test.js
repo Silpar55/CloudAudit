@@ -94,14 +94,14 @@ describe("/auth", () => {
     it("Should create a user", async () => {
       findUser.mockResolvedValue(false);
       hashPassword.mockResolvedValue("Hashed");
-      createUser.mockResolvedValue({ message: "User registered succesfully" });
+      createUser.mockResolvedValue({ message: "User registered successfully" });
 
       await request(app)
         .post(endpoint + "/signup")
         .send(correctBody)
         .expect(201)
         .then((res) =>
-          expect(res.body.message).toBe("User registered succesfully"),
+          expect(res.body.message).toBe("User registered successfully"),
         );
     });
   });
