@@ -49,7 +49,8 @@ CREATE TABLE team_members (
 	
 	role TEXT NOT NULL
 	CHECK (role IN ('owner', 'admin', 'member')),
-	
+
+	is_active BOOL NOT NULL DEFAULT TRUE,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	
 	UNIQUE (team_id, user_id)

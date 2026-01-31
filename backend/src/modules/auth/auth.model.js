@@ -9,7 +9,7 @@ const allowedFields = [
   "countryCode",
 ];
 
-export async function createUser(user) {
+export const createUser = async (user) => {
   // Whitelist fields
   const safeData = Object.fromEntries(
     Object.entries(user).filter(([key]) => allowedFields.includes(key)),
@@ -37,9 +37,9 @@ export async function createUser(user) {
     console.error(error);
     return null;
   }
-}
+};
 
-export async function findUser(email) {
+export const findUser = async (email) => {
   const query = `
     SELECT *
     FROM users
@@ -53,4 +53,4 @@ export async function findUser(email) {
     console.error(error);
     return null;
   }
-}
+};
