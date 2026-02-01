@@ -1,6 +1,5 @@
-import jwt from "jsonwebtoken";
-
-export function verifyToken(req, res, next) {
+import { verifyJwtHelper } from "#utils";
+export const verifyToken = (req, res, next) => {
   // Confirm correct auth headers
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer "))
@@ -13,7 +12,7 @@ export function verifyToken(req, res, next) {
   if (!token) return res.status(401).send({ message: "Access denied" });
 
   try {
-    const decoded = jwt.verify(token, process.env.SECRETKEY);
+    const decoded = verifyJwtHelper(token);
     req.userId = decoded.userId;
     next();
   } catch (_e) {
@@ -22,4 +21,4 @@ export function verifyToken(req, res, next) {
       token: "invalid",
     });
   }
-}
+};

@@ -33,9 +33,10 @@ export const addTeamMember = async (req, res, next) => {
   }
 };
 
-export const removeTeamMember = async (req, res, next) => {
+export const deactivateTeamMember = async (req, res, next) => {
   try {
-    const teamMemberId = await teamService.removeTeamMember(req);
+    const teamMemberId = await teamService.deactivateTeamMember(req);
+
     return res
       .status(201)
       .send({ message: "Member removed into the team", teamMemberId });

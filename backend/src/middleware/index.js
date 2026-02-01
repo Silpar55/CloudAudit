@@ -1,3 +1,3 @@
-export { verifyToken } from "./auth.middleware.js";
+export { verifyToken, verifyJwtHelper } from "./auth.middleware.js";
 export { errorHandler } from "./error.middleware.js";
 export { verifyPermissions } from "./team.middleware.js";

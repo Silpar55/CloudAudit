@@ -4,14 +4,14 @@ import {
   createTeam,
   deleteTeam,
   addTeamMember,
-  removeTeamMember,
+  deactivateTeamMember,
 } from "./team.controller.js";
 
 const router = Router();
 
 router.post("/create", createTeam);
 router.delete("/delete/:teamId", verifyPermissions, deleteTeam);
-router.post("/add-member/:teamId", verifyPermissions, addTeamMember);
-router.put("/remove-member/:teamId", verifyPermissions, removeTeamMember);
+router.put("/add-member/:teamId", verifyPermissions, addTeamMember);
+router.put("/remove-member/:teamId", verifyPermissions, deactivateTeamMember);
 
 export const teamRoutes = router;
