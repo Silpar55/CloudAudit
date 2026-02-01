@@ -61,8 +61,7 @@ export const addTeamMember = async (teamId, userId, role) => {
 
 export const activateTeamMember = async (memberId) => {
   const query = `
-    UPDATE team_members
-    SET is_active = TRUE
+    UPDATE team_members SET is_active = TRUE
     WHERE team_member_id = $1
     RETURNING *;
   `;
@@ -76,10 +75,9 @@ export const activateTeamMember = async (memberId) => {
   }
 };
 
-export const deactiveTeamMember = async (memberId) => {
+export const deactivateTeamMember = async (memberId) => {
   const query = `
-    UPDATE team_members
-    SET is_active = FALSE
+    UPDATE team_members SET is_active = FALSE
     WHERE team_member_id = $1
     RETURNING *;
   `;

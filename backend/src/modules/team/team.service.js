@@ -68,15 +68,16 @@ export const addTeamMember = async ({ body, params }) => {
   throw new AppError("User is already in the team", 400);
 };
 
-export const removeTeamMember = async ({ body, params }) => {
+export const deactivateTeamMember = async ({ body, params }) => {
   const { userId } = body;
   const { teamId } = params;
 
   // Check if user is in the team
   const member = await teamModel.getTeamMember(teamId, userId);
+
   if (!member) throw new AppError("User is not in the team", 404);
 
-  const { team_member_id } = await teamModel.deactiveTeamMember(
+  const { team_member_id } = await teamModel.deactivateTeamMember(
     member.team_member_id,
   );
 
