@@ -83,3 +83,28 @@ export const deactivateTeamMember = async ({ body, params }) => {
 
   return team_member_id;
 };
+
+export const changeMemberRole = async ({ body, params }) => {
+  let { userId, newRole } = body;
+  const { teamId } = params;
+  newRole = newRole.toUpperCase();
+
+  console.log(newRole);
+  // Confirm is a valid role
+  if (!TEAM_ROLES[newRole]) throw new AppError("This role does not exist", 404);
+
+  // Check if user is in the team
+  const member = await teamModel.getTeamMember(teamId, userId);
+  if (!member) throw new AppError("User is not in the team", 404);
+
+  const { team_member_id } = await teamModel.changeMemberRole(
+    member.team_member_id,
+    newRole,
+  );
+
+  return {
+    team_member_id,
+    prevRole: member.role,
+    role: newRole.toLowerCase(),
+  };
+};

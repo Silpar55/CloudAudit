@@ -90,3 +90,18 @@ export const deactivateTeamMember = async (memberId) => {
     return null;
   }
 };
+
+export const changeMemberRole = async (memberId, newRole) => {
+  const query = `
+      UPDATE team_members SET role = $1
+      WHERE team_member_id = $2
+      RETURNING *;
+    `;
+
+  try {
+    const { rows } = await pool.query(query, [memberId, newRole]);
+    return rows[0];
+  } catch (error) {
+    return null;
+  }
+};
