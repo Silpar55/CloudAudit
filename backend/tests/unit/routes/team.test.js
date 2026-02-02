@@ -30,7 +30,11 @@ beforeEach(() => {
   getTeamMember.mockImplementation((_, userId) => {
     switch (userId) {
       case "active-user-id":
-        return { team_member_id: "team-member-id", is_active: true };
+        return {
+          team_member_id: "team-member-id",
+          is_active: true,
+          role: "member",
+        };
       case "unactive-user-id":
         return { team_member_id: "team-member-id", is_active: false };
       case "valid-user-id":
@@ -39,6 +43,10 @@ beforeEach(() => {
   });
 
   deactivateTeamMember.mockImplementation((memberId) => {
+    return memberId === "team-member-id" ? { memberId } : null;
+  });
+
+  changeMemberRole.mockImplementation((memberId, _role) => {
     return memberId === "team-member-id" ? { memberId } : null;
   });
 
@@ -55,6 +63,7 @@ import {
   activateTeamMember,
   getTeamMember,
   deactivateTeamMember,
+  changeMemberRole,
 } from "#modules/team/team.model.js";
 import { findUser } from "#modules/auth/auth.model.js";
 import app from "#app";
@@ -188,6 +197,41 @@ describe("/team", () => {
 
       expect(response.status).toBe(201);
       expect(response.body.message).toBe("Member removed into the team");
+    });
+  });
+
+  describe("PUT /team/change-member-role/:teamId", () => {
+    const url = `${endpoint}/change-member-role`;
+    const teamId = "team-id";
+
+    it("Should throw 404 when role is not a valid role", async () => {
+      const response = await request(app).put(`${url}/${teamId}`).send({
+        userId: "user-id",
+        newRole: "NO VALID ROLE",
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("This role does not exist");
+    });
+
+    it("Should throw error when user is not in the team", async () => {
+      getTeamMember.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .put(`${url}/${teamId}`)
+        .send({ userId: "valid-user-id", newRole: "admin" });
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("User is not in the team");
+    });
+
+    it("Should change role successfully", async () => {
+      const response = await request(app)
+        .put(`${url}/${teamId}`)
+        .send({ userId: "active-user-id", newRole: "admin" });
+
+      expect(response.status).toBe(201);
+      expect(response.body.message).toBe(`Member change from member to admin`);
     });
   });
 });
