@@ -26,3 +26,35 @@ export const addAwsAccount = async ({
     return null;
   }
 };
+
+export const findAwsAccount = async ({ awsAccId, teamId }) => {
+  const query = `
+    SELECT * FROM aws_accounts
+    WHERE aws_account_id = $1 AND team_id = $2;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [awsAccId, teamId]);
+
+    return rows[0];
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export const deactivateAwsAccount = async ({ awsAccId, teamId }) => {
+  const query = `
+    UPDATE aws_accounts SET is_active = FALSE, disconnected_at $1
+    WHERE aws_account_id = $1 AND team_id = $2
+    RETURNING *;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [new Date(), awsAccId, teamId]);
+    return rows[0];
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};

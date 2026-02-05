@@ -2,10 +2,7 @@ import { AppError, validRoleARN, validateUserRole } from "#utils";
 import { randomUUID } from "crypto";
 import { addAwsAccount } from "./aws.model.js";
 
-export const createAwsConnection = async ({ body, params }) => {
-  const { roleArn } = body;
-  const { teamId } = params;
-
+export const createAwsConnection = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
 
   // Assume role for checking before store it into the DB
@@ -28,7 +25,7 @@ export const listAwsAccounts = async () => {
   return;
 };
 
-export const deleteAwsConnection = async () => {
+export const deactivateAwsConnection = async () => {
   console.log("Calling /disconnect");
   return;
 };

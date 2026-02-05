@@ -2,13 +2,13 @@ import { Router } from "express";
 import {
   createAwsConnection,
   listAwsAccounts,
-  deleteAwsConnection,
+  deactivateAwsConnection,
 } from "./aws.controller.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-router.post("/connect/:teamId", createAwsConnection);
-router.get("/accounts", listAwsAccounts);
-router.get("/disconnect", deleteAwsConnection);
+router.post("/", createAwsConnection);
+router.get("/", listAwsAccounts);
+router.delete("/:accountId", deactivateAwsConnection);
 
 export const awsRoutes = router;

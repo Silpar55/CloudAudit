@@ -34,10 +34,9 @@ verifyToken.mockImplementation((req, res, next) => {
   next();
 });
 
-describe("/aws", () => {
-  let endpoint = "/aws";
-  describe("POST /aws/connect", () => {
-    endpoint += "/connect/team-id";
+describe("/api/teams/:teamId/aws-accounts", () => {
+  let endpoint = "/api/teams/TEAM-ID/aws-accounts";
+  describe("POST /api/teams/:teamId/aws-accounts", () => {
     it("Should handle invalid inputs", async () => {
       const invalidARNs = [
         "aws:iam::abcdefghijkl:user/jdoe",

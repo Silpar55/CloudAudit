@@ -9,10 +9,9 @@ const app = express();
 app.use(express.json());
 config();
 
-app.use("/health", healthRoutes);
-app.use("/auth", authRoutes);
-app.use("/aws", verifyToken, awsRoutes);
-app.use("/team", verifyToken, teamRoutes);
+app.use("/api/health", healthRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/teams", verifyToken, teamRoutes);
 
 // Error handling
 app.use(errorHandler);

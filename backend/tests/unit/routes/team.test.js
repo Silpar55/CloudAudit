@@ -73,10 +73,10 @@ beforeEach(() => {
 });
 
 describe("/team", () => {
-  const endpoint = "/team";
+  const endpoint = "/api/teams";
 
-  describe("POST /team/create", () => {
-    const url = `${endpoint}/create`;
+  describe("POST /api/teams", () => {
+    const url = `${endpoint}`;
     const body = { name: "New Team" };
 
     it("Should handle invalid inputs", async () => {
@@ -99,8 +99,8 @@ describe("/team", () => {
     });
   });
 
-  describe("DELETE /team/delete/:teamId", () => {
-    const url = `${endpoint}/delete`;
+  describe("DELETE /api/teams/:teamId", () => {
+    const url = `${endpoint}`;
 
     it("Should throw error when teamId does not exist in the DB", async () => {
       // Simulate "Not Found" in the DB
@@ -119,17 +119,17 @@ describe("/team", () => {
       const response = await request(app).delete(`${url}/${teamId}`);
 
       expect(response.status).toBe(201);
-      expect(response.body.teamId).toBe(teamId);
+      expect(response.body.deletedTeamId).toBe(teamId);
     });
   });
 
-  describe("PUT /team/add-member/:teamId", () => {
-    const url = `${endpoint}/add-member`;
+  describe("POST /api/teams/:teamId/members", () => {
+    const url = `${endpoint}`;
     const teamId = "team-id";
 
     it("Should throw error when user does not exist in the database", async () => {
       const response = await request(app)
-        .put(`${url}/${teamId}`)
+        .post(`${url}/${teamId}/members`)
         .send({ email: "unexistentUser@test.com" });
 
       expect(response.status).toBe(404);
@@ -138,7 +138,7 @@ describe("/team", () => {
 
     it("Should throw error when user is already in the team and is active", async () => {
       const response = await request(app)
-        .put(`${url}/${teamId}`)
+        .post(`${url}/${teamId}/members`)
         .send({ email: "activeUser@example.com" });
 
       expect(response.status).toBe(400);
@@ -147,7 +147,7 @@ describe("/team", () => {
 
     it("Should reactivate member when user is unactive in the team", async () => {
       const response = await request(app)
-        .put(`${url}/${teamId}`)
+        .post(`${url}/${teamId}/members`)
         .send({ email: "unactiveUser@example.com" });
 
       expect(response.status).toBe(201);
@@ -157,7 +157,7 @@ describe("/team", () => {
 
     it("Should add a new member when user was never in the team", async () => {
       const response = await request(app)
-        .put(`${url}/${teamId}`)
+        .post(`${url}/${teamId}/members`)
         .send({ email: "validUser@example.com" });
 
       expect(response.status).toBe(201);
@@ -166,49 +166,50 @@ describe("/team", () => {
     });
   });
 
-  describe("PUT /team/remove-member/:teamId", () => {
-    const url = `${endpoint}/remove-member`;
+  describe("DELETE /api/teams/:teamId/members/:userId", () => {
+    const url = `${endpoint}`;
     const teamId = "team-id";
 
     it("Should throw error when user is not a member of that team", async () => {
       getTeamMember.mockResolvedValueOnce(null);
 
-      const response = await request(app)
-        .put(`${url}/${teamId}`)
-        .send({ email: "validUser@example.com" });
+      const response = await request(app).delete(
+        `${url}/${teamId}/members/no-user-id`,
+      );
 
       expect(response.status).toBe(404);
       expect(response.body.message).toBe("User is not in the team");
     });
 
     it("Should remove the member even if is already unactive", async () => {
-      const response = await request(app)
-        .put(`${url}/${teamId}`)
-        .send({ userId: "unactive-user-id" });
+      const response = await request(app).delete(
+        `${url}/${teamId}/members/unactive-user-id`,
+      );
 
       expect(response.status).toBe(201);
       expect(response.body.message).toBe("Member removed into the team");
     });
 
     it("Should remove the member correctly", async () => {
-      const response = await request(app)
-        .put(`${url}/${teamId}`)
-        .send({ userId: "active-user-id" });
+      const response = await request(app).delete(
+        `${url}/${teamId}/members/active-user-id`,
+      );
 
       expect(response.status).toBe(201);
       expect(response.body.message).toBe("Member removed into the team");
     });
   });
 
-  describe("PUT /team/change-member-role/:teamId", () => {
-    const url = `${endpoint}/change-member-role`;
+  describe("PATCH /api/teams/:teamId/members/:userId", () => {
+    const url = `${endpoint}`;
     const teamId = "team-id";
 
     it("Should throw 404 when role is not a valid role", async () => {
-      const response = await request(app).put(`${url}/${teamId}`).send({
-        userId: "user-id",
-        newRole: "NO VALID ROLE",
-      });
+      const response = await request(app)
+        .patch(`${url}/${teamId}/members/user-id`)
+        .send({
+          newRole: "NO VALID ROLE",
+        });
 
       expect(response.status).toBe(404);
       expect(response.body.message).toBe("This role does not exist");
@@ -218,8 +219,8 @@ describe("/team", () => {
       getTeamMember.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .put(`${url}/${teamId}`)
-        .send({ userId: "valid-user-id", newRole: "admin" });
+        .patch(`${url}/${teamId}/members/valid-user-id`)
+        .send({ newRole: "admin" });
 
       expect(response.status).toBe(404);
       expect(response.body.message).toBe("User is not in the team");
@@ -227,8 +228,8 @@ describe("/team", () => {
 
     it("Should change role successfully", async () => {
       const response = await request(app)
-        .put(`${url}/${teamId}`)
-        .send({ userId: "active-user-id", newRole: "admin" });
+        .patch(`${url}/${teamId}/members/active-user-id`)
+        .send({ newRole: "admin" });
 
       expect(response.status).toBe(201);
       expect(response.body.message).toBe(`Member change from member to admin`);

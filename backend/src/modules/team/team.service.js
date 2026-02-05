@@ -24,9 +24,7 @@ const reactivateMember = async (teamMemberId) => {
   return team_member_id;
 };
 
-export const createTeam = async ({ body, userId }) => {
-  const { name } = body;
-
+export const createTeam = async (name, userId) => {
   if (!name) throw new AppError("Please enter a name", 400);
 
   const { team_id } = await teamModel.createTeam(name);
@@ -37,9 +35,7 @@ export const createTeam = async ({ body, userId }) => {
   return team_id;
 };
 
-export const deleteTeam = async ({ params }) => {
-  const { teamId } = params;
-
+export const deleteTeam = async (teamId) => {
   const team = await teamModel.deleteTeam(teamId);
 
   if (!team) throw new AppError("Team does not exist", 404);
@@ -47,10 +43,7 @@ export const deleteTeam = async ({ params }) => {
   return team.team_id;
 };
 
-export const addTeamMember = async ({ body, params }) => {
-  const { email } = body;
-  const { teamId } = params;
-
+export const addTeamMember = async (email, teamId) => {
   // Find user in the DB by email
   const user = await authModel.findUser(email);
 
@@ -68,10 +61,7 @@ export const addTeamMember = async ({ body, params }) => {
   throw new AppError("User is already in the team", 400);
 };
 
-export const deactivateTeamMember = async ({ body, params }) => {
-  const { userId } = body;
-  const { teamId } = params;
-
+export const deactivateTeamMember = async (teamId, userId) => {
   // Check if user is in the team
   const member = await teamModel.getTeamMember(teamId, userId);
 
@@ -84,9 +74,7 @@ export const deactivateTeamMember = async ({ body, params }) => {
   return team_member_id;
 };
 
-export const changeMemberRole = async ({ body, params }) => {
-  let { userId, newRole } = body;
-  const { teamId } = params;
+export const changeMemberRole = async (teamId, userId, newRole) => {
   newRole = newRole.toUpperCase();
 
   // Confirm is a valid role
