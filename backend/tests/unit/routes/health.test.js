@@ -12,7 +12,7 @@ import app from "#app";
 process.env.SECRETKEY = "test-secret";
 
 describe("GET /health/", () => {
-  const endpoint = "/health";
+  const endpoint = "/api/health";
   it("Should show the server is up", async () => {
     const response = await request(app).get(endpoint + "/server");
     const jsonResponse = JSON.parse(response.text);

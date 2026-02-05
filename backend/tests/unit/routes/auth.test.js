@@ -19,7 +19,7 @@ import { findUser, createUser } from "#modules/auth/auth.model.js";
 import app from "#app";
 
 describe("/auth", () => {
-  const endpoint = "/auth";
+  const endpoint = "/api/auth";
 
   describe("POST /auth/signup", () => {
     const correctBody = {

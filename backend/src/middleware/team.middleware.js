@@ -6,7 +6,7 @@ export async function verifyPermissions(req, res, next) {
 
   if (!["admin", "owner"].includes(role))
     return res.status(401).json({
-      message: "You are not authorize to delete this team",
+      message: "You are not authorize to do this action",
     });
 
   next();
