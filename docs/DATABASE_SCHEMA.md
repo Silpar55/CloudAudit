@@ -1,129 +1,154 @@
-# Database Schema
+# Database Schema: CloudAudit v6.0
 
-CloudAudit is designed for users or small business manager to manage their cloud providers and improve their billing based on suggestion from AI.
+CloudAudit is designed for users or small business managers to manage their cloud providers and improve their billing based on suggestions from AI.
 
-Clients will inherently required a cloud provide credentials, so by only requesting minimal information to access to their cloud provider API will be enough to offer the best UX experience.
+By requesting only the minimal information required to access cloud provider APIs (like IAM Role ARNs and External IDs), we ensure a high-quality UX while maintaining security.
 
 # Tables
 
 ## User
 
-- user_id --> **UUID** **\*PK**
-- first_name --> **String**
-- last_name --> **String**
-- email --> **String**
-- password_hash --> **String**
-- phone --> **String**
-- created_at --> **Timestamp**
+Stores internal platform user credentials and profiles.
 
-##### Note: This user information is only for our page. For the user to be able to connect their cloud provider into our application it is required their respective data to access.
+- `user_id` --> **UUID** **\*PK** (Default: gen_random_uuid)
+- `first_name` --> **TEXT**
+- `last_name` --> **TEXT**
+- `email` --> **TEXT** (Unique)
+- `password` --> **TEXT**
+- `phone` --> **TEXT**
+- `country_code` --> **VARCHAR(2)**
+- `created_at` --> **TIMESTAMPTZ**
+
+> **Note:** This user information is only for platform authentication. To connect cloud providers, the application uses the credentials defined in the **AWS_accounts** table.
+
+---
 
 ## Team
 
-- team_id --> **UUID** **\*PK**
-- name --> **String**
-- created_at --> **Timestamp**
+The organizational unit or "workplace" for a business entity.
 
-##### Note: This is the workplace where the business can add the team staff responsible to monitor and check the cost of the cloud provider. Each employee will need to create a **User** to be able to joing a **Team**
+- `team_id` --> **UUID** **\*PK**
+- `name` --> **TEXT**
+- `created_at` --> **TIMESTAMPTZ**
 
 ## Team_members
 
-- team_member_id **UUID** **\*PK**
-- team_id --> **UUID** **\*FK**
-- user_id --> **UUID** **\*FK**
-- role --> **string**
-- created_at --> **Timestamp**
+Handles the relationship between Users and Teams with specific access levels.
 
-## AWS_account
+- `team_member_id` --> **UUID** **\*PK**
+- `team_id` --> **UUID** **\*FK** (ON DELETE CASCADE)
+- `user_id` --> **UUID** **\*FK** (ON DELETE CASCADE)
+- `role` --> **TEXT** (Constraint: 'owner', 'admin', 'member')
+- `is_active` --> **BOOLEAN** (Default: TRUE)
+- `created_at` --> **TIMESTAMPTZ**
 
-- aws_account_id --> **UUID** **\*PK**
-- team_id --> **UUID** **\*FK**
-- iam_role_arn --> **String**
-- connected_at --> **Timestamp**
+---
 
-###### Note: It is likely that each cloud provider has their different way to access their API, therefore it is necessary to create different table for each once.
+## AWS_accounts
 
-##### Note 2: Each account is connected to an organization (**Team**). By this all the cloud providers will belong to everyone and not only for one person in the team.
+Stores connection details and IAM metadata for AWS integration.
 
-## Cost_data (Detailed daily spending information)
+- `aws_account_id` --> **VARCHAR(12)** **\*PK**
+- `team_id` --> **UUID** **\*FK** (ON DELETE CASCADE)
+- `external_id` --> **UUID**
+- `iam_role_arn` --> **TEXT**
+- `is_active` --> **BOOLEAN** (Default: TRUE)
+- `connected_at` --> **TIMESTAMPTZ**
+- `disconnected_at` --> **TIMESTAMP** (Nullable)
 
-- cost_data_id --> **UUID** **\*PK**
-- aws_account_id --> **UUID** **\*FK**
-- time_interval --> **Timestamp** (time_start/time_end)
-- product_code --> **String** (EC2)
-- usage_type --> **String** (USE2-BoxUsage:t3.medium)
-- operation --> **String** (RunInstances)
-- resource_id --> **String** (i-0abc123)
-- usage_amount --> **Decimal** (1)
-- unblended_cost --> **Decimal** (0.0416)
-- region --> **String** (us-east-2)
-- instance_type --> **String** (t3.medium)
-- pricing_unit --> **String** (USD)
-- usage_unit --> **String**. (hrs)
-- public_cost --> **Decimal** (0.0416)
-- blended_cost --> **Decimal** (avg organization cost)
-- amortized_cost --> **Decimal** (upfront payments)
-- tag_environment --> **String**
-- tag_project --> **String**
-- tag_owner --> **String**
+> **Note:** Accounts are connected to a **Team**, ensuring that cloud visibility is shared across the organization rather than tied to a single user.
+
+---
+
+## Cost_data
+
+Granular daily spending information ingested via cloud APIs.
+
+- `cost_data_id` --> **UUID** **\*PK**
+- `aws_account_id` --> **VARCHAR(12)** **\*FK**
+- `time_interval` --> **TIMESTAMP**
+- `product_code` --> **TEXT**
+- `usage_type` --> **TEXT**
+- `operation` --> **TEXT**
+- `resource_id` --> **TEXT**
+- `usage_amount` --> **DECIMAL**
+- `unblended_cost` --> **DECIMAL**
+- `region` --> **TEXT**
+- `instance_type` --> **TEXT**
+- `pricing_unit` --> **TEXT**
+- `usage_unit` --> **TEXT**
+- `public_cost` --> **DECIMAL**
+- `blended_cost` --> **DECIMAL**
+- `amortized_cost` --> **DECIMAL**
+- `tag_environment` --> **TEXT**
+- `tag_project` --> **TEXT**
+- `tag_owner` --> **TEXT**
 
 ## Resources
 
-- resource_id --> **String** **\*PK**
-- aws_account_id --> **UUID** **\*FK**
-- service --> **String** (EC2, RDS, etc)
-- instance_type --> **String**
-- region --> **String**
-- last_seen --> **Timestamp**
+A lookup table for current tracked cloud assets to simplify queries.
 
-##### Note: This table is to easy do a look up at resources without the necessity to go through cost_data
+- `resource_id` --> **TEXT** **\*PK**
+- `aws_account_id` --> **VARCHAR(12)** **\*FK** (ON DELETE CASCADE)
+- `service` --> **TEXT**
+- `instance_type` --> **TEXT**
+- `region` --> **TEXT**
+- `last_seen` --> **TIMESTAMPTZ**
 
-## Daily_cost_summaries (Derived from Cost_data)
+---
 
-- daily_cost_id --> **UUID** **\*PK**
-- aws_account_id --> **UUID** **\*FK**
-- time_start --> **Timestamp**
-- time_end --> **Timestamp**
-- service --> **String**
-- region --> **String**
-- total_cost --> **Decimal**
-- created_at --> **Timestamp**
+## Daily_cost_summaries
 
-##### Note: This table is used for:
+Aggregated billing data used for the dashboard and ML baseline generation.
 
-- Dashboard
-- Queries
-- Baselines model
+- `daily_cost_id` --> **UUID** **\*PK**
+- `aws_account_id` --> **VARCHAR(12)** **\*FK**
+- `time_start` --> **TIMESTAMP**
+- `time_end` --> **TIMESTAMP**
+- `service` --> **TEXT**
+- `region` --> **TEXT**
+- `total_cost` --> **DECIMAL**
+- `created_at` --> **TIMESTAMPTZ**
 
-## Cost_anomalies (For ML)
+---
 
-- anomaly_id --> UUID PK
-- daily_cost_id --> UUID FK
-- aws_account_id --> UUID FK
-- detected_at --> Timestamp
-- resource_id --> String
-- expected_cost --> Decimal
-- deviation_pct --> Decimal
-- severity --> Integer
-- model_version --> String
+## Cost_anomalies
+
+Tracks spending spikes where actual costs deviate from ML-predicted baselines.
+
+- `anomaly_id` --> **UUID** **\*PK**
+- `daily_cost_id` --> **UUID** **\*FK**
+- `aws_account_id` --> **VARCHAR(12)** **\*FK**
+- `resource_id` --> **TEXT** **\*FK**
+- `detected_at` --> **TIMESTAMPTZ**
+- `expected_cost` --> **DECIMAL**
+- `deviation_pct` --> **DECIMAL**
+- `severity` --> **INTEGER**
+- `model_version` --> **TEXT**
 
 ## Recommendations
 
-- recommendation_id --> **UUID** **\*PK**
-- aws_account_id --> **UUID** **\*FK**
-- resource_id --> **String**
-- created_at --> **Timestamp**
-- recommendation_type --> **String**
-- description --> **String**
-- estimated_monthly_savings --> **Decimal**
-- confidence_score --> **Decimal**
-- status --> **Integer**
+AI-generated optimization strategies to reduce monthly burn.
+
+- `recommendation_id` --> **UUID** **\*PK**
+- `aws_account_id` --> **VARCHAR(12)** **\*FK**
+- `resource_id` --> **TEXT** **\*FK**
+- `recommendation_type` --> **TEXT**
+- `description` --> **TEXT**
+- `estimated_monthly_savings` --> **DECIMAL**
+- `confidence_score` --> **DECIMAL**
+- `status` --> **INTEGER**
+- `created_at` --> **TIMESTAMPTZ**
+
+---
 
 ## Audit_logs
 
-- audit_log_id --> **UUID** **\*PK**
-- team_id --> **UUID** **\*FK**
-- user_id --> **UUID** **\*FK**
-- action --> **String**
-- details --> **JSON**
-- created_at --> **Timestamp**
+Security trail tracking all internal platform actions.
+
+- `audit_log_id` --> **UUID** **\*PK**
+- `team_id` --> **UUID** **\*FK**
+- `user_id` --> **UUID** **\*FK**
+- `action` --> **TEXT**
+- `details` --> **JSONB** (Flexible metadata for action context)
+- `created_at` --> **TIMESTAMPTZ**

@@ -1,4 +1,4 @@
--- Database: cloudaudit v5.0
+-- Database: cloudaudit v6.0
 
 -- DROP FIRST TABLES WITH FOREIGN KEYS
 DROP TABLE IF EXISTS cost_anomalies;
@@ -64,6 +64,7 @@ CREATE TABLE aws_accounts (
 	team_id UUID NOT NULL
 		REFERENCES teams (team_id)
 		ON DELETE CASCADE,
+	external_id UUID NOT NULL,
 	iam_role_arn TEXT NOT NULL,
 	is_active BOOL NOT NULL DEFAULT TRUE, 
 	disconnected_at TIMESTAMP,
