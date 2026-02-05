@@ -1,9 +1,8 @@
 import * as awsService from "./aws.service.js";
 
 export const createAwsConnection = async (req, res, next) => {
-  console.log(req.body);
   try {
-    await awsService.createAwsConnection(req.body);
+    await awsService.createAwsConnection(req);
     return res.status(200).send({ message: "AWS account connected" });
   } catch (err) {
     next(err);

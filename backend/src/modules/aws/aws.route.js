@@ -7,7 +7,7 @@ import {
 
 const router = Router();
 
-router.post("/connect", createAwsConnection);
+router.post("/connect/:teamId", createAwsConnection);
 router.get("/accounts", listAwsAccounts);
 router.get("/disconnect", deleteAwsConnection);
 

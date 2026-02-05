@@ -1,4 +1,5 @@
 import { verifyJwtHelper } from "#utils";
+
 export const verifyToken = (req, res, next) => {
   // Confirm correct auth headers
   const authHeader = req.headers.authorization;

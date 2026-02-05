@@ -89,7 +89,6 @@ export const changeMemberRole = async ({ body, params }) => {
   const { teamId } = params;
   newRole = newRole.toUpperCase();
 
-  console.log(newRole);
   // Confirm is a valid role
   if (!TEAM_ROLES[newRole]) throw new AppError("This role does not exist", 404);
 
