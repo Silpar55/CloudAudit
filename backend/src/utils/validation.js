@@ -89,23 +89,14 @@ export function validAWSAccId(awsAccId = "") {
   return true;
 }
 
-export function validARN(arn = "") {
-  // Regex breakdown:
-  // 1. arn:aws: - The standard prefix
-  // 2. [a-zA-Z0-9:-]+ - The service and region (e.g., s3, lambda:us-east-1)
-  // 3. (\d{12})? - Optional 12-digit account ID
-  // 4. ([:/]) - Separator (colon or slash)
-  // 5. .+$ - The resource path/ID
-  const arnRegex =
-    /^arn:aws:[a-zA-Z0-9-]*:[a-z0-9-]*:(\d{12})?:[a-zA-Z0-9-:. /_]+$/;
+export function validRoleARN(arn = "") {
+  const roleArnRegex = /^arn:aws:iam::\d{12}:role\/ExternalService.+$/;
 
   if (!arn || typeof arn !== "string") return false;
-
-  if (!arnRegex.test(arn)) return false;
-
+  if (!roleArnRegex.test(arn)) return false;
   const awsAccountId = arn.split(":")[4];
 
-  if (!awsAccountId) return true; // AWS account ID in ARN can be optional
+  if (!awsAccountId || !validAWSAccId(awsAccountId)) return false;
 
-  return validAWSAccId(awsAccountId);
+  return true;
 }

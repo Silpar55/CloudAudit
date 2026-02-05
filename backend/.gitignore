@@ -1,3 +1,5 @@
+.aws-creds
+
 # Logs
 logs
 *.log

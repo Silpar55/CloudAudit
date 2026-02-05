@@ -21,10 +21,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-sts": "^3.981.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "config": "^4.2.0",
     "cors": "^2.8.6",
+    "crypto": "^1.0.1",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jest-cli": "^29.7.0",

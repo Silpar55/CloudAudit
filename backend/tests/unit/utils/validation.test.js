@@ -1,5 +1,5 @@
 import {
-  validARN,
+  validRoleARN,
   validAWSAccId,
   validEmail,
   validName,
@@ -166,17 +166,19 @@ describe("validARN()", () => {
       null,
     ];
 
-    invalidARNs.forEach((arn) => expect(validARN(arn)).toBe(false));
+    invalidARNs.forEach((arn) => expect(validRoleARN(arn)).toBe(false));
   });
 
   it("Should handle valid ARNs", () => {
     const validARNs = [
-      "arn:aws:iam::123456789012:policy/UsersManageOwnCredentials",
-      "arn:aws:s3:::my-production-bucket-2024",
-      "arn:aws:lambda:us-east-1:123456789012:function:my-process-service",
-      "arn:aws:ec2:us-west-2:123456789012:instance/i-0abcdef1234567890",
+      "arn:aws:iam::123456789012:role/ExternalServiceExecutionRole",
+      "arn:aws:iam::987654321098:role/ExternalServiceReadOnly",
+      "arn:aws:iam::111122223333:role/ExternalServiceExecutionRoleV2",
+      "arn:aws:iam::555566667777:role/ExternalService-Optimizer",
+      "arn:aws:iam::444455556666:role/ExternalService/ExecutionRole",
+      "arn:aws:iam::222233334444:role/ExternalService/CostOptimization/Executor",
     ];
 
-    validARNs.forEach((arn) => expect(validARN(arn)).toBe(true));
+    validARNs.forEach((arn) => expect(validRoleARN(arn)).toBe(true));
   });
 });
