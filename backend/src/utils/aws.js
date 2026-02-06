@@ -1,15 +1,15 @@
-import { AppError } from "./AppError.js";
+import { AppError } from "./helper/AppError.js";
 import {
-  STSClient,
-  GetCallerIdentityCommand,
-  AssumeRoleCommand,
-} from "@aws-sdk/client-sts";
+  createSTSClient,
+  getCallerIdentity,
+  assumeRole,
+} from "./helper/aws-helper.js";
 
 export const verifyAwsConnection = async () => {
-  const client = new STSClient({ region: "us-east-1" });
+  const client = createSTSClient();
+
   try {
-    const command = new GetCallerIdentityCommand({});
-    const response = await client.send(command);
+    const response = await getCallerIdentity(client);
 
     console.log("Success! I am connected as:");
     console.log("Account ID:", response.Account);
@@ -17,22 +17,22 @@ export const verifyAwsConnection = async () => {
   } catch (err) {
     console.error("Connection failed:");
     console.error(err.message);
-    process.exit(1);
+    // process.exit(1);
   }
 };
 
 export const validateUserRole = async (customer) => {
-  const client = new STSClient({ region: "us-east-1" });
+  const client = createSTSClient();
   try {
     console.log(customer);
-    const command = new AssumeRoleCommand({
+    const params = {
       RoleArn: customer.iam_role_arn,
       RoleSessionName: "CloudAuditValidation",
       DurationSeconds: 900,
       ExternalId: customer.external_id,
-    });
+    };
 
-    await client.send(command);
+    await assumeRole(client, params);
 
     return true;
   } catch (error) {
@@ -52,18 +52,16 @@ export const validateUserRole = async (customer) => {
 };
 
 export const assumeCustomerRole = async (customer) => {
-  const sts = new STSClient({
-    region: "us-east-1",
-  });
+  const sts = createSTSClient();
 
-  const { Credentials } = await sts.send(
-    new AssumeRoleCommand({
-      RoleArn: customer.roleArn,
-      RoleSessionName: `cust-${customer.awsAccId}-${Date.now()}`,
-      ExternalId: customer.externalId,
-      DurationSeconds: 3600,
-    }),
-  );
+  const params = {
+    RoleArn: customer.roleArn,
+    RoleSessionName: `cust-${customer.awsAccId}-${Date.now()}`,
+    ExternalId: customer.externalId,
+    DurationSeconds: 3600,
+  };
+
+  const { Credentials } = await assumeRole(sts, params);
 
   return {
     accessKeyId: Credentials.AccessKeyId,

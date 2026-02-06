@@ -1,7 +1,7 @@
 import * as teamModel from "./team.model.js";
 import * as authModel from "#modules/auth/auth.model.js";
 
-import { AppError } from "#utils";
+import { AppError } from "#utils/helper/AppError.js";
 
 const TEAM_ROLES = {
   MEMBER: "member",

@@ -1,5 +1,5 @@
 import app from "#app";
-import { verifyAwsConnection } from "#utils";
+import { verifyAwsConnection } from "#utils/aws.js";
 
 const port = process.env.PORT || 3000;
 

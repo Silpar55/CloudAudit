@@ -3,17 +3,9 @@ import jwt from "jsonwebtoken";
 import { describe, expect, jest } from "@jest/globals";
 
 jest.mock("#modules/auth/auth.model.js");
-jest.mock("#utils", () => {
-  const actual = jest.requireActual("#utils");
+jest.mock("#utils/password.js");
 
-  return {
-    ...actual,
-    hashPassword: jest.fn(),
-    comparePassword: jest.fn(),
-  };
-});
-
-import { hashPassword, comparePassword } from "#utils";
+import { hashPassword, comparePassword } from "#utils/password.js";
 import { findUser, createUser } from "#modules/auth/auth.model.js";
 
 import app from "#app";
@@ -21,7 +13,7 @@ import app from "#app";
 describe("/auth", () => {
   const endpoint = "/api/auth";
 
-  describe("POST /auth/signup", () => {
+  describe("POST /signup", () => {
     const correctBody = {
       firstName: "Alejandro",
       lastName: "Silva",
@@ -106,7 +98,7 @@ describe("/auth", () => {
     });
   });
 
-  describe("POST /auth/login", () => {
+  describe("POST /login", () => {
     const correctBody = {
       email: "test@example.com",
       password: "Example0!",
