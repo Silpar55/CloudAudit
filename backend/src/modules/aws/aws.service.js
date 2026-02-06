@@ -1,31 +1,56 @@
-import { AppError, validRoleARN, validateUserRole } from "#utils";
+import {
+  AppError,
+  validRoleARN,
+  validateUserRole,
+  generateScripts,
+} from "#utils";
 import { randomUUID } from "crypto";
-import { addAwsAccount } from "./aws.model.js";
+import * as awsModel from "./aws.model.js";
 
-export const createAwsConnection = async (teamId, roleArn) => {
+export const initializePendingAccount = async (teamId, roleArn) => {
+  if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
+  const accId = roleArn.split(":")[4];
+
+  let pendingAccount = await awsModel.findAwsAccount(accId, teamId);
+
+  if (!pendingAccount) {
+    pendingAccount = await awsModel.initializePendingAccount({
+      roleArn,
+      externalId: randomUUID(),
+      awsAccId: accId,
+      teamId,
+    });
+  } else {
+    pendingAccount = await awsModel.updateAccount(accId, teamId, roleArn);
+  }
+
+  return generateScripts(pendingAccount);
+};
+
+export const activateAwsAccount = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
 
-  // Assume role for checking before store it into the DB
-  const customer = {
-    roleArn,
-    externalId: randomUUID(),
-    awsAccId: roleArn.split(":")[4],
-    teamId,
-  };
+  const accId = roleArn.split(":")[4];
 
-  const isValid = await validateUserRole(customer);
+  const account = await awsModel.findAwsAccount(accId, teamId);
 
-  if (!isValid) throw new AppError("Unexpected error", 500);
+  if (!account) throw new AppError("Account not initialized", 404);
 
-  await addAwsAccount(customer);
+  const isValid = await validateUserRole(account);
+
+  if (!isValid)
+    throw new AppError("Validation Failed: Check Trust Policy", 400);
+
+  await awsModel.activateAwsAccount(accId, teamId);
 };
 
-export const listAwsAccounts = async () => {
-  console.log("Calling /accounts");
-  return;
-};
+// export const listAwsAccounts = async () => {
+//   console.log("Calling /accounts");
+//   return;
+// };
 
-export const deactivateAwsConnection = async () => {
-  console.log("Calling /disconnect");
-  return;
+export const deactivateAwsAccount = async (teamId, accId) => {
+  const { aws_account_id } = await awsModel.deactivateAwsAccount(accId, teamId);
+
+  return aws_account_id;
 };

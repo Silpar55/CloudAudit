@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyPermissions } from "#middleware";
+import { verifyPermissions, verifyTeamId } from "#middleware";
 import {
   createTeam,
   deleteTeam,
@@ -13,19 +13,24 @@ const router = Router();
 
 // Teams resource
 router.post("/", createTeam);
-router.delete("/:teamId", verifyPermissions, deleteTeam);
+router.delete("/:teamId", verifyPermissions, verifyTeamId, deleteTeam);
 
 // Member sub-resource
-router.post("/:teamId/members", verifyPermissions, addTeamMember);
+router.post("/:teamId/members", verifyPermissions, verifyTeamId, addTeamMember);
 router.delete(
   "/:teamId/members/:userId",
   verifyPermissions,
   deactivateTeamMember,
 );
-router.patch("/:teamId/members/:userId", verifyPermissions, changeMemberRole);
+router.patch(
+  "/:teamId/members/:userId",
+  verifyPermissions,
+  verifyTeamId,
+  changeMemberRole,
+);
 
 // AWS sub-resource
 // /:teamId/aws-accounts
-router.use("/:teamId/aws-accounts", awsRoutes);
+router.use("/:teamId/aws-accounts", verifyTeamId, awsRoutes);
 
 export const teamRoutes = router;

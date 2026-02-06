@@ -9,6 +9,7 @@ jest.mock("#middleware", () => {
     ...actual,
     verifyPermissions: jest.fn((req, res, next) => next()),
     verifyToken: jest.fn((req, res, next) => next()),
+    verifyTeamId: jest.fn((req, res, next) => next()),
   };
 });
 

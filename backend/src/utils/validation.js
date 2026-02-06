@@ -90,7 +90,7 @@ export function validAWSAccId(awsAccId = "") {
 }
 
 export function validRoleARN(arn = "") {
-  const roleArnRegex = /^arn:aws:iam::\d{12}:role\/ExternalService.+$/;
+  const roleArnRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@\/-]+$/;
 
   if (!arn || typeof arn !== "string") return false;
   if (!roleArnRegex.test(arn)) return false;
