@@ -50,7 +50,7 @@ describe("verifyPermissions Middleware", () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: "You are not authorize to delete this team",
+        message: "You are not authorize to do this action",
       }),
     );
     expect(next).not.toHaveBeenCalled();

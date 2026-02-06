@@ -11,3 +11,16 @@ export async function verifyPermissions(req, res, next) {
 
   next();
 }
+
+export async function verifyTeamId(req, res, next) {
+  const { teamId } = req.params;
+
+  const team = await teamModel.findTeam(teamId);
+
+  if (!team)
+    return res.status(404).json({
+      message: "Team Id does not exists",
+    });
+
+  next();
+}

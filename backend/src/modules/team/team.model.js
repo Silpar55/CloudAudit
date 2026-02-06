@@ -30,6 +30,20 @@ export const deleteTeam = async (teamId) => {
   }
 };
 
+export const findTeam = async (teamId) => {
+  const query = `
+    SELECT * from teams
+    WHERE team_id = $1;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [teamId]);
+    return rows[0];
+  } catch (error) {
+    return null;
+  }
+};
+
 export const getTeamMember = async (teamId, userId) => {
   const query = `
     SELECT * FROM team_members

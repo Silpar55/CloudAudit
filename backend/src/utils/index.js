@@ -13,4 +13,5 @@ export {
   assumeCustomerRole,
   verifyAwsConnection,
   validateUserRole,
+  generateScripts,
 } from "./aws.js";
