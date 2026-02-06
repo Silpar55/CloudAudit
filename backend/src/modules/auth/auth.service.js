@@ -5,10 +5,11 @@ import {
   validEmail,
   validPassword,
   validPhone,
-  AppError,
-  hashPassword,
-  comparePassword,
-} from "#utils";
+} from "#utils/validation.js";
+
+import { hashPassword, comparePassword } from "#utils/password.js";
+
+import { AppError } from "#utils/helper/AppError.js";
 
 import * as authModel from "#modules/auth/auth.model.js";
 

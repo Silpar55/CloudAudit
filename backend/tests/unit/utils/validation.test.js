@@ -5,7 +5,7 @@ import {
   validName,
   validPassword,
   validPhone,
-} from "#utils";
+} from "#utils/validation.js";
 
 describe("validName()", () => {
   it("Empty name", () => {

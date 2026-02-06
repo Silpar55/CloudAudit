@@ -1,6 +1,14 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-jest.mock("#utils/helper/aws-helper.js");
+jest.mock("#utils/helper/aws-helper.js", () => {
+  const actual = jest.requireActual("#utils/helper/aws-helper.js");
+  return {
+    ...actual,
+    getCallerIdentity: jest.fn(),
+    assumeRole: jest.fn(),
+    createSTSClient: jest.fn(),
+  };
+});
 
 import {
   verifyAwsConnection,
@@ -36,7 +44,6 @@ describe("AWS Utilities", () => {
       const consoleLogSpy = jest
         .spyOn(console, "log")
         .mockImplementation(() => {});
-
       await verifyAwsConnection();
 
       expect(createSTSClient).toHaveBeenCalledTimes(1);

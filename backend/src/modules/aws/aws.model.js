@@ -80,7 +80,7 @@ export const updateAccount = async (accId, teamId, roleArn) => {
 
 export const deactivateAwsAccount = async (accId, teamId) => {
   const query = `
-    UPDATE aws_accounts SET is_active = FALSE, disconnected_at $1
+    UPDATE aws_accounts SET is_active = FALSE, disconnected_at = $1
     WHERE aws_account_id = $1 AND team_id = $2
     RETURNING *;
   `;

@@ -1,16 +1,9 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-jest.mock("#utils", () => {
-  const actual = jest.requireActual("#utils");
-
-  return {
-    ...actual,
-    verifyJwtHelper: jest.fn(),
-  };
-});
+jest.mock("#utils/helper/jwt-helper.js");
 
 import { verifyToken } from "#middleware";
-import { verifyJwtHelper } from "#utils";
+import { verifyJwtHelper } from "#utils/helper/jwt-helper.js";
 
 describe("verifyToken Middleware", () => {
   let req, res, next;

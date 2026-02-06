@@ -1,9 +1,6 @@
-import {
-  AppError,
-  validRoleARN,
-  validateUserRole,
-  generateScripts,
-} from "#utils";
+import { validRoleARN, validateUserRole, generateScripts } from "#utils/aws.js";
+import { AppError } from "#utils/helper/AppError.js";
+
 import { randomUUID } from "crypto";
 import * as awsModel from "./aws.model.js";
 
