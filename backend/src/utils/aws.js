@@ -21,8 +21,9 @@ export const verifyAwsConnection = async () => {
   }
 };
 
-export const validateUserRole = async (customer) => {
+export const validateSTSConnection = async (customer) => {
   const client = createSTSClient();
+
   try {
     console.log(customer);
     const params = {

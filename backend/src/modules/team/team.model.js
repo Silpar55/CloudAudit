@@ -113,9 +113,10 @@ export const changeMemberRole = async (memberId, newRole) => {
     `;
 
   try {
-    const { rows } = await pool.query(query, [memberId, newRole]);
+    const { rows } = await pool.query(query, [newRole, memberId]);
     return rows[0];
   } catch (error) {
+    console.log(error);
     return null;
   }
 };
