@@ -135,7 +135,6 @@ describe("/auth", () => {
     });
 
     it("Login with valid credentials", async () => {
-      // User exist and verify token is valid
       findUser.mockResolvedValue({
         user_id: 1321,
         ...correctBody,
