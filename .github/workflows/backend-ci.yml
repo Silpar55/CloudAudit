@@ -5,31 +5,27 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - "backend/**"
   push:
     branches:
       - main
+    paths:
+      - "backend/**"
 
 jobs:
-  backend:
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: backend
-
     steps:
-      - name: Checkout repo
-        uses: actions/setup-node@v4
+      - name: Check out code
+        uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 23
+          node-version: "lts/*"
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test
+      - name: Install node dependencies and run Tests
+        run: npm install-ci-test
