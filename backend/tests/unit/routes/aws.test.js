@@ -68,8 +68,6 @@ describe("AWS Utilities", () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith("Connection failed:");
       expect(consoleErrorSpy).toHaveBeenCalledWith("Connection timeout");
-      // Note: process.exit is commented out in your code, so this won't be called
-      // expect(processExitSpy).toHaveBeenCalledWith(1);
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
