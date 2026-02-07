@@ -4,7 +4,7 @@ jest.mock("#utils/helper/aws-helper.js");
 
 import {
   verifyAwsConnection,
-  validateUserRole,
+  validateSTSConnection,
   assumeCustomerRole,
   generateScripts,
 } from "#utils/aws.js";
@@ -76,7 +76,7 @@ describe("AWS Utilities", () => {
     });
   });
 
-  describe("validateUserRole", () => {
+  describe("validateSTSConnection", () => {
     it("Should return true if AssumeRole succeeds", async () => {
       const customer = {
         iam_role_arn: "arn:aws:iam::123456789012:role/TestRole",
@@ -90,7 +90,7 @@ describe("AWS Utilities", () => {
         .spyOn(console, "log")
         .mockImplementation(() => {});
 
-      const result = await validateUserRole(customer);
+      const result = await validateSTSConnection(customer);
 
       expect(consoleLogSpy).toHaveBeenCalledWith(customer);
       expect(createSTSClient).toHaveBeenCalledTimes(1);
@@ -127,8 +127,8 @@ describe("AWS Utilities", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      await expect(validateUserRole(customer)).rejects.toThrow(AppError);
-      await expect(validateUserRole(customer)).rejects.toThrow(
+      await expect(validateSTSConnection(customer)).rejects.toThrow(AppError);
+      await expect(validateSTSConnection(customer)).rejects.toThrow(
         "Permission denied. The user likely hasn't updated their Trust Policy.",
       );
 
@@ -156,8 +156,8 @@ describe("AWS Utilities", () => {
         .spyOn(console, "log")
         .mockImplementation(() => {});
 
-      await expect(validateUserRole(customer)).rejects.toThrow(AppError);
-      await expect(validateUserRole(customer)).rejects.toThrow(
+      await expect(validateSTSConnection(customer)).rejects.toThrow(AppError);
+      await expect(validateSTSConnection(customer)).rejects.toThrow(
         "Invalid ARN format",
       );
 
@@ -183,7 +183,7 @@ describe("AWS Utilities", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      const result = await validateUserRole(customer);
+      const result = await validateSTSConnection(customer);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("Unexpected error:"),
