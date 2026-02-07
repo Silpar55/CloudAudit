@@ -17,6 +17,8 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    env:
+      SECRETKEY: ${{ secrets.SECRETKEY }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
