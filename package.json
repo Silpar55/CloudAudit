@@ -1,8 +1,0 @@
-{
-  "devDependencies": {
-    "jest": "^29.7.0"
-  },
-  "dependencies": {
-    "google-libphonenumber": "^3.2.44"
-  }
-}
