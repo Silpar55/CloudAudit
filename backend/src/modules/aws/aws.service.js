@@ -1,4 +1,6 @@
-import { validRoleARN, validateUserRole, generateScripts } from "#utils/aws.js";
+import { generateScripts, validateSTSConnection } from "#utils/aws.js";
+import { validRoleARN } from "#utils/validation.js";
+
 import { AppError } from "#utils/helper/AppError.js";
 
 import { randomUUID } from "crypto";
@@ -14,7 +16,7 @@ export const initializePendingAccount = async (teamId, roleArn) => {
     pendingAccount = await awsModel.initializePendingAccount({
       roleArn,
       externalId: randomUUID(),
-      awsAccId: accId,
+      accId,
       teamId,
     });
   } else {
@@ -33,7 +35,7 @@ export const activateAwsAccount = async (teamId, roleArn) => {
 
   if (!account) throw new AppError("Account not initialized", 404);
 
-  const isValid = await validateUserRole(account);
+  const isValid = await validateSTSConnection(account);
 
   if (!isValid)
     throw new AppError("Validation Failed: Check Trust Policy", 400);

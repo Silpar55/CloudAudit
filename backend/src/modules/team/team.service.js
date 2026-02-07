@@ -86,7 +86,7 @@ export const changeMemberRole = async (teamId, userId, newRole) => {
 
   const { team_member_id } = await teamModel.changeMemberRole(
     member.team_member_id,
-    newRole,
+    TEAM_ROLES[newRole],
   );
 
   return {
