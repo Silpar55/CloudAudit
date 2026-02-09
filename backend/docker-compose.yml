@@ -1,0 +1,45 @@
+version: "1.0"
+
+services:
+  api:
+    image: silpar55/cloudaudit-backend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+
+      ## PG ADMIN DATABASE
+      PGUSER: alejandrosilva
+      PGPASSWORD: admin
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: cloudaudit
+
+      ## JWT token
+      SECRETKEY: 2004_cloudaudit_11
+
+      ## AWS
+      AWS_PROFILE: default
+      AWS_SDK_LOAD_CONFIG: "1"
+
+    volumes:
+      - ~/.aws:/root/.aws:ro
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: cloudaudit
+      POSTGRES_USER: alejandrosilva
+      POSTGRES_PASSWORD: admin
+
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

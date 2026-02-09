@@ -1,1 +1,2 @@
-export { pool } from "./database.js";
+export { pool } from "./pool.js";
+export { verifyDatabaseConnection } from "./db.js";
