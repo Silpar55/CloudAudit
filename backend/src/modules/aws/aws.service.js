@@ -1,10 +1,22 @@
-import { generateScripts, validateSTSConnection } from "#utils/aws.js";
+import {
+  ceGetCAU,
+  generateScripts,
+  validateSTSConnection,
+} from "#utils/aws.js";
 import { validRoleARN } from "#utils/validation.js";
 
 import { AppError } from "#utils/helper/AppError.js";
 
 import { randomUUID } from "crypto";
 import * as awsModel from "./aws.model.js";
+
+const getAccount = async (accId, teamId) => {
+  const account = await awsModel.findAwsAccount(accId, teamId);
+
+  if (!account) throw new AppError("Account not initialized", 404);
+
+  return account;
+};
 
 export const initializePendingAccount = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
@@ -26,21 +38,26 @@ export const initializePendingAccount = async (teamId, roleArn) => {
   return generateScripts(pendingAccount);
 };
 
+export const ceGetCostAndUsage = async (teamId, accId) => {
+  const account = await getAccount(accId, teamId);
+  const result = await ceGetCAU(account);
+
+  return result;
+};
+
 export const activateAwsAccount = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
 
   const accId = roleArn.split(":")[4];
 
-  const account = await awsModel.findAwsAccount(accId, teamId);
-
-  if (!account) throw new AppError("Account not initialized", 404);
+  const account = await getAccount(accId, teamId);
 
   const isValid = await validateSTSConnection(account);
 
   if (!isValid)
     throw new AppError("Validation Failed: Check Trust Policy", 400);
 
-  await awsModel.activateAwsAccount(accId, teamId);
+  await awsModel.activateAwsAccount(account.aws_account_id, account.team_id);
 };
 
 // export const listAwsAccounts = async () => {

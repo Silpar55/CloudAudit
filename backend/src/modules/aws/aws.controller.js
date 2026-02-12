@@ -34,6 +34,19 @@ export const activateAwsAccount = async (req, res, next) => {
 //   }
 // };
 
+export const ceGetCostAndUsage = async (req, res, next) => {
+  try {
+    const { teamId, accId } = req.params;
+
+    const result = await awsService.ceGetCostAndUsage(teamId, accId);
+    return res
+      .status(200)
+      .send({ message: "AWS Cost Exploter: Cost and Usage Report", result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const deactivateAwsAccount = async (req, res, next) => {
   try {
     const { teamId, accId } = req.params;
