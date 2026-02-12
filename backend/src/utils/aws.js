@@ -1,9 +1,29 @@
+import {
+  CostExplorerClient,
+  GetCostAndUsageCommand,
+} from "@aws-sdk/client-cost-explorer";
+
 import { AppError } from "./helper/AppError.js";
 import {
   createSTSClient,
   getCallerIdentity,
   assumeRole,
 } from "./helper/aws-helper.js";
+
+const getCredentials = async (account) => {
+  const sts = createSTSClient();
+
+  const params = {
+    RoleArn: account.iam_role_arn,
+    RoleSessionName: `cust-${account.aws_account_id}-${Date.now()}`,
+    ExternalId: account.external_id,
+    DurationSeconds: 3600,
+  };
+
+  const { Credentials } = await assumeRole(sts, params);
+
+  return { Credentials };
+};
 
 export const verifyAwsConnection = async () => {
   const client = createSTSClient();
@@ -24,8 +44,9 @@ export const verifyAwsConnection = async () => {
 export const validateSTSConnection = async (customer) => {
   const client = createSTSClient();
 
+  console.log(customer);
+
   try {
-    console.log(customer);
     const params = {
       RoleArn: customer.iam_role_arn,
       RoleSessionName: "CloudAuditValidation",
@@ -44,31 +65,13 @@ export const validateSTSConnection = async (customer) => {
         401,
       );
     } else if (error.name === "ValidationError") {
+      console.log(error);
       throw new AppError("Invalid ARN format", 401);
     } else {
       console.error(`Unexpected error: ${error.message}`);
     }
     return false;
   }
-};
-
-export const assumeCustomerRole = async (customer) => {
-  const sts = createSTSClient();
-
-  const params = {
-    RoleArn: customer.roleArn,
-    RoleSessionName: `cust-${customer.awsAccId}-${Date.now()}`,
-    ExternalId: customer.externalId,
-    DurationSeconds: 3600,
-  };
-
-  const { Credentials } = await assumeRole(sts, params);
-
-  return {
-    accessKeyId: Credentials.AccessKeyId,
-    secretAccessKey: Credentials.SecretAccessKey,
-    sessionToken: Credentials.SessionToken,
-  };
 };
 
 export const generateScripts = (pendingAccount) => {
@@ -108,6 +111,7 @@ export const generateScripts = (pendingAccount) => {
           // Common read-only permissions for an audit tool
           "ec2:DescribeInstances",
           "s3:ListAllMyBuckets",
+          "ce:GetCostAndUsage",
         ],
         Resource: "*",
       },
@@ -129,4 +133,61 @@ export const generateScripts = (pendingAccount) => {
       externalId: pendingAccount.externalId, // Display this clearly to the user!
     },
   };
+};
+
+// This function is called for DB rows
+export const assumeCustomerRole = async (customer) => {
+  const { Credentials } = await getCredentials(customer);
+
+  return {
+    accessKeyId: Credentials.AccessKeyId,
+    secretAccessKey: Credentials.SecretAccessKey,
+    sessionToken: Credentials.SessionToken,
+  };
+};
+
+// AWS SERVICES FUNCTION
+
+// Cost Explorer
+
+// Get Cost and Usage
+export const ceGetCAU = async (account) => {
+  try {
+    const { Credentials } = await getCredentials(account);
+
+    const ceClient = new CostExplorerClient({
+      region: "us-east-1",
+      credentials: {
+        accessKeyId: Credentials.AccessKeyId,
+        secretAccessKey: Credentials.SecretAccessKey,
+        sessionToken: Credentials.SessionToken,
+      },
+    });
+
+    const result = await ceClient.send(
+      new GetCostAndUsageCommand({
+        TimePeriod: {
+          Start: "2026-01-01",
+          End: "2026-02-01",
+        },
+        Granularity: "MONTHLY",
+        Metrics: ["UnblendedCost"],
+      }),
+    );
+
+    return result;
+  } catch (error) {
+    if (error.name === "AccessDenied") {
+      console.error(`Unexpected error: ${error.message}`);
+      throw new AppError(
+        "Permission denied. The user likely hasn't updated their Trust Policy.",
+        401,
+      );
+    } else if (error.name === "ValidationError") {
+      throw new AppError("Invalid ARN format", 401);
+    } else {
+      console.error(`Unexpected error: ${error.message}`);
+    }
+    return false;
+  }
 };

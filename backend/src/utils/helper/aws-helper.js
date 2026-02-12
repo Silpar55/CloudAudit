@@ -18,5 +18,6 @@ export const getCallerIdentity = async (client) => {
 // Helper function to assume role - easy to mock
 export const assumeRole = async (client, params) => {
   const command = new AssumeRoleCommand(params);
+
   return await client.send(command);
 };

@@ -196,9 +196,9 @@ describe("AWS Utilities", () => {
   describe("assumeCustomerRole", () => {
     it("Should assume customer role and return credentials", async () => {
       const customer = {
-        roleArn: "arn:aws:iam::123456789012:role/CustomerRole",
-        awsAccId: "123456789012",
-        externalId: "ext-456",
+        iam_role_arn: "arn:aws:iam::123456789012:role/CustomerRole",
+        aws_account_id: "123456789012",
+        external_id: "ext-456",
       };
 
       const mockCredentials = {
@@ -218,8 +218,8 @@ describe("AWS Utilities", () => {
       expect(assumeRole).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          RoleArn: customer.roleArn,
-          ExternalId: customer.externalId,
+          RoleArn: customer.iam_role_arn,
+          ExternalId: customer.external_id,
           DurationSeconds: 3600,
         }),
       );
