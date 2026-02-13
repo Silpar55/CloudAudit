@@ -1,7 +1,7 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-jest.mock("#utils/helper/aws-helper.js", () => {
-  const actual = jest.requireActual("#utils/helper/aws-helper.js");
+jest.mock("#utils/aws/client-factory.js", () => {
+  const actual = jest.requireActual("#utils/aws/client-factory.js");
   return {
     ...actual,
     getCallerIdentity: jest.fn(),
@@ -13,17 +13,16 @@ jest.mock("#utils/helper/aws-helper.js", () => {
 import {
   verifyAwsConnection,
   validateSTSConnection,
-  assumeCustomerRole,
-  generateScripts,
-} from "#utils/aws.js";
-
+  getTemporaryCredentials,
+} from "#utils/aws/sts.js";
+import { generateScripts } from "#utils/aws/policy-generator.js";
 import { AppError } from "#utils/helper/AppError.js";
 
 import {
   createSTSClient,
   assumeRole,
   getCallerIdentity,
-} from "#utils/helper/aws-helper.js";
+} from "#utils/aws/client-factory.js";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -207,7 +206,7 @@ describe("AWS Utilities", () => {
     });
   });
 
-  describe("assumeCustomerRole", () => {
+  describe("getTemporaryCredentials", () => {
     it("Should assume customer role and return credentials", async () => {
       const customer = {
         iam_role_arn: "arn:aws:iam::123456789012:role/CustomerRole",
@@ -226,7 +225,7 @@ describe("AWS Utilities", () => {
         Credentials: mockCredentials,
       });
 
-      const result = await assumeCustomerRole(customer);
+      const result = await getTemporaryCredentials(customer);
 
       expect(createSTSClient).toHaveBeenCalledTimes(1);
       expect(assumeRole).toHaveBeenCalledWith(
