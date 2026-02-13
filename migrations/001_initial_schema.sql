@@ -74,38 +74,62 @@ CREATE TABLE aws_accounts (
 -- COST_DATA TABLE
 
 CREATE TABLE cost_data (
-	cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
-	time_interval TIMESTAMP NOT NULL,
-	product_code TEXT NOT NULL,
-	usage_type TEXT NOT NULL,
-	operation TEXT NOT NULL,
-	resource_id TEXT NOT NULL,
-	usage_amount DECIMAL NOT NULL,
-	unblended_cost DECIMAL NOT NULL,
-	region TEXT NOT NULL,
-	instance_type TEXT NOT NULL,
-	pricing_unit TEXT NOT NULL,
-	usage_unit TEXT NOT NULL, 
-	public_cost DECIMAL NOT NULL,
-	blended_cost DECIMAL NOT NULL,
-	amortized_cost DECIMAL NOT NULL,
-	tag_environment TEXT NOT NULL,
-	tag_project TEXT NOT NULL,
-	tag_owner TEXT NOT NULL
+    cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aws_account_id VARCHAR(12) REFERENCES aws_accounts(aws_account_id) NOT NULL,
+    time_interval TIMESTAMP NOT NULL,
+    product_code TEXT NOT NULL,
+    usage_type TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    resource_id TEXT,  -- NULLABLE: some line items don't have resource_id
+    usage_amount DECIMAL NOT NULL,
+    unblended_cost DECIMAL NOT NULL,
+    region TEXT,  -- NULLABLE: some services are global
+    instance_type TEXT,  -- NULLABLE: not applicable to all services
+    pricing_unit TEXT,
+    usage_unit TEXT, 
+    public_cost DECIMAL,  -- NULLABLE
+    blended_cost DECIMAL NOT NULL,
+    amortized_cost DECIMAL NOT NULL,
+    tag_environment TEXT,  -- NULLABLE
+    tag_project TEXT,  -- NULLABLE
+    tag_owner TEXT,  -- NULLABLE
+    bill_period DATE NOT NULL,
+    loaded_at TIMESTAMP DEFAULT NOW()
 );
+
 
 -- DAILY_COST_SUMMARIES TABLE
 
 CREATE TABLE daily_cost_summaries (
-	daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
-	time_start TIMESTAMP NOT NULL,
-	time_end TIMESTAMP NOT NULL,
-	service TEXT NOT NULL,
-	region TEXT NOT NULL,
-	total_cost DECIMAL NOT NULL,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aws_account_id VARCHAR(12) REFERENCES aws_accounts(aws_account_id) NOT NULL,
+    time_period_start TIMESTAMP NOT NULL,
+    time_period_end TIMESTAMP NOT NULL,
+    service TEXT NOT NULL,
+    region TEXT NOT NULL,
+    total_cost DECIMAL NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    -- Add source tracking
+    data_source VARCHAR(20) DEFAULT 'cur' CHECK (data_source IN ('cur', 'cost_explorer')),
+    -- Prevent duplicates
+    UNIQUE(aws_account_id, time_start, service, region, data_source)
+);
+
+-- NEW: Cost Explorer cache for real-time/recent data
+
+CREATE TABLE cost_explorer_cache (
+    cache_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aws_account_id VARCHAR(12) REFERENCES aws_accounts(aws_account_id) NOT NULL,
+    time_period_start DATE NOT NULL,
+    time_period_end DATE NOT NULL,
+    service TEXT NOT NULL,
+    region TEXT NOT NULL,
+    unblended_cost DECIMAL NOT NULL,
+    usage_quantity DECIMAL,
+    retrieved_at TIMESTAMP DEFAULT NOW(),
+    -- Cache expiry tracking
+    is_stale BOOLEAN DEFAULT FALSE,
+    UNIQUE(aws_account_id, time_period_start, service, region)
 );
 
 -- RESOURCES TABLE
