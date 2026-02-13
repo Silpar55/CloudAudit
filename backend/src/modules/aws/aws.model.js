@@ -94,6 +94,20 @@ export const deactivateAwsAccount = async (accId, teamId) => {
   }
 };
 
+// CRON JOB
+export const getAllAccounts = async () => {
+  const query = `
+    SELECT * FROM aws_accounts;
+  `;
+
+  try {
+    const { rows } = await pool.query(query);
+    return rows;
+  } catch (error) {
+    return null;
+  }
+};
+
 export const addCostExploreCostAndUsageRow = async (row) => {
   const allowedFields = [
     "awsAccountId",
@@ -131,7 +145,6 @@ export const addCostExploreCostAndUsageRow = async (row) => {
     const { rows } = await pool.query(query, values);
     return rows[0];
   } catch (error) {
-    console.log(error);
     return null;
   }
 };
