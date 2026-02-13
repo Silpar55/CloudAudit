@@ -10,16 +10,12 @@
  */
 
 import { GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
-import dayjs from "dayjs";
+
 import { AppError } from "#utils/helper/AppError.js";
 import { getTemporaryCredentials } from "#utils/aws/sts.js";
 import { createCostExplorerClient } from "#utils/aws/client-factory.js";
 
-export const getCostAndUsage = async (
-  account,
-  startDate = dayjs().subtract(1, "month").format("YYYY-MM-DD"),
-  endDate = dayjs().format("YYYY-MM-DD"),
-) => {
+export const getCostAndUsage = async (account, startDate, endDate) => {
   try {
     // Get temporary credentials for this account
     const credentials = await getTemporaryCredentials(account);
@@ -66,13 +62,19 @@ const filterCostResults = (result) => {
 
   for (const timeResult of result.ResultsByTime) {
     if (!timeResult.Groups || timeResult.Groups.length === 0) continue;
+    const periodStart = timeResult.TimePeriod.Start;
+    const periodEnd = timeResult.TimePeriod.End;
 
     for (const group of timeResult.Groups) {
       const cost = parseFloat(group.Metrics.UnblendedCost.Amount);
 
       // Only include if cost > 0
       if (cost > 0) {
-        filteredResults.push(group);
+        filteredResults.push({
+          ...group,
+          timePeriodStart: periodStart,
+          timePeriodEnd: periodEnd,
+        });
       }
     }
   }

@@ -12,6 +12,7 @@
 import { validRoleARN } from "#utils/validation.js";
 import { AppError } from "#utils/helper/AppError.js";
 import { randomUUID } from "crypto";
+import dayjs from "dayjs";
 
 // Database operations
 import * as awsModel from "./aws.model.js";
@@ -44,14 +45,40 @@ export const initializePendingAccount = async (teamId, roleArn) => {
   return generateScripts(pendingAccount);
 };
 
-export const ceGetCostAndUsage = async (teamId, accId) => {
+export const ceGetCostAndUsage = async (
+  teamId,
+  accId,
+  startDate = dayjs().subtract(1, "month").format("YYYY-MM-DD"),
+  endDate = dayjs().format("YYYY-MM-DD"),
+) => {
+  console.log(accId);
   const account = await awsModel.findAwsAccount(accId, teamId);
 
   if (!account) throw new AppError("Account not initialized", 404);
 
-  const result = await getCostAndUsage(account);
+  const result = await getCostAndUsage(account, startDate, endDate);
 
-  return result;
+  let rowsAdded = 0;
+  await Promise.all(
+    result.map(async (row) => {
+      const data = {
+        awsAccountId: accId,
+        timePeriodStart: row.timePeriodStart,
+        timePeriodEnd: row.timePeriodEnd,
+        service: row.Keys[0],
+        region: row.Keys[1],
+        unblendedCost: row.Metrics.UnblendedCost.Amount,
+        unblendedUnit: row.Metrics.UnblendedCost.Unit,
+        usageQuantity: row.Metrics.UsageQuantity.Amount,
+        usageQuantityUnit: row.Metrics.UsageQuantity.Unit,
+      };
+
+      await awsModel.addCostExploreCostAndUsageRow(data);
+      rowsAdded += 1;
+    }),
+  );
+
+  return rowsAdded;
 };
 
 export const activateAwsAccount = async (teamId, roleArn) => {

@@ -38,10 +38,11 @@ export const ceGetCostAndUsage = async (req, res, next) => {
   try {
     const { teamId, accId } = req.params;
 
-    const result = await awsService.ceGetCostAndUsage(teamId, accId);
-    return res
-      .status(200)
-      .send({ message: "AWS Cost Exploter: Cost and Usage Report", result });
+    const rowsAdded = await awsService.ceGetCostAndUsage(teamId, accId);
+    console.log(rowsAdded);
+    return res.status(200).send({
+      message: `AWS Cost Explorer: Cost and Usage Report \n Rows added in the database ${rowsAdded}`,
+    });
   } catch (err) {
     next(err);
   }
