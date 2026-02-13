@@ -4,6 +4,7 @@
 DROP TABLE IF EXISTS cost_anomalies;
 DROP TABLE IF EXISTS cost_data;
 DROP TABLE IF EXISTS daily_cost_summaries;
+DROP TABLE IF EXISTS cost_explorer_cache;
 DROP TABLE IF EXISTS recommendations;
 DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS aws_accounts;
@@ -112,7 +113,7 @@ CREATE TABLE daily_cost_summaries (
     -- Add source tracking
     data_source VARCHAR(20) DEFAULT 'cur' CHECK (data_source IN ('cur', 'cost_explorer')),
     -- Prevent duplicates
-    UNIQUE(aws_account_id, time_start, service, region, data_source)
+    UNIQUE(aws_account_id, time_period_start, service, region, data_source)
 );
 
 -- NEW: Cost Explorer cache for real-time/recent data
@@ -125,7 +126,9 @@ CREATE TABLE cost_explorer_cache (
     service TEXT NOT NULL,
     region TEXT NOT NULL,
     unblended_cost DECIMAL NOT NULL,
+	unblended_unit TEXT NOT NULL,
     usage_quantity DECIMAL,
+	usage_quantity_unit TEXT,
     retrieved_at TIMESTAMP DEFAULT NOW(),
     -- Cache expiry tracking
     is_stale BOOLEAN DEFAULT FALSE,

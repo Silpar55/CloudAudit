@@ -93,3 +93,45 @@ export const deactivateAwsAccount = async (accId, teamId) => {
     return null;
   }
 };
+
+export const addCostExploreCostAndUsageRow = async (row) => {
+  const allowedFields = [
+    "awsAccountId",
+    "timePeriodStart",
+    "timePeriodEnd",
+    "service",
+    "region",
+    "unblendedCost",
+    "unblendedUnit",
+    "usageQuantity",
+    "usageQuantityUnit",
+  ];
+
+  // Whitelist fields
+  const safeData = Object.fromEntries(
+    Object.entries(row).filter(([key]) => allowedFields.includes(key)),
+  );
+
+  const keys = Object.keys(safeData);
+  const values = Object.values(safeData);
+
+  const columns = keys
+    .map((k) => k.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`)) // camel → snake
+    .join(", ");
+
+  const placeholders = keys.map((_, i) => `$${i + 1}`).join(", "); // $1, $2, $3, etc.
+
+  const query = `
+    INSERT INTO cost_explorer_cache (${columns})
+    VALUES (${placeholders})
+    RETURNING *;
+    `;
+
+  try {
+    const { rows } = await pool.query(query, values);
+    return rows[0];
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
