@@ -1,13 +1,19 @@
-import { Outlet, Link } from "react-router";
+import { Navbar } from "~/components/layout";
 
-export default function PublicLayout() {
+import { Outlet } from "react-router";
+
+export default function LandingPage() {
+  const navLinks: any = [
+    { label: "Features", href: "#features" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "Docs", href: "#docs" },
+  ];
+
   return (
-    <div>
-      <nav style={{ padding: "1rem", borderBottom: "1px solid #ddd" }}>
-        <Link to="/">Landing</Link> | <Link to="/login">Login</Link> |{" "}
-        <Link to="/signup">Signup</Link>
-      </nav>
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      <Navbar links={navLinks} showAuth={true} />
 
+      {/* Child routes (/, /login, /signup) render here */}
       <Outlet />
     </div>
   );
