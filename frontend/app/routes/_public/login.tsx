@@ -1,18 +1,10 @@
-import { useParams, Link } from "react-router";
-
-export default function Page() {
-  const params = useParams();
-
+export default function Login() {
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>Page Name</h1>
-
-      <p>Params:</p>
-      <pre>{JSON.stringify(params, null, 2)}</pre>
-
-      <div style={{ marginTop: "1rem" }}>
-        <Link to="/">Home</Link>
+    <section className="max-w-7xl mx-auto px-6 py-20">
+      <div>
+        <h1>Login</h1>
+        <p>Login</p>
       </div>
-    </div>
+    </section>
   );
 }

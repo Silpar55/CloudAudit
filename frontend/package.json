@@ -11,18 +11,25 @@
   "dependencies": {
     "@react-router/node": "7.12.0",
     "@react-router/serve": "7.12.0",
+    "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
+    "clsx": "^2.1.1",
+    "google-libphonenumber": "^3.2.44",
     "isbot": "^5.1.31",
     "lucide-react": "^0.564.0",
+    "password-validator-pro": "^1.1.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-is": "^19.2.4",
+    "react-phone-number-input": "^3.4.14",
     "react-router": "7.12.0",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "tailwind-merge": "^3.4.1"
   },
   "devDependencies": {
     "@react-router/dev": "7.12.0",
     "@tailwindcss/vite": "^4.1.13",
+    "@types/google-libphonenumber": "^7.4.30",
     "@types/node": "^22",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
