@@ -15,7 +15,7 @@ export const registerUser = async (req, res, next) => {
 export const loginUser = async (req, res, next) => {
   try {
     const token = await authService.loginUser(req.body);
-    return res.status(200).json({ token });
+    return res.status(200).json({ message: "User loged successfully", token });
   } catch (err) {
     console.log(err);
     next(err);
