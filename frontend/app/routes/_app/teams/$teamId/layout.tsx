@@ -22,22 +22,10 @@ import { useAuth } from "~/context/AuthContext";
 export default function TeamLayout() {
   const navigate = useNavigate();
   const { teamId } = useParams();
-
-  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    // Pass the current location so we can redirect back after login
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   // Mock data - Replace with real data from your API/state management
   const team = {

@@ -23,21 +23,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 2. LINK THE STATE: Pass '!!token' to useMe
   // This ensures that as soon as 'setToken' has a value, 'useMe' starts fetching.
-  console.log("Calling useMe()");
   const { data: user, isLoading } = useMe(!!token);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
-
     if (storedToken) {
       setToken(storedToken);
+    } else {
+      // No token at all — nothing to fetch, we're done immediately
+      setIsChecking(false);
     }
-    setIsChecking(false);
   }, []);
 
+  useEffect(() => {
+    if (token && !isLoading) {
+      setIsChecking(false);
+    }
+  }, [token, isLoading]);
+
   const login = (newToken: string) => {
-    console.log("AuthContext login():", newToken);
+    setIsChecking(true); // Re-engage the gate while we fetch the user
     localStorage.setItem("token", newToken);
+
     setToken(newToken);
 
     // Optional: You can still invalidate, but setting 'enabled' to true
@@ -47,6 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem("token");
+
     setToken(null);
     queryClient.setQueryData(["me"], null);
     queryClient.removeQueries({ queryKey: ["me"] });

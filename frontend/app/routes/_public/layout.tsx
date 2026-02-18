@@ -1,29 +1,21 @@
+import { Navigate, Outlet, useNavigate } from "react-router";
 import { Navbar } from "~/components/layout";
-
-import { Navigate, Outlet } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 
 export default function LandingPage() {
-  const navLinks: any = [
-    // { label: "Features", href: "#features" },
-    // { label: "Pricing", href: "#pricing" },
-    // { label: "Docs", href: "#docs" },
-  ];
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return null; // Or a spinner
-  }
-
-  // If user is already logged in, kick them to dashboard
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // const navLinks: any = [
+  //   { label: "Features", href: "#features" },
+  //   { label: "Pricing", href: "#pricing" },
+  //   { label: "Docs", href: "#docs" },
+  // ];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <Navbar links={navLinks} showAuth={true} />
+      <Navbar links={[]} showAuth={true} />
       <Outlet />
     </div>
   );
