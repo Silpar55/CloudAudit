@@ -54,3 +54,19 @@ export const findUser = async (email) => {
     return null;
   }
 };
+
+export const findUserById = async (userId) => {
+  const query = `
+    SELECT *
+    FROM users
+    WHERE user_id = $1;
+    `;
+
+  try {
+    const { rows } = await pool.query(query, [userId]);
+    return rows[0];
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};

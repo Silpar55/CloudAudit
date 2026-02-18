@@ -1,11 +1,11 @@
-import { Form } from "react-router";
+import { useNavigate } from "react-router";
 import { Input, Button, Alert } from "~/components/ui";
-import type { Route } from "./+types";
 
 import { validEmail, validName, validPassword } from "~/utils/validation";
 import React from "react";
 import { parsePhoneNumber } from "react-phone-number-input";
 import { useSignUp } from "~/hooks/useAuth";
+import { useAuth } from "~/context/AuthContext";
 
 const validateField = (name: string, value: string) => {
   switch (name) {
@@ -28,6 +28,9 @@ const validateField = (name: string, value: string) => {
 };
 
 export default function Signup() {
+  const { mutateAsync } = useSignUp();
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     firstName: "",
     lastName: "",
@@ -39,8 +42,6 @@ export default function Signup() {
   });
 
   const [errors, setErrors] = React.useState<any>({});
-  const { mutate, isPending, error, isError } = useSignUp();
-
   const [alert, setAlert] = React.useState<any>({
     dismissible: true,
     title: "",
@@ -79,7 +80,7 @@ export default function Signup() {
     handleChange("nationalNumber", parsed.nationalNumber || "");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: any = {};
@@ -94,32 +95,28 @@ export default function Signup() {
       return;
     }
 
-    mutate(
-      {
+    try {
+      const data = await mutateAsync({
         ...formData,
         phone: formData.nationalNumber,
-      },
-      {
-        onSuccess: (data) => {
-          setAlert({
-            ...alert,
-            title: "Welcome!",
-            message: data.message,
-            visible: true,
-            variant: "success",
-          });
-        },
-        onError: (error: any) => {
-          setAlert({
-            ...alert,
-            title: "Error",
-            message: error.response?.data?.message,
-            visible: true,
-            variant: "danger",
-          });
-        },
-      },
-    );
+      });
+
+      setAlert({
+        title: "Welcome!",
+        message: data.message,
+        visible: true,
+        variant: "success",
+      });
+
+      login(data.token);
+    } catch (error: any) {
+      setAlert({
+        title: "Error",
+        message: error.response?.data?.message || "Something went wrong",
+        visible: true,
+        variant: "danger",
+      });
+    }
   };
 
   return (
@@ -143,8 +140,7 @@ export default function Signup() {
           </Alert>
         )}
       </div>
-      <Form
-        method="post"
+      <form
         onSubmit={handleSubmit}
         className="mx-auto w-1/2 flex flex-col gap-3"
       >
@@ -207,7 +203,7 @@ export default function Signup() {
           required
         />
         <Button className="mt-5">Get started!</Button>
-      </Form>
+      </form>
     </section>
   );
 }

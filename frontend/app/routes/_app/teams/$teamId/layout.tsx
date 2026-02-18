@@ -1,6 +1,13 @@
-import { Outlet, useNavigate, useParams, useLocation } from "react-router";
+import {
+  Outlet,
+  useNavigate,
+  useParams,
+  useLocation,
+  Navigate,
+} from "react-router";
 import { Sidebar, Header } from "~/components/layout";
 import { RefreshCw, Download } from "lucide-react";
+import { useAuth } from "~/context/AuthContext";
 
 /**
  * TeamLayout Component
@@ -15,7 +22,22 @@ import { RefreshCw, Download } from "lucide-react";
 export default function TeamLayout() {
   const navigate = useNavigate();
   const { teamId } = useParams();
+
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    // Pass the current location so we can redirect back after login
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   // Mock data - Replace with real data from your API/state management
   const team = {

@@ -1,9 +1,9 @@
-import { Form } from "react-router";
 import { Input, Button, Alert } from "~/components/ui";
 
 import { validEmail, validPassword } from "~/utils/validation";
 import React from "react";
 import { useLogin } from "~/hooks/useAuth";
+import { useAuth } from "~/context/AuthContext";
 
 const validateField = (name: string, value: string) => {
   switch (name) {
@@ -20,14 +20,15 @@ const validateField = (name: string, value: string) => {
 };
 
 export default function Login() {
+  const { mutateAsync } = useLogin();
+  const { login } = useAuth();
+
   const [formData, setFormData] = React.useState({
     email: "",
     password: "",
   });
 
   const [errors, setErrors] = React.useState<any>({});
-  const { mutate, isPending, error, isError } = useLogin();
-
   const [alert, setAlert] = React.useState<any>({
     dismissible: true,
     title: "",
@@ -56,7 +57,7 @@ export default function Login() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: any = {};
@@ -71,26 +72,25 @@ export default function Login() {
       return;
     }
 
-    mutate(formData, {
-      onSuccess: (data) => {
-        setAlert({
-          ...alert,
-          title: "Welcome back!",
-          message: data.message,
-          visible: true,
-          variant: "success",
-        });
-      },
-      onError: (error: any) => {
-        setAlert({
-          ...alert,
-          title: "Error",
-          message: error.response?.data?.message,
-          visible: true,
-          variant: "danger",
-        });
-      },
-    });
+    try {
+      const data = await mutateAsync(formData);
+      setAlert({
+        ...alert,
+        title: "Welcome back!",
+        message: data.message,
+        visible: true,
+        variant: "success",
+      });
+
+      login(data.token);
+    } catch (error: any) {
+      setAlert({
+        title: "Error",
+        message: error.response?.data?.message || "Something went wrong",
+        visible: true,
+        variant: "danger",
+      });
+    }
   };
 
   return (
@@ -111,8 +111,7 @@ export default function Login() {
           </Alert>
         )}
       </div>
-      <Form
-        method="post"
+      <form
         onSubmit={handleSubmit}
         className="mx-auto w-1/2 flex flex-col gap-3"
       >
@@ -142,7 +141,7 @@ export default function Login() {
         />
 
         <Button className="mt-5">Sign in</Button>
-      </Form>
+      </form>
     </section>
   );
 }

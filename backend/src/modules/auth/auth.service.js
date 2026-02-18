@@ -10,6 +10,7 @@ import {
 import { hashPassword, comparePassword } from "#utils/password.js";
 
 import { AppError } from "#utils/helper/AppError.js";
+import { verifyJwtHelper } from "#utils/helper/jwt-helper.js";
 
 import * as authModel from "#modules/auth/auth.model.js";
 
@@ -59,7 +60,14 @@ export const registerUser = async ({
 
   if (!result) throw new AppError("Unable to create a user", 422);
 
-  return result;
+  const token = jwt.sign({ userId: result.user_id }, process.env.SECRETKEY, {
+    expiresIn: "1h",
+  });
+
+  return {
+    result,
+    token,
+  };
 };
 
 export const loginUser = async ({ email, password }) => {
@@ -83,4 +91,17 @@ export const loginUser = async ({ email, password }) => {
   });
 
   return token;
+};
+
+export const getUser = async (token) => {
+  if (!token) return res.status(401).send({ message: "Access denied" });
+
+  try {
+    const decoded = verifyJwtHelper(token);
+    const user = await authModel.findUserById(decoded?.userId);
+
+    return user;
+  } catch (_e) {
+    throw new AppError("Invalid or expire token", 404);
+  }
 };
