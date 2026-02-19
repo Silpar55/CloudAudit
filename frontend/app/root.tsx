@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Route } from "./+types/root";
 import "./app.css";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import Spinner from "./components/ui/Spinner";
+import { Spinner } from "./components/ui";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +38,7 @@ export const links: Route.LinksFunction = () => [
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isChecking, isLoading } = useAuth();
 
-  if (isChecking || isLoading) return <Spinner />;
+  if (isChecking || isLoading) return <Spinner navbar />;
 
   return <div className="auth-ready">{children}</div>;
 }

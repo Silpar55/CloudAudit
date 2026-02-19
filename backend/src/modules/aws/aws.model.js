@@ -6,9 +6,10 @@ export const initializePendingAccount = async ({
   externalId,
   roleArn,
 }) => {
+  // Default status is 'role_provided' via DB definition, but we can be explicit
   const query = `
-        INSERT INTO aws_accounts (aws_account_id, team_id, external_id, iam_role_arn, is_active)
-        VALUES ($1, $2, $3, $4, FALSE)
+        INSERT INTO aws_accounts (aws_account_id, team_id, external_id, iam_role_arn, status)
+        VALUES ($1, $2, $3, $4, 'role_provided')
         RETURNING *;
     `;
 
@@ -27,15 +28,19 @@ export const initializePendingAccount = async ({
   }
 };
 
-export const activateAwsAccount = async (accId, teamId) => {
+export const activateAwsAccount = async (internalId) => {
   const query = `
-    UPDATE aws_accounts SET is_active = TRUE
-    WHERE aws_account_id = $1 AND team_id = $2
+    UPDATE aws_accounts 
+    SET status = 'active', 
+        connected_at = NOW(), 
+        last_tested_at = NOW(),
+        last_error = NULL
+    WHERE id = $1
     RETURNING *;
   `;
 
   try {
-    const { rows } = await pool.query(query, [accId, teamId]);
+    const { rows } = await pool.query(query, [internalId]);
     return rows[0];
   } catch (error) {
     console.log(error);
@@ -43,34 +48,39 @@ export const activateAwsAccount = async (accId, teamId) => {
   }
 };
 
-export const findAwsAccount = async (accId, teamId) => {
-  console.log(accId, teamId);
+export const findAwsAccountByAwsId = async (awsAccountId, teamId) => {
   const query = `
-    SELECT * 
-    FROM aws_accounts
+    SELECT * FROM aws_accounts
     WHERE aws_account_id = $1 AND team_id = $2;
   `;
-
   try {
-    const { rows } = await pool.query(query, [accId, teamId]);
-
+    const { rows } = await pool.query(query, [awsAccountId, teamId]);
     return rows[0];
   } catch (error) {
-    console.error(error);
     return null;
   }
 };
 
-export const updateAccount = async (accId, teamId, roleArn) => {
+export const findAwsAccountById = async (internalId) => {
+  const query = `SELECT * FROM aws_accounts WHERE id = $1;`;
+  try {
+    const { rows } = await pool.query(query, [internalId]);
+    return rows[0];
+  } catch (error) {
+    return null;
+  }
+};
+
+export const updateAccountRole = async (internalId, roleArn) => {
   const query = `
-    UPDATE aws_accounts SET iam_role_arn = $1
-    WHERE aws_account_id = $2 AND team_id = $3
+    UPDATE aws_accounts 
+    SET iam_role_arn = $1, status = 'role_provided'
+    WHERE id = $2
     RETURNING *;
   `;
 
   try {
-    const { rows } = await pool.query(query, [roleArn, accId, teamId]);
-
+    const { rows } = await pool.query(query, [roleArn, internalId]);
     return rows[0];
   } catch (error) {
     console.log(error);
@@ -78,15 +88,16 @@ export const updateAccount = async (accId, teamId, roleArn) => {
   }
 };
 
-export const deactivateAwsAccount = async (accId, teamId) => {
+export const deactivateAwsAccount = async (internalId) => {
   const query = `
-    UPDATE aws_accounts SET is_active = FALSE, disconnected_at = $1
-    WHERE aws_account_id = $1 AND team_id = $2
+    UPDATE aws_accounts 
+    SET status = 'disconnected', disconnected_at = NOW()
+    WHERE id = $1
     RETURNING *;
   `;
 
   try {
-    const { rows } = await pool.query(query, [new Date(), accId, teamId]);
+    const { rows } = await pool.query(query, [internalId]);
     return rows[0];
   } catch (error) {
     console.log(error);
@@ -94,6 +105,7 @@ export const deactivateAwsAccount = async (accId, teamId) => {
   }
 };
 
+// ... existing getAllAccounts and addCostExploreCostAndUsageRow ...
 // CRON JOB
 export const getAllAccounts = async () => {
   const query = `

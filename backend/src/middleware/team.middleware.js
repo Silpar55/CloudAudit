@@ -15,7 +15,7 @@ export async function verifyPermissions(req, res, next) {
 export async function verifyTeamId(req, res, next) {
   const { teamId } = req.params;
 
-  const team = await teamModel.findTeam(teamId);
+  const team = await teamModel.getTeamById(teamId);
 
   if (!team)
     return res.status(404).json({

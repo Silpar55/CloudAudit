@@ -39,7 +39,7 @@ export const ceGetCostAndUsage = async (req, res, next) => {
     const { teamId, accId } = req.params;
 
     const rowsAdded = await awsService.ceGetCostAndUsage(teamId, accId);
-    console.log(rowsAdded);
+
     return res.status(200).send({
       message: `AWS Cost Explorer: Cost and Usage Report \n Rows added in the database ${rowsAdded}`,
     });
@@ -50,16 +50,12 @@ export const ceGetCostAndUsage = async (req, res, next) => {
 
 export const deactivateAwsAccount = async (req, res, next) => {
   try {
+    // 'accId' here refers to the internal UUID based on route /:accId
     const { teamId, accId } = req.params;
 
-    const deactivatedAccId = await awsService.deactivateAwsAccount(
-      teamId,
-      accId,
-    );
+    const result = await awsService.deactivateAwsAccount(teamId, accId);
 
-    return res
-      .status(200)
-      .send({ message: "Account deactivated", deactivatedAccId });
+    return res.status(200).send({ message: "Account deactivated", result });
   } catch (err) {
     next(err);
   }

@@ -12,6 +12,22 @@ DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS teams;
+DROP TYPE IF EXISTS aws_account_status
+DROP TYPE IF EXISTS team_status
+
+CREATE TYPE aws_account_status AS ENUM (
+    'role_provided',
+    'testing',
+    'active',
+    'failed',
+    'disconnected'
+);
+
+CREATE TYPE team_status AS ENUM (
+    'aws_required',
+    'active',
+    'suspended'
+);
 
 -- USERS TABLE
 
@@ -30,9 +46,13 @@ CREATE TABLE users (
 -- TEAMS TABLE
 
 CREATE TABLE teams (
-	team_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	name TEXT NOT NULL,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    team_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+
+    status team_status NOT NULL DEFAULT 'aws_required',
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- TEAM_MEMBERS TABLE
@@ -61,22 +81,37 @@ CREATE TABLE team_members (
 -- AWS_ACCOUNT TABLE
 
 CREATE TABLE aws_accounts (
-	aws_account_id VARCHAR(12) PRIMARY KEY,
-	team_id UUID NOT NULL
-		REFERENCES teams (team_id)
-		ON DELETE CASCADE,
-	external_id UUID NOT NULL,
-	iam_role_arn TEXT NOT NULL,
-	is_active BOOL NOT NULL DEFAULT TRUE, 
-	disconnected_at TIMESTAMP,
-	connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    team_id UUID NOT NULL
+        REFERENCES teams (team_id)
+        ON DELETE CASCADE,
+
+    aws_account_id VARCHAR(12) UNIQUE,
+
+    external_id UUID NOT NULL DEFAULT gen_random_uuid(),
+    iam_role_arn TEXT NOT NULL,
+
+    status aws_account_status NOT NULL DEFAULT 'role_provided',
+
+    last_tested_at TIMESTAMP WITH TIME ZONE,
+    last_error TEXT,
+
+    connected_at TIMESTAMP WITH TIME ZONE,
+    disconnected_at TIMESTAMP WITH TIME ZONE,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(team_id)
 );
+
+
 
 -- COST_DATA TABLE
 
 CREATE TABLE cost_data (
     cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aws_account_id VARCHAR(12) REFERENCES aws_accounts(aws_account_id) NOT NULL,
+    aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
     time_interval TIMESTAMP NOT NULL,
     product_code TEXT NOT NULL,
     usage_type TEXT NOT NULL,
@@ -103,7 +138,7 @@ CREATE TABLE cost_data (
 
 CREATE TABLE daily_cost_summaries (
     daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aws_account_id VARCHAR(12) REFERENCES aws_accounts(aws_account_id) NOT NULL,
+    aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
     time_period_start TIMESTAMP NOT NULL,
     time_period_end TIMESTAMP NOT NULL,
     service TEXT NOT NULL,
@@ -120,7 +155,7 @@ CREATE TABLE daily_cost_summaries (
 
 CREATE TABLE cost_explorer_cache (
     cache_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aws_account_id VARCHAR(12) REFERENCES aws_accounts(aws_account_id) NOT NULL,
+    aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
     time_period_start DATE NOT NULL,
     time_period_end DATE NOT NULL,
     service TEXT NOT NULL,
@@ -139,8 +174,7 @@ CREATE TABLE cost_explorer_cache (
 
 CREATE TABLE resources (
 	resource_id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id VARCHAR(12)
-		REFERENCES aws_accounts (aws_account_id)
+	aws_account_id UUID REFERENCES aws_accounts(id)
 		ON DELETE CASCADE,
 	service TEXT NOT NULL,
 	instance_type TEXT NOT NULL,
@@ -153,7 +187,7 @@ CREATE TABLE resources (
 CREATE TABLE cost_anomalies (
 	anomaly_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) NOT NULL,
-	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id) NOT NULL,
+	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
 	detected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	expected_cost DECIMAL NOT NULL,
@@ -166,7 +200,7 @@ CREATE TABLE cost_anomalies (
 
 CREATE TABLE recommendations (
 	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id VARCHAR(12) REFERENCES aws_accounts (aws_account_id )NOT NULL,
+	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
 	recommendation_type TEXT NOT NULL, 

@@ -1,10 +1,33 @@
 import * as teamService from "./team.service.js";
 
+export const getTeamsByUserId = async (req, res, next) => {
+  try {
+    const teams = await teamService.getTeamsByUserId(req.userId);
+
+    return res.status(201).send({ teams });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getTeamById = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+
+    const team = await teamService.getTeamById(teamId);
+
+    console.log("GET TEAM BY ID ", { team });
+    return res.status(201).send({ team });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const createTeam = async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, description } = req.body;
 
-    const teamId = await teamService.createTeam(name, req.userId);
+    const teamId = await teamService.createTeam(name, req.userId, description);
 
     return res
       .status(201)
@@ -13,6 +36,23 @@ export const createTeam = async (req, res, next) => {
     next(err);
   }
 };
+
+export const updateTeam = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+    const { name, description } = req.body;
+
+    const team = await teamService.updateTeamDetails(teamId, {
+      name,
+      description,
+    });
+
+    return res.status(200).send({ message: "Team updated successfully", team });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const deleteTeam = async (req, res, next) => {
   try {
     const { teamId } = req.params;
@@ -22,6 +62,19 @@ export const deleteTeam = async (req, res, next) => {
     return res
       .status(201)
       .send({ message: "Team deleted successfully", deletedTeamId });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getTeamMemberById = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+
+    const teamMember = await teamService.getTeamMemberById(teamId, req.userId);
+
+    console.log({ teamMember });
+    return res.status(201).send({ teamMember });
   } catch (err) {
     next(err);
   }
