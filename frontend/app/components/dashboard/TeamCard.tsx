@@ -1,5 +1,6 @@
 import React from "react";
 import { Users, Cloud } from "lucide-react";
+import { getAvatarColor, getInitials } from "~/utils/format";
 
 /**
  * TeamCard Component
@@ -21,8 +22,6 @@ import { Users, Cloud } from "lucide-react";
 const TeamCard = ({
   name,
   description = "",
-  initials = "TM",
-  avatarColor = "from-purple-500 to-purple-600",
   memberCount = 0,
   awsAccountId = "",
   monthlyCost = "",
@@ -37,14 +36,14 @@ const TeamCard = ({
         "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
       label: "Active",
     },
-    setup_needed: {
+    aws_required: {
       badge:
         "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
       label: "Setup Needed",
     },
-    inactive: {
+    suspended: {
       badge: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
-      label: "Inactive",
+      label: "suspended",
     },
   };
 
@@ -58,9 +57,9 @@ const TeamCard = ({
     >
       <div className="flex items-start justify-between mb-4">
         <div
-          className={`w-12 h-12 bg-linear-to-br ${avatarColor} rounded-xl flex items-center justify-center text-white font-bold text-xl`}
+          className={`w-12 h-12 bg-linear-to-br ${getAvatarColor(name)} rounded-xl flex items-center justify-center text-white font-bold text-xl`}
         >
-          {initials}
+          {getInitials(name)}
         </div>
         <span
           className={`px-3 py-1 ${config.badge} text-xs font-bold rounded-full`}

@@ -16,6 +16,7 @@ import {
   FileBarChart,
   Settings,
 } from "lucide-react";
+import { getAvatarColor, getInitials } from "~/utils/format";
 
 /**
  * Sidebar Component
@@ -31,12 +32,7 @@ import {
  */
 
 const Sidebar = ({
-  team = {
-    name: "Team",
-    initials: "T",
-    memberCount: 0,
-    avatarColor: "from-purple-500 to-purple-600",
-  },
+  team,
   user = {
     name: "User",
     initials: "U",
@@ -50,12 +46,14 @@ const Sidebar = ({
   ...props
 }: any) => {
   const [resourcesExpanded, setResourcesExpanded] = useState(true);
-
   const handleNavigation = (path: string) => {
     if (onNavigate) {
       onNavigate(path);
     }
   };
+
+  const teamAvatarColor = getAvatarColor(team.name);
+  const teamInitials = getInitials(team.name);
 
   const NavLink = ({ href, icon: Icon, label, badge, children }: any) => {
     const isActive = activeRoute === href;
@@ -131,16 +129,16 @@ const Sidebar = ({
         <button className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-900 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors group">
           <div className="flex items-center gap-3">
             <div
-              className={`w-8 h-8 bg-linear-to-br ${team.avatarColor} rounded-lg flex items-center justify-center text-white font-bold text-sm`}
+              className={`w-8 h-8 bg-linear-to-br ${teamAvatarColor} rounded-lg flex items-center justify-center text-white font-bold text-sm`}
             >
-              {team.initials}
+              {teamInitials}
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                 {team.name}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {team.memberCount} members
+                {team.member_count} members
               </p>
             </div>
           </div>

@@ -8,6 +8,9 @@ import {
 import { Sidebar, Header } from "~/components/layout";
 import { RefreshCw, Download } from "lucide-react";
 import { useAuth } from "~/context/AuthContext";
+import { useGetTeamById } from "~/hooks/useTeam";
+import { Spinner } from "~/components/ui";
+import { useMe } from "~/hooks/useMe";
 
 /**
  * TeamLayout Component
@@ -20,20 +23,25 @@ import { useAuth } from "~/context/AuthContext";
  */
 
 export default function TeamLayout() {
-  const navigate = useNavigate();
-  const { teamId } = useParams();
-  const location = useLocation();
   const { isAuthenticated } = useAuth();
-
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  // Mock data - Replace with real data from your API/state management
-  const team = {
-    name: "DevOps Team",
-    initials: "DT",
-    memberCount: 5,
-    avatarColor: "from-purple-500 to-purple-600",
-  };
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const { teamId } = useParams<{ teamId: string }>();
+  const { data, isLoading } = useGetTeamById(teamId, {
+    enabled: !!teamId,
+  });
+
+  if (isLoading)
+    return (
+      <div className="flex-1 overflow-y-auto p-8">
+        <Spinner navbar />
+      </div>
+    );
+
+  const { team } = data;
 
   const user = {
     name: "Alejandro Silva",

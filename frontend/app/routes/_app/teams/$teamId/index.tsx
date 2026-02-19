@@ -6,14 +6,36 @@ import {
   RecommendationCard,
 } from "~/components/dashboard";
 import { DollarSign, AlertTriangle, TrendingDown, Server } from "lucide-react";
+import { useGetTeamById } from "~/hooks/useTeam";
+import { useParams } from "react-router";
+import { Spinner } from "~/components/ui";
+import { AwsSetupForm } from "~/components/teams";
 
 export default function TeamWorkspace() {
   const [activeRoute, setActiveRoute] = useState("/");
 
+  const { teamId } = useParams<{ teamId: string }>();
+  const { data, isLoading } = useGetTeamById(teamId, {
+    enabled: !!teamId,
+  });
+
+  if (isLoading)
+    return (
+      <div className="flex-1 overflow-y-auto p-8">
+        <Spinner navbar={false} />
+      </div>
+    );
+
+  const { team } = data;
+
   return (
-    <div className="flex-1 overflow-y-auto p-8">
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="p-8 mx-auto w-full">
+      {team.status === "aws_required" && <AwsSetupForm teamId={teamId!} />}
+
+      {team.status === "active" && (
+        <>
+          {/* Metrics */}
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
           variant="gradient"
           title="Monthly Cost"
@@ -43,11 +65,12 @@ export default function TeamWorkspace() {
           subtitle="12 EC2 • 3 RDS • 32 S3"
           icon={<Server className="w-6 h-6 text-blue-600" />}
         />
-      </div>
+      </div> */}
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Anomalies */}
+          {/* Two Column Layout Anomalies & Recommendations*/}
+
+          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+ 
         <div>
           <h2 className="text-xl font-bold font-display text-gray-900 dark:text-white mb-4">
             Active Anomalies
@@ -67,7 +90,7 @@ export default function TeamWorkspace() {
           </div>
         </div>
 
-        {/* Recommendations */}
+       
         <div>
           <h2 className="text-xl font-bold font-display text-gray-900 dark:text-white mb-4">
             AI Recommendations
@@ -85,7 +108,15 @@ export default function TeamWorkspace() {
             />
           </div>
         </div>
-      </div>
+      </div> */}
+        </>
+      )}
+
+      {team.status === "suspended" && (
+        <h1 className="text-3xl font-bold font-display text-gray-900 dark:text-white mb-8">
+          TEAM IS SUSPENDED
+        </h1>
+      )}
     </div>
   );
 }

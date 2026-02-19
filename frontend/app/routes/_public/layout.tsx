@@ -3,7 +3,6 @@ import { Navbar } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";
 
 export default function LandingPage() {
-  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
