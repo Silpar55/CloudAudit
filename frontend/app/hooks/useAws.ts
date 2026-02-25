@@ -14,11 +14,16 @@ export const useActivateAwsAccount = () => {
   return useMutation({
     mutationFn: ({ teamId, roleArn }: { teamId: string; roleArn: string }) =>
       awsService.activateAccount(teamId, roleArn),
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       // Refetch the team data. Since the backend marked it as 'active',
       // the UI will automatically drop the setup form and show the dashboard.
-      queryClient.invalidateQueries({ queryKey: ["team", variables.teamId] });
-      queryClient.invalidateQueries({ queryKey: ["userTeams"] });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["workspace-team-data", variables.teamId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["team", variables.teamId] }),
+        queryClient.invalidateQueries({ queryKey: ["userTeams"] }),
+      ]);
     },
   });
 };

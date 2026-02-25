@@ -37,6 +37,8 @@ export const getTeamById = async (teamId) => {
 
 export const getTeamMemberById = async (teamId, userId) => {
   const teamMember = await teamModel.getTeamMemberById(teamId, userId);
+  // Return user information and teamMember information
+
   return teamMember;
 };
 
