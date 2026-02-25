@@ -8,9 +8,8 @@ import {
 import { Sidebar, Header } from "~/components/layout";
 import { RefreshCw, Download } from "lucide-react";
 import { useAuth } from "~/context/AuthContext";
-import { useGetTeamById } from "~/hooks/useTeam";
 import { Spinner } from "~/components/ui";
-import { useMe } from "~/hooks/useMe";
+import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 
 /**
  * TeamLayout Component
@@ -30,9 +29,7 @@ export default function TeamLayout() {
   const location = useLocation();
 
   const { teamId } = useParams<{ teamId: string }>();
-  const { data, isLoading } = useGetTeamById(teamId, {
-    enabled: !!teamId,
-  });
+  const { data, isLoading } = useWorkspaceTeamData(teamId!);
 
   if (isLoading)
     return (
@@ -41,14 +38,7 @@ export default function TeamLayout() {
       </div>
     );
 
-  const { team } = data;
-
-  const user = {
-    name: "Alejandro Silva",
-    initials: "AS",
-    role: "Admin",
-    avatarColor: "from-blue-500 to-blue-600",
-  };
+  const { user, team, teamMember } = data!;
 
   const counts = {
     anomalies: 2,
@@ -100,7 +90,8 @@ export default function TeamLayout() {
     <div className="flex h-screen bg-gray-50 dark:bg-slate-900">
       {/* Sidebar - Same for all team pages */}
       <Sidebar
-        team={team}
+        currentTeam={team}
+        role={teamMember.role}
         user={user}
         counts={counts}
         activeRoute={getActiveRoute()}

@@ -7,13 +7,21 @@ interface AwsSetupFormProps {
   teamId: string;
 }
 
+// 1. Updated the state interface to match your API response perfectly
+interface AwsScripts {
+  trustPolicyJson: string;
+  permissionsPolicyJson: string;
+  instructions: {
+    step1: string;
+    step2: string;
+    step3: string;
+  };
+}
+
 const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [roleArn, setRoleArn] = useState("");
-  const [scripts, setScripts] = useState<{
-    trustPolicy: any;
-    permissionPolicy: any;
-  } | null>(null);
+  const [scripts, setScripts] = useState<AwsScripts | null>(null);
 
   const provisionMutation = useProvisionAwsAccount();
   const activateMutation = useActivateAwsAccount();
@@ -38,6 +46,7 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
   };
 
   const handleCopy = (text: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
   };
 
@@ -58,7 +67,9 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
               label="IAM Role ARN"
               required
               value={roleArn}
-              onChange={(e: any) => setRoleArn(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setRoleArn(e.target.value)
+              }
               placeholder="arn:aws:iam::123456789012:role/MyCostRole"
             />
           </div>
@@ -93,7 +104,7 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => setStep(1)}
-          className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -110,6 +121,20 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
       </div>
 
       <div className="space-y-6">
+        {/* Added Instructions Section */}
+        {scripts?.instructions && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 rounded-md">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 uppercase tracking-wider mb-3">
+              Instructions
+            </h3>
+            <ol className="list-decimal list-inside space-y-2 text-blue-800 dark:text-blue-200 text-sm">
+              <li>{scripts.instructions.step1}</li>
+              <li>{scripts.instructions.step2}</li>
+              <li>{scripts.instructions.step3}</li>
+            </ol>
+          </div>
+        )}
+
         {/* Trust Policy Section */}
         <div>
           <div className="flex justify-between items-end mb-2">
@@ -117,16 +142,15 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
               1. Trust Policy
             </h3>
             <button
-              onClick={() =>
-                handleCopy(JSON.stringify(scripts?.trustPolicy, null, 2))
-              }
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              onClick={() => handleCopy(scripts?.trustPolicyJson || "")}
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
             >
               <Copy className="w-4 h-4" /> Copy JSON
             </button>
           </div>
-          <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200">
-            {JSON.stringify(scripts?.trustPolicy, null, 2)}
+          {/* Removed JSON.stringify because the API already sends a formatted string */}
+          <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+            {scripts?.trustPolicyJson}
           </pre>
         </div>
 
@@ -134,25 +158,24 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
         <div>
           <div className="flex justify-between items-end mb-2">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              2. Permission Policy
+              2. Permissions Policy
             </h3>
             <button
-              onClick={() =>
-                handleCopy(JSON.stringify(scripts?.permissionPolicy, null, 2))
-              }
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              onClick={() => handleCopy(scripts?.permissionsPolicyJson || "")}
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
             >
               <Copy className="w-4 h-4" /> Copy JSON
             </button>
           </div>
-          <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200">
-            {JSON.stringify(scripts?.permissionPolicy, null, 2)}
+          {/* Updated key to permissionsPolicyJson and removed JSON.stringify */}
+          <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+            {scripts?.permissionsPolicyJson}
           </pre>
         </div>
 
         {activateMutation.isError && (
           <div className="p-4 bg-red-50 text-red-700 rounded-md flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium">Verification Failed</p>
               <p className="text-sm mt-1">

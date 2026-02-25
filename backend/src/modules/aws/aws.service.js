@@ -17,6 +17,7 @@ export const initializePendingAccount = async (teamId, roleArn) => {
 
   let pendingAccount = await awsModel.findAwsAccountByAwsId(accId, teamId);
 
+  console.log(pendingAccount);
   if (!pendingAccount) {
     pendingAccount = await awsModel.initializePendingAccount({
       roleArn,

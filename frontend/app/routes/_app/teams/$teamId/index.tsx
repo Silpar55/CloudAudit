@@ -15,7 +15,7 @@ export default function TeamWorkspace() {
   const [activeRoute, setActiveRoute] = useState("/");
 
   const { teamId } = useParams<{ teamId: string }>();
-  const { data, isLoading } = useGetTeamById(teamId, {
+  const { data: team, isLoading } = useGetTeamById(teamId, {
     enabled: !!teamId,
   });
 
@@ -25,8 +25,6 @@ export default function TeamWorkspace() {
         <Spinner navbar={false} />
       </div>
     );
-
-  const { team } = data;
 
   return (
     <div className="p-8 mx-auto w-full">

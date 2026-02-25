@@ -12,6 +12,6 @@ export const teamService = {
   },
   getTeamById: async (teamId: string) => {
     const response = await apiClient.get(`/teams/${teamId}`);
-    return response.data;
+    return response.data?.team ?? null;
   },
 };

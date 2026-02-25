@@ -16,7 +16,6 @@ export const getTeamById = async (req, res, next) => {
 
     const team = await teamService.getTeamById(teamId);
 
-    console.log("GET TEAM BY ID ", { team });
     return res.status(201).send({ team });
   } catch (err) {
     next(err);
@@ -73,7 +72,6 @@ export const getTeamMemberById = async (req, res, next) => {
 
     const teamMember = await teamService.getTeamMemberById(teamId, req.userId);
 
-    console.log({ teamMember });
     return res.status(201).send({ teamMember });
   } catch (err) {
     next(err);
