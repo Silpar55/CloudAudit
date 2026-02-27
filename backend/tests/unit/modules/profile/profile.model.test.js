@@ -4,10 +4,7 @@ import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 jest.mock("#config");
 
 import { pool } from "#config";
-import {
-  getProfileById,
-  updateProfile,
-} from "#modules/profile/profile.model.js";
+import * as profileModel from "#modules/profile/profile.model.js";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -28,7 +25,7 @@ describe("Profile model", () => {
 
       pool.query.mockResolvedValue({ rows: [returnedRow] });
 
-      const result = await getProfileById(userId);
+      const result = await profileModel.getProfileById(userId);
 
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining("SELECT"),
@@ -40,7 +37,7 @@ describe("Profile model", () => {
     it("Should return null if the user does not exist", async () => {
       pool.query.mockResolvedValue({ rows: [] });
 
-      const result = await getProfileById("non-existent-id");
+      const result = await profileModel.getProfileById("non-existent-id");
 
       expect(result).toBeNull();
     });
@@ -51,7 +48,7 @@ describe("Profile model", () => {
         .mockImplementation(() => {});
       pool.query.mockRejectedValue(new Error("DB Connection Error"));
 
-      const result = await getProfileById("test-user-id");
+      const result = await profileModel.getProfileById("test-user-id");
 
       expect(result).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -70,7 +67,7 @@ describe("Profile model", () => {
 
       pool.query.mockResolvedValue({ rows: [returnedRow] });
 
-      const result = await updateProfile(userId, updateData);
+      const result = await profileModel.updateProfile(userId, updateData);
 
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining("UPDATE users"),
@@ -87,7 +84,9 @@ describe("Profile model", () => {
 
       pool.query.mockResolvedValue({ rows: [returnedRow] });
 
-      const result = await updateProfile(userId, { country_code: "MX" });
+      const result = await profileModel.updateProfile(userId, {
+        country_code: "MX",
+      });
 
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining("UPDATE users"),
@@ -98,7 +97,7 @@ describe("Profile model", () => {
     });
 
     it("Should return null and not query the database if no fields are provided", async () => {
-      const result = await updateProfile("test-user-id", {});
+      const result = await profileModel.updateProfile("test-user-id", {});
 
       expect(pool.query).not.toHaveBeenCalled();
       expect(result).toBeNull();
@@ -110,13 +109,73 @@ describe("Profile model", () => {
         .mockImplementation(() => {});
       pool.query.mockRejectedValue(new Error("Constraint Violation"));
 
-      const result = await updateProfile("test-user-id", {
+      const result = await profileModel.updateProfile("test-user-id", {
         first_name: "Fail",
       });
 
       expect(result).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("setPendingEmail", () => {
+    it("Should execute UPDATE query to set pending email and token", async () => {
+      const returnedRow = { id: "user-1", pending_email: "new@example.com" };
+      pool.query.mockResolvedValue({ rows: [returnedRow] });
+
+      const expiresAt = new Date();
+      const result = await profileModel.setPendingEmail(
+        "user-1",
+        "new@example.com",
+        "token123",
+        expiresAt,
+      );
+
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE users"),
+        ["new@example.com", "token123", expiresAt, "user-1"],
+      );
+      expect(result).toEqual(returnedRow);
+    });
+  });
+
+  describe("getUserByVerificationToken", () => {
+    it("Should return the user associated with the token", async () => {
+      const returnedRow = { id: "user-1", pending_email: "new@example.com" };
+      pool.query.mockResolvedValue({ rows: [returnedRow] });
+
+      const result = await profileModel.getUserByVerificationToken("token123");
+
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("SELECT"),
+        ["token123"],
+      );
+      expect(result).toEqual(returnedRow);
+    });
+  });
+
+  describe("confirmEmailChange", () => {
+    it("Should execute UPDATE query to finalize email change and clear tokens", async () => {
+      const returnedRow = {
+        id: "user-1",
+        email: "new@example.com",
+        first_name: "Alejandro",
+      };
+      pool.query.mockResolvedValue({ rows: [returnedRow] });
+
+      const result = await profileModel.confirmEmailChange(
+        "user-1",
+        "new@example.com",
+      );
+
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE users"),
+        ["new@example.com", "user-1"],
+      );
+      expect(pool.query.mock.calls[0][0]).toContain("email_verified = true");
+      expect(pool.query.mock.calls[0][0]).toContain("pending_email = NULL");
+      expect(result).toEqual(returnedRow);
     });
   });
 });
