@@ -2,8 +2,9 @@ import { Navigate, Outlet, useNavigate } from "react-router";
 import { Navbar } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";
 
-export default function LandingPage() {
+export default function publicAppLayout() {
   const { isAuthenticated } = useAuth();
+
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   // const navLinks: any = [

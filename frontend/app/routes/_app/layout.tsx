@@ -11,10 +11,12 @@ import { Navbar } from "~/components/layout";
  * Does NOT include sidebar - this is for team selection and profile pages
  *
  * Route: routes/_app/layout.tsx
+
  */
 
 export default function AppLayout() {
   const { isAuthenticated } = useAuth();
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return (
