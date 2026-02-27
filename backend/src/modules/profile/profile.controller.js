@@ -30,3 +30,37 @@ export const updateProfile = async (req, res, next) => {
     next(err);
   }
 };
+
+export const requestEmailChange = async (req, res, next) => {
+  try {
+    const { new_email } = req.body;
+    if (!new_email) {
+      return res.status(400).send({ message: "New email address is required" });
+    }
+
+    await profileService.requestEmailChange(req.userId, new_email);
+    return res.status(200).send({
+      message: "A verification link has been sent to your new email address.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyEmailChange = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res
+        .status(400)
+        .send({ message: "Verification token is required" });
+    }
+
+    const profile = await profileService.verifyEmailChange(token);
+    return res
+      .status(200)
+      .send({ message: "Email address updated successfully.", profile });
+  } catch (err) {
+    next(err);
+  }
+};
