@@ -6,20 +6,74 @@ import {
   Navigate,
 } from "react-router";
 import { Sidebar, Header } from "~/components/layout";
-import { RefreshCw, Download } from "lucide-react";
 import { useAuth } from "~/context/AuthContext";
 import { Spinner } from "~/components/ui";
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
+import { AwsAccountProvider } from "~/context/AwsAccountContext";
 
 /**
  * TeamLayout Component
  *
  * Layout wrapper for team workspace pages (/teams/:teamId/*)
- * Includes sidebar navigation and top header bar
- * All team routes (index, members, anomalies, etc.) render in the main content area
+ * Includes sidebar navigation and top header bar.
+ * All team routes (index, members, anomalies, etc.) render in the main content area.
  *
  * Route: routes/_app/teams/$teamId/layout.tsx
  */
+
+// ─── Route meta ───────────────────────────────────────────────────────────────
+// Single source of truth for both sidebar active-route highlighting and the
+// Header title. Entries are matched in order; first hit wins.
+//
+// The /resources/ catch-all at the end handles any dynamic service slug
+// (e.g. /resources/rds, /resources/cloudfront) without needing hardcoded entries.
+
+interface RouteMeta {
+  /** Substring to match against location.pathname */
+  match: string;
+  /** Canonical path string returned to the Sidebar for highlighting */
+  path: string;
+  /** Human-readable title shown in the Header */
+  title: string;
+}
+
+const ROUTE_META: RouteMeta[] = [
+  { match: "/anomalies", path: "/anomalies", title: "Detected Anomalies" },
+  {
+    match: "/recommendations",
+    path: "/recommendations",
+    title: "AI Recommendations",
+  },
+  { match: "/members", path: "/members", title: "Team Members" },
+  { match: "/audit-logs", path: "/audit-logs", title: "Audit Logs" },
+  { match: "/settings", path: "/settings", title: "Settings" },
+  { match: "/cost-explorer", path: "/cost-explorer", title: "Cost Explorer" },
+  // Catch-all for any /resources/:slug — title is derived from the slug itself
+  { match: "/resources/", path: "/resources/", title: "__resource__" },
+];
+
+/**
+ * Given the current pathname, return { path, title } for the active route.
+ * For resource pages the title is derived from the slug (e.g. "rds" -> "RDS Resources").
+ */
+const resolveRoute = (pathname: string): { path: string; title: string } => {
+  for (const meta of ROUTE_META) {
+    if (pathname.includes(meta.match)) {
+      if (meta.title === "__resource__") {
+        const slug = pathname.split("/resources/")[1]?.split("/")[0] ?? "";
+        const label = slug.toUpperCase();
+        return {
+          path: `/resources/${slug}`,
+          title: `${label} Resources`,
+        };
+      }
+      return { path: meta.path, title: meta.title };
+    }
+  }
+  return { path: "/", title: "Cost Overview" };
+};
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TeamLayout() {
   const { isAuthenticated } = useAuth();
@@ -40,26 +94,10 @@ export default function TeamLayout() {
 
   const { user, team, teamMember } = data!;
 
-  const counts = {
-    anomalies: 2,
-    recommendations: 8,
-  };
-
-  // Determine active route for sidebar highlighting
-  const getActiveRoute = () => {
-    const path = location.pathname;
-    if (path.includes("/anomalies")) return "/anomalies";
-    if (path.includes("/recommendations")) return "/recommendations";
-    if (path.includes("/members")) return "/members";
-    if (path.includes("/audit-logs")) return "/audit-logs";
-    if (path.includes("/settings")) return "/settings";
-    if (path.includes("/aws")) return "/aws";
-    if (path.includes("/resources/ec2")) return "/resources/ec2";
-    if (path.includes("/resources/rds")) return "/resources/rds";
-    if (path.includes("/resources/s3")) return "/resources/s3";
-    if (path.includes("/resources/lambda")) return "/resources/lambda";
-    return "/";
-  };
+  // Resolve active route path + page title from the current URL
+  const { path: activeRoute, title: pageTitle } = resolveRoute(
+    location.pathname,
+  );
 
   // Handle navigation from sidebar
   const handleNavigate = (path: string) => {
@@ -70,51 +108,34 @@ export default function TeamLayout() {
     }
   };
 
-  // Header actions (these will be the same across all team pages)
-  const headerActions = [
-    {
-      label: "Sync",
-      icon: RefreshCw,
-      onClick: () => console.log("Sync data"),
-      variant: "secondary",
-    },
-    {
-      label: "Export",
-      icon: Download,
-      onClick: () => console.log("Export report"),
-      variant: "primary",
-    },
-  ];
-
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-slate-900">
-      {/* Sidebar - Same for all team pages */}
-      <Sidebar
-        currentTeam={team}
-        role={teamMember.role}
-        user={user}
-        counts={counts}
-        activeRoute={getActiveRoute()}
-        onNavigate={handleNavigate}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header - Same for all team pages, but title/subtitle can be customized */}
-        <Header
-          title="Cost Overview"
-          subtitle={`AWS Account: 123456789012 • Team: ${team.name}`}
-          actions={headerActions}
-          showDateFilter={true}
-          dateRange="Last 30 Days"
-          onDateChange={() => console.log("Change date range")}
+    // AwsAccountProvider fetches aws_accounts once for the whole workspace.
+    // Sidebar, Header (real AWS account ID in subtitle), and all child pages
+    // read from it via useAwsAccount() — no prop threading.
+    <AwsAccountProvider teamId={teamId!} teamStatus={team.status}>
+      <div className="flex h-screen bg-gray-50 dark:bg-slate-900">
+        <Sidebar
+          currentTeam={team}
+          role={teamMember.role}
+          user={user}
+          activeRoute={activeRoute}
+          onNavigate={handleNavigate}
         />
 
-        {/* Child routes render here - This is where your page content goes */}
-        <div className="flex-1 overflow-y-auto">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/*
+           * title  — derived from ROUTE_META, changes per page automatically.
+           * teamName — passed so Header can compose the subtitle without
+           *            needing access to the full team object.
+           * The real aws_account_id is read inside Header via useAwsAccount().
+           */}
+          <Header title={pageTitle} teamName={team.name} />
+
+          <div className="flex-1 overflow-y-auto">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </AwsAccountProvider>
   );
 }

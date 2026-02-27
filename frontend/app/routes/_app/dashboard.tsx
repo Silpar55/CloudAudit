@@ -1,7 +1,7 @@
-import { CreateTeamForm, TeamCard } from "~/components/dashboard";
 import { useNavigate } from "react-router";
+import { useState } from "react";
+import { CreateTeamForm, TeamCard } from "~/components/dashboard";
 import { Button, Modal } from "~/components/ui";
-import { useEffect, useState } from "react";
 import { useGetTeamsByUserId } from "~/hooks/useTeam";
 
 export default function DashboardPage() {

@@ -6,3 +6,4 @@ export { default as AnomalyCard } from "./AnomalyCard";
 export { default as RecommendationCard } from "./RecommendationCard";
 export { default as TeamCard } from "./TeamCard";
 export { default as CreateTeamForm } from "./CreateTeamForm";
+export { default as CostDashboard } from "./CostDashboard";

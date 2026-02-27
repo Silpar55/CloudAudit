@@ -1,30 +1,57 @@
-import React from "react";
-import { Calendar, ChevronDown, RefreshCw, Download } from "lucide-react";
+import { useAwsAccount } from "~/context/AwsAccountContext";
 
 /**
  * Header Component
  *
- * Top header bar for team workspace pages
+ * Top header bar for team workspace pages.
+ * Reads the real AWS account ID from AwsAccountContext — no hardcoded values.
  *
- * @param {string} title - Page title
- * @param {string} subtitle - Page subtitle/description
- * @param {Array} actions - Action buttons [{label, icon, onClick, variant}]
- * @param {boolean} showDateFilter - Show date range filter
- * @param {string} dateRange - Current date range label
- * @param {function} onDateChange - Date range change handler
- * @param {string} className - Additional CSS classes
+ * @param title    - Page title (derived from current route in layout.tsx)
+ * @param teamName - Team name for the subtitle line
+ * @param className - Additional CSS classes
  */
 
 const Header = ({
-  title = "Dashboard",
-  subtitle = "",
-  actions = [],
-  showDateFilter = false,
-  dateRange = "Last 30 Days",
-  onDateChange,
+  title = "Cost Overview",
+  teamName = "",
   className = "",
   ...props
-}: any) => {
+}: {
+  title?: string;
+  teamName?: string;
+  className?: string;
+  [key: string]: any;
+}) => {
+  // Pull the real AWS account ID from context.
+  // account is null while loading or when the team has no connected account yet.
+  const { account, isLoading: isAccountLoading } = useAwsAccount();
+
+  const awsAccountId = account?.aws_account_id;
+
+  // Build subtitle: show account ID once loaded, skeleton while loading
+  const subtitle = (() => {
+    if (isAccountLoading) {
+      return (
+        <span className="flex items-center gap-2">
+          <span className="inline-block w-32 h-3 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
+          {teamName && (
+            <>
+              <span className="text-gray-300 dark:text-slate-600">•</span>
+              <span>Team: {teamName}</span>
+            </>
+          )}
+        </span>
+      );
+    }
+
+    if (awsAccountId) {
+      return `AWS Account: ${awsAccountId}${teamName ? ` • Team: ${teamName}` : ""}`;
+    }
+
+    // Team has no connected AWS account (aws_required / suspended state)
+    return teamName ? `Team: ${teamName}` : "";
+  })();
+
   return (
     <header
       className={`bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-8 py-4 ${className}`}
@@ -40,42 +67,6 @@ const Header = ({
               {subtitle}
             </p>
           )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {showDateFilter && (
-            <button
-              onClick={onDateChange}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-900 dark:text-white text-sm font-semibold rounded-lg transition-all"
-            >
-              <Calendar className="w-4 h-4" />
-              {dateRange}
-              <ChevronDown className="w-4 h-4" />
-            </button>
-          )}
-
-          {actions.map((action: any, index: number) => {
-            const Icon = action.icon;
-            const variant = action.variant || "secondary";
-
-            const variantStyles: any = {
-              primary:
-                "bg-aws-orange hover:bg-aws-orange-dark text-white shadow-md",
-              secondary:
-                "bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-900 dark:text-white",
-            };
-
-            return (
-              <button
-                key={index}
-                onClick={action.onClick}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${variantStyles[variant]}`}
-              >
-                {Icon && <Icon className="w-4 h-4" />}
-                {action.label}
-              </button>
-            );
-          })}
         </div>
       </div>
     </header>

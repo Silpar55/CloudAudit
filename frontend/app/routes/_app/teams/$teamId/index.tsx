@@ -1,120 +1,92 @@
-import React, { useState } from "react";
-import { Sidebar, Header } from "~/components/layout";
-import {
-  MetricCard,
-  AnomalyCard,
-  RecommendationCard,
-} from "~/components/dashboard";
-import { DollarSign, AlertTriangle, TrendingDown, Server } from "lucide-react";
-import { useGetTeamById } from "~/hooks/useTeam";
 import { useParams } from "react-router";
 import { Spinner } from "~/components/ui";
 import { AwsSetupForm } from "~/components/teams";
+import { CostDashboard } from "~/components/dashboard";
+import { useGetTeamById } from "~/hooks/useTeam";
+import { useAwsAccount } from "~/context/AwsAccountContext";
 
 export default function TeamWorkspace() {
-  const [activeRoute, setActiveRoute] = useState("/");
-
   const { teamId } = useParams<{ teamId: string }>();
-  const { data: team, isLoading } = useGetTeamById(teamId, {
+
+  // ── Team data ──────────────────────────────────────────────────────────────
+  const { data: team, isLoading: isTeamLoading } = useGetTeamById(teamId, {
     enabled: !!teamId,
   });
 
-  if (isLoading)
+  // ── AWS account — fetched once in layout via AwsAccountProvider ───────────
+  // No fetch here. The layout owns this; we just read from context.
+  const { account: awsAccount, isLoading: isAwsLoading } = useAwsAccount();
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (isTeamLoading) {
     return (
       <div className="flex-1 overflow-y-auto p-8">
         <Spinner navbar={false} />
       </div>
     );
+  }
 
-  return (
-    <div className="p-8 mx-auto w-full">
-      {team.status === "aws_required" && <AwsSetupForm teamId={teamId!} />}
+  // ── AWS Required ───────────────────────────────────────────────────────────
+  if (team.status === "aws_required") {
+    return (
+      <div className="p-8 mx-auto w-full">
+        <AwsSetupForm teamId={teamId!} />
+      </div>
+    );
+  }
 
-      {team.status === "active" && (
-        <>
-          {/* Metrics */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricCard
-          variant="gradient"
-          title="Monthly Cost"
-          value="$3,847"
-          icon={<DollarSign className="w-6 h-6" />}
-          trend="+8%"
-        />
-
-        <MetricCard
-          title="Anomalies"
-          value="2"
-          icon={<AlertTriangle className="w-6 h-6 text-red-600" />}
-          trendType="negative"
-        />
-
-        <MetricCard
-          title="Potential Savings"
-          value="$892"
-          subtitle="8 recommendations"
-          icon={<TrendingDown className="w-6 h-6 text-green-600" />}
-          trendType="positive"
-        />
-
-        <MetricCard
-          title="Resources"
-          value="47"
-          subtitle="12 EC2 • 3 RDS • 32 S3"
-          icon={<Server className="w-6 h-6 text-blue-600" />}
-        />
-      </div> */}
-
-          {/* Two Column Layout Anomalies & Recommendations*/}
-
-          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
- 
-        <div>
-          <h2 className="text-xl font-bold font-display text-gray-900 dark:text-white mb-4">
-            Active Anomalies
-          </h2>
-          <div className="space-y-4">
-            <AnomalyCard
-              title="EC2 Cost Spike"
-              resource="us-east-1 • t3.large"
-              service="ec2"
-              severity="critical"
-              description="Instance i-0abc123 exceeded baseline by +142%"
-              expectedCost="$45.20"
-              actualCost="$109.40"
-              deviation="+142%"
-              onClick={() => console.log("View details")}
-            />
+  // ── Suspended ─────────────────────────────────────────────────────────────
+  if (team.status === "suspended") {
+    return (
+      <div className="p-8 mx-auto w-full">
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+            <span className="text-2xl">⛔</span>
           </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Team Suspended
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+            This team has been suspended. Please contact support if you believe
+            this is a mistake.
+          </p>
         </div>
+      </div>
+    );
+  }
 
-       
-        <div>
-          <h2 className="text-xl font-bold font-display text-gray-900 dark:text-white mb-4">
-            AI Recommendations
-          </h2>
-          <div className="space-y-4">
-            <RecommendationCard
-              title="Downsize EC2 Instances"
-              description="4 instances using <20% CPU. Downsize from t3.large to t3.medium."
-              service="ec2"
-              savings="$340/month"
-              confidence={95}
-              variant="default"
-              onApply={() => console.log("Apply")}
-              onLearnMore={() => console.log("Learn more")}
-            />
-          </div>
+  // ── Active ─────────────────────────────────────────────────────────────────
+  if (team.status === "active") {
+    // Context is still resolving the AWS account on first load
+    if (isAwsLoading) {
+      return (
+        <div className="flex-1 overflow-y-auto p-8">
+          <Spinner navbar={false} />
         </div>
-      </div> */}
-        </>
-      )}
+      );
+    }
 
-      {team.status === "suspended" && (
-        <h1 className="text-3xl font-bold font-display text-gray-900 dark:text-white mb-8">
-          TEAM IS SUSPENDED
-        </h1>
-      )}
-    </div>
-  );
+    // Account not found — graceful fallback
+    if (!awsAccount?.id) {
+      return (
+        <div className="p-8 mx-auto w-full">
+          <p className="text-sm text-red-500">
+            Could not load AWS account details. Please refresh the page.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-8 mx-auto w-full">
+        {/*
+         * CostDashboard reads teamId + awsAccountInternalId from context
+         * internally — no props needed here.
+         */}
+        <CostDashboard />
+      </div>
+    );
+  }
+
+  return null;
 }
