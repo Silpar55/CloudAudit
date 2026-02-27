@@ -1,6 +1,7 @@
 -- Database: cloudaudit v6.0
 
 -- DROP FIRST TABLES WITH FOREIGN KEYS
+DROP VIEW team_dashboard_view;
 DROP TABLE IF EXISTS cost_anomalies;
 DROP TABLE IF EXISTS cost_data;
 DROP TABLE IF EXISTS daily_cost_summaries;
@@ -12,8 +13,8 @@ DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS teams;
-DROP TYPE IF EXISTS aws_account_status
-DROP TYPE IF EXISTS team_status
+DROP TYPE aws_account_status;
+DROP TYPE team_status;
 
 CREATE TYPE aws_account_status AS ENUM (
     'role_provided',
@@ -220,3 +221,29 @@ CREATE TABLE audit_logs (
 	details JSONB NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- VIEWS
+
+CREATE VIEW team_dashboard_view AS
+SELECT 
+    t.team_id,
+    t.name,
+    t.description,
+    t.status,
+
+    COUNT(tm.user_id) FILTER (WHERE tm.is_active = TRUE) AS member_count,
+
+    a.aws_account_id,
+    a.status AS aws_status,
+
+    SUM(dcs.total_cost) AS monthly_cost
+
+FROM teams t
+LEFT JOIN team_members tm ON tm.team_id = t.team_id
+LEFT JOIN aws_accounts a ON a.team_id = t.team_id
+LEFT JOIN daily_cost_summaries dcs
+    ON dcs.aws_account_id = a.id
+    AND date_trunc('month', dcs.time_period_start) = date_trunc('month', NOW())
+
+GROUP BY t.team_id, a.aws_account_id, a.status;
