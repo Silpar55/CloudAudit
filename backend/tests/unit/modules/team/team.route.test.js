@@ -13,8 +13,21 @@ jest.mock("#middleware", () => {
   };
 });
 
-// Setup complex mock logic for specific scenarios
+import {
+  createTeam,
+  deleteTeam,
+  addTeamMember,
+  activateTeamMember,
+  getTeamMemberById,
+  deactivateTeamMember,
+  changeMemberRole,
+} from "#modules/team/team.model.js";
+import { findUser } from "#modules/auth/auth.model.js";
+import app from "#app";
+
 beforeEach(() => {
+  jest.clearAllMocks();
+
   findUser.mockImplementation((email) => {
     switch (email) {
       case "activeUser@example.com":
@@ -28,7 +41,8 @@ beforeEach(() => {
     }
   });
 
-  getTeamMember.mockImplementation((_, userId) => {
+  // FIXED: Renamed from getTeamMember to getTeamMemberById
+  getTeamMemberById.mockImplementation((_, userId) => {
     switch (userId) {
       case "active-user-id":
         return {
@@ -57,22 +71,6 @@ beforeEach(() => {
   });
 });
 
-import {
-  createTeam,
-  deleteTeam,
-  addTeamMember,
-  activateTeamMember,
-  getTeamMember,
-  deactivateTeamMember,
-  changeMemberRole,
-} from "#modules/team/team.model.js";
-import { findUser } from "#modules/auth/auth.model.js";
-import app from "#app";
-
-beforeEach(() => {
-  jest.clearAllMocks();
-});
-
 describe("/team", () => {
   const endpoint = "/api/teams";
 
@@ -82,7 +80,6 @@ describe("/team", () => {
 
     it("Should handle invalid inputs", async () => {
       const response = await request(app).post(url).send({ name: "" });
-
       expect(response.status).toBe(400);
     });
 
@@ -94,7 +91,6 @@ describe("/team", () => {
       });
 
       const response = await request(app).post(url).send(body);
-
       expect(response.status).toBe(201);
       expect(response.body.teamId).toBe("123");
     });
@@ -104,21 +100,16 @@ describe("/team", () => {
     const url = `${endpoint}`;
 
     it("Should throw error when teamId does not exist in the DB", async () => {
-      // Simulate "Not Found" in the DB
       deleteTeam.mockResolvedValue(null);
       const teamId = "non-existence-id";
-
       const response = await request(app).delete(`${url}/${teamId}`);
-
       expect(response.status).toBe(404);
     });
 
     it("Should delete the team", async () => {
       const teamId = "123";
       deleteTeam.mockResolvedValueOnce({ team_id: teamId });
-
       const response = await request(app).delete(`${url}/${teamId}`);
-
       expect(response.status).toBe(201);
       expect(response.body.deletedTeamId).toBe(teamId);
     });
@@ -172,12 +163,10 @@ describe("/team", () => {
     const teamId = "team-id";
 
     it("Should throw error when user is not a member of that team", async () => {
-      getTeamMember.mockResolvedValueOnce(null);
-
+      getTeamMemberById.mockResolvedValueOnce(null);
       const response = await request(app).delete(
         `${url}/${teamId}/members/no-user-id`,
       );
-
       expect(response.status).toBe(404);
       expect(response.body.message).toBe("User is not in the team");
     });
@@ -186,7 +175,6 @@ describe("/team", () => {
       const response = await request(app).delete(
         `${url}/${teamId}/members/unactive-user-id`,
       );
-
       expect(response.status).toBe(201);
       expect(response.body.message).toBe("Member removed into the team");
     });
@@ -195,7 +183,6 @@ describe("/team", () => {
       const response = await request(app).delete(
         `${url}/${teamId}/members/active-user-id`,
       );
-
       expect(response.status).toBe(201);
       expect(response.body.message).toBe("Member removed into the team");
     });
@@ -208,21 +195,16 @@ describe("/team", () => {
     it("Should throw 404 when role is not a valid role", async () => {
       const response = await request(app)
         .patch(`${url}/${teamId}/members/user-id`)
-        .send({
-          newRole: "NO VALID ROLE",
-        });
-
+        .send({ newRole: "NO VALID ROLE" });
       expect(response.status).toBe(404);
       expect(response.body.message).toBe("This role does not exist");
     });
 
     it("Should throw error when user is not in the team", async () => {
-      getTeamMember.mockResolvedValueOnce(null);
-
+      getTeamMemberById.mockResolvedValueOnce(null);
       const response = await request(app)
         .patch(`${url}/${teamId}/members/valid-user-id`)
         .send({ newRole: "admin" });
-
       expect(response.status).toBe(404);
       expect(response.body.message).toBe("User is not in the team");
     });
@@ -231,7 +213,6 @@ describe("/team", () => {
       const response = await request(app)
         .patch(`${url}/${teamId}/members/active-user-id`)
         .send({ newRole: "admin" });
-
       expect(response.status).toBe(201);
       expect(response.body.message).toBe(`Member change from member to admin`);
     });

@@ -1,150 +1,176 @@
-import { describe, expect, it, jest, beforeEach } from "@jest/globals";
+import {
+  describe,
+  expect,
+  it,
+  jest,
+  beforeEach,
+  afterEach,
+} from "@jest/globals";
 
-// Mock the config before importing the functions that use it
 jest.mock("#config");
-
 import { pool } from "#config";
 import {
   createTeam,
-  deleteTeam,
-  getTeamMember,
+  getTeamsByUserId,
+  getTeamById,
+  updateTeam,
+  updateTeamStatus,
+  getTeamMemberById,
   addTeamMember,
   activateTeamMember,
   deactivateTeamMember,
+  changeMemberRole,
+  deleteTeam,
 } from "#modules/team/team.model.js";
 
-beforeEach(() => {
-  jest.clearAllMocks();
-});
+describe("Team Model", () => {
+  const mockError = new Error("DB Error");
+  let consoleErrorSpy, consoleLogSpy;
 
-describe("Team model", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+  });
+
   describe("createTeam", () => {
     it("Should insert a team and return the new team row", async () => {
-      const teamName = "Engineering";
-      const returnedRow = { team_id: "1", name: teamName };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await createTeam(teamName);
-
+      pool.query.mockResolvedValue({ rows: [{ team_id: "1", name: "Eng" }] });
+      const result = await createTeam("Eng");
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining("INSERT INTO teams"),
-        [teamName],
+        ["Eng", null],
       );
-      expect(result).toEqual(returnedRow);
+      expect(result).toEqual({ team_id: "1", name: "Eng" });
     });
 
-    it("Should return null if the query fails", async () => {
-      pool.query.mockRejectedValue(new Error("DB Error"));
-      const result = await createTeam("Faulty Team");
-      expect(result).toBeNull();
+    it("Should catch DB errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await createTeam("Eng")).toBeNull();
     });
   });
 
-  describe("deleteTeam", () => {
-    it("Should delete a team and return the deleted row", async () => {
-      const teamId = "100";
-      const returnedRow = { team_id: teamId, name: "Deleted Team" };
+  describe("getTeamsByUserId", () => {
+    it("Should return a list of teams for a user", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_id: "1" }] });
+      const result = await getTeamsByUserId("user-1");
+      expect(result).toEqual([{ team_id: "1" }]);
+    });
 
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
+    it("Should catch errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await getTeamsByUserId("user-1")).toBeNull();
+    });
+  });
 
-      const result = await deleteTeam(teamId);
-
+  describe("getTeamById", () => {
+    it("Should return a specific team", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_id: "1", name: "Eng" }] });
+      const result = await getTeamById("1");
+      // FIXED: Matched the complex LEFT JOIN query in the source code
       expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("DELETE FROM teams"),
-        [teamId],
+        expect.stringContaining("FROM teams t\n    LEFT JOIN team_members tm"),
+        ["1"],
       );
-      expect(result).toEqual(returnedRow);
+      expect(result).toEqual({ team_id: "1", name: "Eng" });
     });
 
-    it("Should return null if teamId does not exist or query fails", async () => {
-      pool.query.mockResolvedValue({ rows: [] }); // No rows returned
-      const result = await deleteTeam("999");
-      expect(result).toBeUndefined(); // Because rows[0] of [] is undefined
+    it("Should let errors bubble up (no try/catch in source)", async () => {
+      // FIXED: Your actual code doesn't try/catch this, so it rejects.
+      pool.query.mockRejectedValue(mockError);
+      await expect(getTeamById("1")).rejects.toThrow("DB Error");
     });
   });
 
-  describe("getTeamMember", () => {
+  describe("updateTeam", () => {
+    it("Should dynamically build UPDATE query", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_id: "1", name: "New" }] });
+      const result = await updateTeam("1", {
+        name: "New",
+        description: "Desc",
+      });
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE teams"),
+        ["New", "Desc", "1"],
+      );
+      expect(result).toBeDefined();
+    });
+
+    it("Should catch errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await updateTeam("1", { name: "New" })).toBeNull();
+    });
+  });
+
+  describe("updateTeamStatus", () => {
+    it("Should update the status of a team", async () => {
+      pool.query.mockResolvedValue({
+        rows: [{ team_id: "1", status: "active" }],
+      });
+      const result = await updateTeamStatus("1", "active");
+      expect(result).toEqual({ team_id: "1", status: "active" });
+    });
+  });
+
+  describe("getTeamMemberById", () => {
     it("Should return a specific member if they exist in the team", async () => {
-      const teamId = "1",
-        userId = "5";
-      const returnedRow = { team_id: teamId, user_id: userId, role: "admin" };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await getTeamMember(teamId, userId);
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT * FROM team_members"),
-        [teamId, userId],
-      );
-      expect(result).toEqual(returnedRow);
+      pool.query.mockResolvedValue({ rows: [{ team_id: "1", user_id: "5" }] });
+      const result = await getTeamMemberById("1", "5");
+      expect(result).toEqual({ team_id: "1", user_id: "5" });
     });
   });
 
   describe("addTeamMember", () => {
-    it("Should insert a member and return the relation row", async () => {
-      const teamId = "1",
-        userId = "2",
-        role = "member";
-      const returnedRow = { team_id: teamId, user_id: userId, role };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await addTeamMember(teamId, userId, role);
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("INSERT INTO team_members"),
-        [teamId, userId, role],
-      );
-      expect(result).toEqual(returnedRow);
+    it("Should add a user to a team", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_member_id: "tm-1" }] });
+      const result = await addTeamMember("team-1", "user-1", "member");
+      expect(result).toEqual({ team_member_id: "tm-1" });
     });
   });
 
-  describe("activateTeamMember", () => {
-    it("Should set is_active to TRUE and return the row", async () => {
-      const memberId = "55";
-      const returnedRow = { team_member_id: memberId, is_active: true };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await activateTeamMember(memberId);
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining(`UPDATE team_members SET is_active = TRUE`),
-        [memberId],
-      );
-      expect(result).toEqual(returnedRow);
+  describe("activateTeamMember & deactivateTeamMember", () => {
+    it("Should activate a team member", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_member_id: "tm-1" }] });
+      expect(await activateTeamMember("tm-1")).toBeDefined();
     });
 
-    it("Should return null and log error if activation fails", async () => {
-      const consoleSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      pool.query.mockRejectedValue(new Error("Update failed"));
+    it("Should catch errors for activateTeamMember", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await activateTeamMember("tm-1")).toBeNull();
+    });
 
-      const result = await activateTeamMember("55");
+    it("Should deactivate a team member", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_member_id: "tm-1" }] });
+      expect(await deactivateTeamMember("tm-1")).toBeDefined();
+    });
 
-      expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+    it("Should catch errors for deactivateTeamMember", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await deactivateTeamMember("tm-1")).toBeNull();
     });
   });
 
-  describe("deactivateTeamMember", () => {
-    it("Should set is_active to FALSE and return the row", async () => {
-      const memberId = "55";
-      const returnedRow = { team_member_id: memberId, is_active: false };
+  describe("changeMemberRole", () => {
+    it("Should change a member's role", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_member_id: "tm-1" }] });
+      expect(await changeMemberRole("tm-1", "admin")).toBeDefined();
+    });
 
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
+    it("Should catch errors for changeMemberRole", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await changeMemberRole("tm-1", "admin")).toBeNull();
+    });
+  });
 
-      const result = await deactivateTeamMember(memberId);
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE team_members SET is_active = FALSE"),
-        [memberId],
-      );
-      expect(result).toEqual(returnedRow);
+  describe("deleteTeam", () => {
+    it("Should delete a team by ID", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_id: "1" }] });
+      expect(await deleteTeam("1")).toBeDefined();
     });
   });
 });

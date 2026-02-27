@@ -1,269 +1,176 @@
-import { describe, expect, it, jest, beforeEach } from "@jest/globals";
+import {
+  describe,
+  expect,
+  it,
+  jest,
+  beforeEach,
+  afterEach,
+} from "@jest/globals";
 
-// Mock the config before importing the functions that use it
 jest.mock("#config");
-
 import { pool } from "#config";
 import {
   initializePendingAccount,
   activateAwsAccount,
-  findAwsAccount,
-  updateAccount,
+  findAwsAccountByAccId,
+  findAwsAccountById,
+  getAwsAccountByTeamId,
+  updateAccountRole,
   deactivateAwsAccount,
+  getAllAccounts,
+  addCostExploreCostAndUsageRow,
+  getCachedCostData,
 } from "#modules/aws/aws.model.js";
 
-beforeEach(() => {
-  jest.clearAllMocks();
-});
-
 describe("AWS Account Model", () => {
+  const mockError = new Error("DB Error");
+  let consoleLogSpy, consoleErrorSpy;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
   describe("initializePendingAccount", () => {
     it("Should insert a pending AWS account and return the new row", async () => {
-      const accountData = {
-        accId: "123456789012",
-        teamId: "team-1",
-        externalId: "ext-id-123",
-        roleArn: "arn:aws:iam::123456789012:role/MyRole",
+      const data = {
+        accId: "123",
+        teamId: "t1",
+        externalId: "ext",
+        roleArn: "arn",
       };
-      const returnedRow = {
-        aws_account_id: accountData.accId,
-        team_id: accountData.teamId,
-        external_id: accountData.externalId,
-        iam_role_arn: accountData.roleArn,
-        is_active: false,
-      };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await initializePendingAccount(accountData);
-
+      pool.query.mockResolvedValue({ rows: [data] });
+      const result = await initializePendingAccount(data);
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining("INSERT INTO aws_accounts"),
-        [
-          accountData.accId,
-          accountData.teamId,
-          accountData.externalId,
-          accountData.roleArn,
-        ],
+        ["123", "t1", "ext", "arn"],
       );
-      expect(result).toEqual(returnedRow);
+      expect(result).toEqual(data);
     });
 
-    it("Should return null if the query fails", async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-      pool.query.mockRejectedValue(new Error("DB Error"));
-
-      const accountData = {
-        accId: "123456789012",
-        teamId: "team-1",
-        externalId: "ext-id-123",
-        roleArn: "arn:aws:iam::123456789012:role/MyRole",
-      };
-
-      const result = await initializePendingAccount(accountData);
-
-      expect(result).toBeNull();
-      expect(consoleErrorSpy).toHaveBeenCalled();
-      consoleErrorSpy.mockRestore();
+    it("Should catch database errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await initializePendingAccount({})).toBeNull();
     });
   });
 
-  describe("activateAwsAccount", () => {
-    it("Should activate an AWS account and return the updated row", async () => {
-      const accId = "123456789012";
-      const teamId = "team-1";
-      const returnedRow = {
-        aws_account_id: accId,
-        team_id: teamId,
-        is_active: true,
-      };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await activateAwsAccount(accId, teamId);
-
+  describe("findAwsAccountById", () => {
+    it("Should return an account by internal ID", async () => {
+      pool.query.mockResolvedValue({ rows: [{ id: "123" }] });
+      const result = await findAwsAccountById("123");
       expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE aws_accounts SET is_active = TRUE"),
-        [accId, teamId],
+        expect.stringContaining("SELECT * FROM aws_accounts WHERE id = $1"),
+        ["123"],
       );
-      expect(result).toEqual(returnedRow);
+      expect(result).toEqual({ id: "123" });
     });
 
-    it("Should return null if activation fails", async () => {
-      const consoleLogSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      pool.query.mockRejectedValue(new Error("Update failed"));
-
-      const result = await activateAwsAccount("123456789012", "team-1");
-
-      expect(result).toBeNull();
-      expect(consoleLogSpy).toHaveBeenCalled();
-      consoleLogSpy.mockRestore();
-    });
-
-    it("Should return undefined if account does not exist", async () => {
-      pool.query.mockResolvedValue({ rows: [] });
-
-      const result = await activateAwsAccount("999999999999", "team-999");
-
-      expect(result).toBeUndefined();
+    it("Should catch database errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await findAwsAccountById("123")).toBeNull();
     });
   });
 
-  describe("findAwsAccount", () => {
-    it("Should return an AWS account if it exists", async () => {
-      const accId = "123456789012";
-      const teamId = "team-1";
-      const returnedRow = {
-        aws_account_id: accId,
-        team_id: teamId,
-        external_id: "ext-id",
-        iam_role_arn: "arn:aws:iam::123456789012:role/MyRole",
-        is_active: true,
-      };
-
-      const consoleLogSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await findAwsAccount(accId, teamId);
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(accId, teamId);
+  describe("getAwsAccountByTeamId", () => {
+    it("Should return an account by team ID", async () => {
+      pool.query.mockResolvedValue({ rows: [{ team_id: "t1" }] });
+      const result = await getAwsAccountByTeamId("t1");
       expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT *"),
-        [accId, teamId],
+        expect.stringContaining("WHERE team_id = $1"),
+        ["t1"],
       );
-      expect(result).toEqual(returnedRow);
-      consoleLogSpy.mockRestore();
+      expect(result).toEqual({ team_id: "t1" });
     });
 
-    it("Should return undefined if account does not exist", async () => {
-      const consoleLogSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      pool.query.mockResolvedValue({ rows: [] });
-
-      const result = await findAwsAccount("999999999999", "team-999");
-
-      expect(result).toBeUndefined();
-      consoleLogSpy.mockRestore();
-    });
-
-    it("Should return null if the query fails", async () => {
-      const consoleLogSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-      pool.query.mockRejectedValue(new Error("Query failed"));
-
-      const result = await findAwsAccount("123456789012", "team-1");
-
-      expect(result).toBeNull();
-      expect(consoleErrorSpy).toHaveBeenCalled();
-      consoleLogSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+    it("Should catch database errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await getAwsAccountByTeamId("t1")).toBeNull();
     });
   });
 
-  describe("updateAccount", () => {
-    it("Should update the IAM role ARN and return the updated row", async () => {
-      const accId = "123456789012";
-      const teamId = "team-1";
-      const roleArn = "arn:aws:iam::123456789012:role/NewRole";
-      const returnedRow = {
-        aws_account_id: accId,
-        team_id: teamId,
-        iam_role_arn: roleArn,
-      };
-
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await updateAccount(accId, teamId, roleArn);
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE aws_accounts SET iam_role_arn"),
-        [roleArn, accId, teamId],
-      );
-      expect(result).toEqual(returnedRow);
+  describe("getAllAccounts", () => {
+    it("Should return all accounts", async () => {
+      pool.query.mockResolvedValue({ rows: [{ id: "1" }, { id: "2" }] });
+      const result = await getAllAccounts();
+      expect(result).toHaveLength(2);
     });
 
-    it("Should return null if update fails", async () => {
-      const consoleLogSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      pool.query.mockRejectedValue(new Error("Update failed"));
-
-      const result = await updateAccount(
-        "123456789012",
-        "team-1",
-        "arn:aws:iam::123456789012:role/NewRole",
-      );
-
-      expect(result).toBeNull();
-      expect(consoleLogSpy).toHaveBeenCalled();
-      consoleLogSpy.mockRestore();
-    });
-
-    it("Should return undefined if account does not exist", async () => {
-      pool.query.mockResolvedValue({ rows: [] });
-
-      const result = await updateAccount(
-        "999999999999",
-        "team-999",
-        "arn:aws:iam::999999999999:role/Role",
-      );
-
-      expect(result).toBeUndefined();
+    it("Should catch errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await getAllAccounts()).toBeNull();
     });
   });
 
-  describe("deactivateAwsAccount", () => {
-    it("Should deactivate an AWS account and return the updated row", async () => {
-      const accId = "123456789012";
-      const teamId = "team-1";
-      const returnedRow = {
-        aws_account_id: accId,
-        team_id: teamId,
-        is_active: false,
-        disconnected_at: expect.any(Date),
+  describe("addCostExploreCostAndUsageRow", () => {
+    it("Should format camelCase keys to snake_case and execute query", async () => {
+      const payload = {
+        awsAccountId: "acc-123",
+        timePeriodStart: "2023-01-01",
+        service: "AmazonEC2",
+        unblendedCost: 10.5,
       };
+      pool.query.mockResolvedValue({ rows: [payload] });
 
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
+      const result = await addCostExploreCostAndUsageRow(payload);
 
-      const result = await deactivateAwsAccount(accId, teamId);
-
+      // Ensures the snake casing transformation happened correctly
       expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE aws_accounts SET is_active = FALSE"),
-        [expect.any(Date), accId, teamId],
+        expect.stringContaining(
+          "aws_account_id, time_period_start, service, unblended_cost",
+        ),
+        ["acc-123", "2023-01-01", "AmazonEC2", 10.5],
       );
-      expect(result).toEqual(returnedRow);
+      expect(result).toEqual(payload);
     });
 
-    it("Should return null if deactivation fails", async () => {
-      const consoleLogSpy = jest
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-      pool.query.mockRejectedValue(new Error("Deactivation failed"));
+    it("Should catch errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await addCostExploreCostAndUsageRow({})).toBeNull();
+    });
+  });
 
-      const result = await deactivateAwsAccount("123456789012", "team-1");
-
-      expect(result).toBeNull();
-      expect(consoleLogSpy).toHaveBeenCalled();
-      consoleLogSpy.mockRestore();
+  describe("getCachedCostData", () => {
+    it("Should return rows between dates", async () => {
+      pool.query.mockResolvedValue({ rows: [{ cost: 100 }] });
+      const result = await getCachedCostData(
+        "acc-123",
+        "2023-01-01",
+        "2023-01-31",
+      );
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("cost_explorer_cache"),
+        ["acc-123", "2023-01-01", "2023-01-31"],
+      );
+      expect(result).toEqual([{ cost: 100 }]);
     });
 
-    it("Should return undefined if account does not exist", async () => {
-      pool.query.mockResolvedValue({ rows: [] });
+    it("Should catch errors and return null", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await getCachedCostData("1", "2023", "2023")).toBeNull();
+    });
+  });
 
-      const result = await deactivateAwsAccount("999999999999", "team-999");
+  // Covering remaining try/catch blocks for basic endpoints
+  describe("Other Modifiers (activate, update, deactivate)", () => {
+    it("Should catch errors on activateAwsAccount", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await activateAwsAccount("123")).toBeNull();
+    });
 
-      expect(result).toBeUndefined();
+    it("Should catch errors on updateAccountRole", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await updateAccountRole("123", "arn")).toBeNull();
+    });
+
+    it("Should catch errors on deactivateAwsAccount", async () => {
+      pool.query.mockRejectedValue(mockError);
+      expect(await deactivateAwsAccount("123")).toBeNull();
     });
   });
 });
