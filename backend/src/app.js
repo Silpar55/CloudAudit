@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import cors from "cors";
 
 import { errorHandler, verifyToken } from "#middleware";
-import { healthRoutes, authRoutes, awsRoutes, teamRoutes } from "#modules";
+import { healthRoutes, authRoutes, teamRoutes, profileRoutes } from "#modules";
 
 // App Setup
 const app = express();
@@ -20,6 +20,7 @@ app.use(cors(corsOptions));
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", verifyToken, teamRoutes);
+app.use("/api/profile", verifyToken, profileRoutes);
 
 // Error handling
 app.use(errorHandler);
