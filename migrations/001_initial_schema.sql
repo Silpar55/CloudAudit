@@ -37,12 +37,18 @@ CREATE TABLE users (
 	first_name TEXT NOT NULL,
 	last_name TEXT NOT NULL,
 	email TEXT NOT NULL UNIQUE,
+	email_verified BOOLEAN DEFAULT FALSE,
+	pending_email TEXT,
+	verification_token TEXT,
+	verification_expires_at TIMESTAMP,
 	password TEXT NOT NULL,
 	phone TEXT NOT NULL,
 	country_code VARCHAR(2) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE(user_id, email)
 );
+
+
 
 -- TEAMS TABLE
 

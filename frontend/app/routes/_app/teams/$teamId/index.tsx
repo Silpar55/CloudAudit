@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { Spinner } from "~/components/ui";
+import { SectionLoader } from "~/components/ui";
 import { AwsSetupForm } from "~/components/teams";
 import { CostDashboard } from "~/components/dashboard";
 import { useGetTeamById } from "~/hooks/useTeam";
@@ -19,11 +19,7 @@ export default function TeamWorkspace() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (isTeamLoading) {
-    return (
-      <div className="flex-1 overflow-y-auto p-8">
-        <Spinner navbar={false} />
-      </div>
-    );
+    return <SectionLoader />;
   }
 
   // ── AWS Required ───────────────────────────────────────────────────────────
@@ -59,11 +55,7 @@ export default function TeamWorkspace() {
   if (team.status === "active") {
     // Context is still resolving the AWS account on first load
     if (isAwsLoading) {
-      return (
-        <div className="flex-1 overflow-y-auto p-8">
-          <Spinner navbar={false} />
-        </div>
-      );
+      return <SectionLoader />;
     }
 
     // Account not found — graceful fallback

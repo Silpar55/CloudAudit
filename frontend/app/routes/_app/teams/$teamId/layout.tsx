@@ -7,7 +7,7 @@ import {
 } from "react-router";
 import { Sidebar, Header } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";
-import { Spinner } from "~/components/ui";
+import { PageLoader } from "~/components/ui";
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { AwsAccountProvider } from "~/context/AwsAccountContext";
 
@@ -85,12 +85,7 @@ export default function TeamLayout() {
   const { teamId } = useParams<{ teamId: string }>();
   const { data, isLoading } = useWorkspaceTeamData(teamId!);
 
-  if (isLoading)
-    return (
-      <div className="flex-1 overflow-y-auto p-8">
-        <Spinner navbar />
-      </div>
-    );
+  if (isLoading) return <PageLoader />;
 
   const { user, team, teamMember } = data!;
 

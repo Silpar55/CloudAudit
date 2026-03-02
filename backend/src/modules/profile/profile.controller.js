@@ -43,6 +43,7 @@ export const requestEmailChange = async (req, res, next) => {
       message: "A verification link has been sent to your new email address.",
     });
   } catch (err) {
+    console.log(err);
     next(err);
   }
 };
