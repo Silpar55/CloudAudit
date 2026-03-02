@@ -139,43 +139,4 @@ describe("Profile model", () => {
       expect(result).toEqual(returnedRow);
     });
   });
-
-  describe("getUserByVerificationToken", () => {
-    it("Should return the user associated with the token", async () => {
-      const returnedRow = { id: "user-1", pending_email: "new@example.com" };
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await profileModel.getUserByVerificationToken("token123");
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT"),
-        ["token123"],
-      );
-      expect(result).toEqual(returnedRow);
-    });
-  });
-
-  describe("confirmEmailChange", () => {
-    it("Should execute UPDATE query to finalize email change and clear tokens", async () => {
-      const returnedRow = {
-        id: "user-1",
-        email: "new@example.com",
-        first_name: "Alejandro",
-      };
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await profileModel.confirmEmailChange(
-        "user-1",
-        "new@example.com",
-      );
-
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE users"),
-        ["new@example.com", "user-1"],
-      );
-      expect(pool.query.mock.calls[0][0]).toContain("email_verified = true");
-      expect(pool.query.mock.calls[0][0]).toContain("pending_email = NULL");
-      expect(result).toEqual(returnedRow);
-    });
-  });
 });

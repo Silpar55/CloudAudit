@@ -111,7 +111,7 @@ describe("Auth Service", () => {
       authModel.getUserByVerificationToken.mockResolvedValue(null);
 
       await expect(authService.verifyEmailToken("bad-token")).rejects.toThrow(
-        "Invalid or expired verification token",
+        "Invalid verification token",
       );
     });
 
