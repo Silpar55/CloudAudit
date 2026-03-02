@@ -4,11 +4,16 @@ import { describe, expect, jest } from "@jest/globals";
 
 jest.mock("#modules/auth/auth.model.js");
 jest.mock("#utils/password.js");
-jest.mock("#utils/aws/ses.js"); // FIXED: Mock SES to prevent 500 server errors on the route
+jest.mock("#utils/aws/ses.js");
 
 import { hashPassword, comparePassword } from "#utils/password.js";
-import { findUser, createUser } from "#modules/auth/auth.model.js";
-import { sendVerificationEmail } from "#utils/aws/ses.js"; // Import mocked SES
+import {
+  findUser,
+  createUser,
+  getUserByVerificationToken,
+  verifyEmailAndClearToken,
+} from "#modules/auth/auth.model.js";
+import { sendVerificationEmail } from "#utils/aws/ses.js";
 
 import app from "#app";
 
@@ -29,28 +34,24 @@ describe("/auth", () => {
       hashPassword.mockResolvedValue("Hashed");
       createUser.mockResolvedValue(null);
 
-      // Invalid first name
       await request(app)
         .post(endpoint + "/signup")
         .send({ ...correctBody, firstName: "" })
         .expect(400)
         .then((res) => expect(res.body.message).toBe("First name is invalid"));
 
-      // Invalid last name
       await request(app)
         .post(endpoint + "/signup")
         .send({ ...correctBody, lastName: "" })
         .expect(400)
         .then((res) => expect(res.body.message).toBe("Last name is invalid"));
 
-      // Invalid email
       await request(app)
         .post(endpoint + "/signup")
         .send({ ...correctBody, email: "" })
         .expect(400)
         .then((res) => expect(res.body.message).toBe("Email is invalid"));
 
-      // Invalid phone number
       await request(app)
         .post(endpoint + "/signup")
         .send({ ...correctBody, phone: "", countryCode: "" })
@@ -59,7 +60,6 @@ describe("/auth", () => {
           expect(res.body.message).toBe("Phone number is invalid"),
         );
 
-      // Invalid password
       await request(app)
         .post(endpoint + "/signup")
         .send({ ...correctBody, password: "" })
@@ -71,9 +71,6 @@ describe("/auth", () => {
 
     it("Should not accept emails that are in the database", async () => {
       findUser.mockResolvedValue(correctBody);
-      hashPassword.mockResolvedValue("Hashed");
-      createUser.mockResolvedValue(null);
-
       await request(app)
         .post(endpoint + "/signup")
         .send({ ...correctBody, email: "test@example.com" })
@@ -89,33 +86,26 @@ describe("/auth", () => {
       findUser.mockResolvedValue(false);
       hashPassword.mockResolvedValue("Hashed");
       createUser.mockResolvedValue({ email: "test@test.com" });
-      sendVerificationEmail.mockResolvedValue(true); // Mock successful email dispatch
+      sendVerificationEmail.mockResolvedValue(true);
 
       await request(app)
         .post(endpoint + "/signup")
         .send(correctBody)
         .expect(201)
-        .then((res) =>
-          // FIXED: Expecting the new message returned by the updated service
-          expect(res.body.message).toContain("Signup successful"),
-        );
+        .then((res) => expect(res.body.message).toContain("Signup successful"));
     });
   });
 
   describe("POST /login", () => {
-    const correctBody = {
-      email: "test@example.com",
-      password: "Example0!",
-    };
+    const correctBody = { email: "test@example.com", password: "Example0!" };
+
     it("Should handle invalid inputs", async () => {
-      // Invalid email
       await request(app)
         .post(endpoint + "/login")
         .send({ ...correctBody, email: "" })
         .expect(400)
         .then((res) => expect(res.body.message).toBe("Email is invalid"));
 
-      // Invalid password
       await request(app)
         .post(endpoint + "/login")
         .send({ ...correctBody, password: "" })
@@ -139,10 +129,9 @@ describe("/auth", () => {
     });
 
     it("Login with valid credentials", async () => {
-      // User exist and verify token is valid
       findUser.mockResolvedValue({
         user_id: 1321,
-        email_verified: true, // FIXED: Added flag to pass the new email_verified check
+        email_verified: true,
         ...correctBody,
       });
       comparePassword.mockResolvedValue(true);
@@ -154,6 +143,54 @@ describe("/auth", () => {
         .then((res) => {
           const token = res.body.token;
           expect(!!jwt.verify(token, process.env.SECRETKEY)).toBe(true);
+        });
+    });
+  });
+
+  describe("POST /verify-email", () => {
+    it("Should return 400 if token is missing", async () => {
+      await request(app)
+        .post(endpoint + "/verify-email")
+        .send({})
+        .expect(400)
+        .then((res) =>
+          expect(res.body.message).toBe("Verification token is required"),
+        );
+    });
+
+    it("Should return 400 if token is invalid or expired", async () => {
+      getUserByVerificationToken.mockResolvedValue(null);
+
+      await request(app)
+        .post(endpoint + "/verify-email")
+        .send({ token: "invalid-token" })
+        .expect(400)
+        .then((res) =>
+          expect(res.body.message).toBe("Invalid verification token"),
+        );
+    });
+
+    it("Should return 200 and a token when verification succeeds", async () => {
+      const fakeUser = {
+        user_id: 1321,
+        email: "test@example.com",
+        verification_expires_at: new Date(Date.now() + 100000),
+      };
+
+      getUserByVerificationToken.mockResolvedValue(fakeUser);
+      verifyEmailAndClearToken.mockResolvedValue({
+        ...fakeUser,
+        email_verified: true,
+      });
+
+      await request(app)
+        .post(endpoint + "/verify-email")
+        .send({ token: "valid-token" })
+        .expect(200)
+        .then((res) => {
+          expect(res.body.message).toBe("Email address verified successfully.");
+          expect(res.body.user.email_verified).toBe(true);
+          expect(res.body.token).toBeDefined();
         });
     });
   });
