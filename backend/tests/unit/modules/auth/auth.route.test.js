@@ -4,9 +4,11 @@ import { describe, expect, jest } from "@jest/globals";
 
 jest.mock("#modules/auth/auth.model.js");
 jest.mock("#utils/password.js");
+jest.mock("#utils/aws/ses.js"); // FIXED: Mock SES to prevent 500 server errors on the route
 
 import { hashPassword, comparePassword } from "#utils/password.js";
 import { findUser, createUser } from "#modules/auth/auth.model.js";
+import { sendVerificationEmail } from "#utils/aws/ses.js"; // Import mocked SES
 
 import app from "#app";
 
@@ -51,7 +53,7 @@ describe("/auth", () => {
       // Invalid phone number
       await request(app)
         .post(endpoint + "/signup")
-        .send({ ...correctBody, phoneNumber: "", countryCode: "" })
+        .send({ ...correctBody, phone: "", countryCode: "" })
         .expect(400)
         .then((res) =>
           expect(res.body.message).toBe("Phone number is invalid"),
@@ -86,14 +88,16 @@ describe("/auth", () => {
     it("Should create a user", async () => {
       findUser.mockResolvedValue(false);
       hashPassword.mockResolvedValue("Hashed");
-      createUser.mockResolvedValue({ message: "User registered successfully" });
+      createUser.mockResolvedValue({ email: "test@test.com" });
+      sendVerificationEmail.mockResolvedValue(true); // Mock successful email dispatch
 
       await request(app)
         .post(endpoint + "/signup")
         .send(correctBody)
         .expect(201)
         .then((res) =>
-          expect(res.body.message).toBe("User registered successfully"),
+          // FIXED: Expecting the new message returned by the updated service
+          expect(res.body.message).toContain("Signup successful"),
         );
     });
   });
@@ -138,6 +142,7 @@ describe("/auth", () => {
       // User exist and verify token is valid
       findUser.mockResolvedValue({
         user_id: 1321,
+        email_verified: true, // FIXED: Added flag to pass the new email_verified check
         ...correctBody,
       });
       comparePassword.mockResolvedValue(true);

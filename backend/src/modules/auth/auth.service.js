@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { sendVerificationEmail } from "#utils/aws/ses.js";
 
 import {
   validName,
@@ -47,6 +49,10 @@ export const registerUser = async ({
 
   const hashPass = await hashPassword(password);
 
+  // Generate the verification token and expiration date
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
   const user = {
     firstName,
     lastName,
@@ -54,24 +60,24 @@ export const registerUser = async ({
     password: hashPass,
     phone,
     countryCode,
+    verificationToken,
+    verificationExpiresAt,
   };
 
   const result = await authModel.createUser(user);
 
   if (!result) throw new AppError("Unable to create a user", 422);
 
-  const token = jwt.sign({ userId: result.user_id }, process.env.SECRETKEY, {
-    expiresIn: "1h",
-  });
+  await sendVerificationEmail(result.email, verificationToken);
 
   return {
     result,
-    token,
+    message:
+      "Signup successful. Please check your email to verify your account.",
   };
 };
 
 export const loginUser = async ({ email, password }) => {
-  // Input validation
   if (!validEmail(email)) throw new AppError("Email is invalid", 400);
 
   const passwordResults = validPassword(password);
@@ -81,10 +87,17 @@ export const loginUser = async ({ email, password }) => {
       400,
     );
 
-  // Database validation
   const user = await authModel.findUser(email);
   if (!user || !(await comparePassword(password, user.password || "")))
     throw new AppError("Invalid credentials, try again", 404);
+
+  // Block login if the email is not verified
+  if (!user.email_verified) {
+    throw new AppError(
+      "Please verify your email address before logging in.",
+      403,
+    );
+  }
 
   const token = jwt.sign({ userId: user.user_id }, process.env.SECRETKEY, {
     expiresIn: "1h",
@@ -94,7 +107,7 @@ export const loginUser = async ({ email, password }) => {
 };
 
 export const getUser = async (token) => {
-  if (!token) return res.status(401).send({ message: "Access denied" });
+  if (!token) throw new AppError("Access denied", 401);
 
   try {
     const decoded = verifyJwtHelper(token);
@@ -104,4 +117,27 @@ export const getUser = async (token) => {
   } catch (_e) {
     throw new AppError("Invalid or expire token", 404);
   }
+};
+
+export const verifyEmailToken = async (token) => {
+  const user = await authModel.getUserByVerificationToken(token);
+  if (!user) throw new AppError("Invalid or expired verification token", 400);
+
+  if (new Date(user.verification_expires_at) < new Date()) {
+    throw new AppError("Verification token has expired.", 400);
+  }
+
+  const emailToSet = user.pending_email || user.email;
+  const updatedUser = await authModel.verifyEmailAndClearToken(
+    user.user_id,
+    emailToSet,
+  );
+
+  const accessToken = jwt.sign(
+    { userId: updatedUser.user_id },
+    process.env.SECRETKEY,
+    { expiresIn: "1h" },
+  );
+
+  return { user: updatedUser, accessToken };
 };
