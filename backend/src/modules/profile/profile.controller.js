@@ -47,21 +47,3 @@ export const requestEmailChange = async (req, res, next) => {
     next(err);
   }
 };
-
-export const verifyEmailChange = async (req, res, next) => {
-  try {
-    const { token } = req.body;
-    if (!token) {
-      return res
-        .status(400)
-        .send({ message: "Verification token is required" });
-    }
-
-    const profile = await profileService.verifyEmailChange(token);
-    return res
-      .status(200)
-      .send({ message: "Email address updated successfully.", profile });
-  } catch (err) {
-    next(err);
-  }
-};

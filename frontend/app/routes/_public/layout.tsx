@@ -7,12 +7,6 @@ export default function publicAppLayout() {
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
-  // const navLinks: any = [
-  //   { label: "Features", href: "#features" },
-  //   { label: "Pricing", href: "#pricing" },
-  //   { label: "Docs", href: "#docs" },
-  // ];
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <Navbar links={[]} showAuth={true} />

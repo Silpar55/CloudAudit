@@ -12,3 +12,9 @@ export const useLogin = () => {
     mutationFn: authService.login,
   });
 };
+
+export const useVerifyEmail = () => {
+  return useMutation({
+    mutationFn: authService.verifyEmail,
+  });
+};

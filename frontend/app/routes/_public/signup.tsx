@@ -5,7 +5,6 @@ import { validEmail, validName, validPassword } from "~/utils/validation";
 import React from "react";
 import { parsePhoneNumber } from "react-phone-number-input";
 import { useSignUp } from "~/hooks/useAuth";
-import { useAuth } from "~/context/AuthContext";
 
 const validateField = (name: string, value: string) => {
   switch (name) {
@@ -28,8 +27,7 @@ const validateField = (name: string, value: string) => {
 };
 
 export default function Signup() {
-  const { mutateAsync } = useSignUp();
-  const { login } = useAuth();
+  const { mutateAsync, isSuccess } = useSignUp();
   const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     firstName: "",
@@ -83,41 +81,42 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newErrors: any = {};
-
-    Object.entries(formData).forEach(([key, value]) => {
-      const error = validateField(key, value as string);
-      if (error) newErrors[key] = error;
-    });
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+    const hasErrors = Object.values(errors).some((err) => err !== "");
+    if (hasErrors) return;
 
     try {
-      const data = await mutateAsync({
+      await mutateAsync({
         ...formData,
         phone: formData.nationalNumber,
       });
-
-      setAlert({
-        title: "Welcome!",
-        message: data.message,
-        visible: true,
-        variant: "success",
-      });
-
-      login(data.token);
     } catch (error: any) {
       setAlert({
-        title: "Error",
-        message: error.response?.data?.message || "Something went wrong",
         visible: true,
+        title: "Signup Failed",
+        message: error.response?.data?.message || "Something went wrong",
         variant: "danger",
+        dismissible: true,
       });
     }
   };
+
+  if (isSuccess) {
+    return (
+      <section className="max-w-2xl mx-auto px-6 py-20 text-center">
+        <h1 className="text-6xl font-bold font-display text-gray-900 dark:text-white mb-6">
+          Check your inbox
+        </h1>
+        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+          We've sent a verification link to{" "}
+          <span className="font-semibold text-aws-orange">
+            {formData.email}
+          </span>
+          .
+        </p>
+        <Button onClick={() => navigate("/login")}>Go to Login</Button>
+      </section>
+    );
+  }
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-20">
