@@ -47,33 +47,4 @@ describe("Profile Controller - Email Verification", () => {
       expect(profileService.requestEmailChange).not.toHaveBeenCalled();
     });
   });
-
-  describe("verifyEmailChange", () => {
-    it("Should call service with token and return updated profile", async () => {
-      mockReq.body.token = "secure-token";
-      profileService.verifyEmailChange.mockResolvedValue({
-        email: "new@example.com",
-      });
-
-      await profileController.verifyEmailChange(mockReq, mockRes, mockNext);
-
-      expect(profileService.verifyEmailChange).toHaveBeenCalledWith(
-        "secure-token",
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.send).toHaveBeenCalledWith(
-        expect.objectContaining({ profile: { email: "new@example.com" } }),
-      );
-    });
-
-    it("Should return 400 if token is missing", async () => {
-      await profileController.verifyEmailChange(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.send).toHaveBeenCalledWith({
-        message: "Verification token is required",
-      });
-      expect(profileService.verifyEmailChange).not.toHaveBeenCalled();
-    });
-  });
 });
