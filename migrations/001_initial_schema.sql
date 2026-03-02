@@ -47,6 +47,8 @@ CREATE TABLE users (
 	phone TEXT NOT NULL,
 	country_code VARCHAR(2) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	is_active BOOLEAN NOT NULL DEFAULT TRUE,
+	deactivated_at TIMESTAMP;
 	UNIQUE(user_id, email)
 );
 

@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { sendVerificationEmail } from "#utils/aws/ses.js";
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} from "#utils/aws/ses.js";
 
 import {
   validName,
@@ -91,7 +94,11 @@ export const loginUser = async ({ email, password }) => {
   if (!user || !(await comparePassword(password, user.password || "")))
     throw new AppError("Invalid credentials, try again", 404);
 
-  // Block login if the email is not verified
+  // SECURITY PATCH: Block zombie logins
+  if (user.is_active === false) {
+    throw new AppError("Invalid credentials, try again", 404); // Keep generic so attackers don't know it's deleted
+  }
+
   if (!user.email_verified) {
     throw new AppError(
       "Please verify your email address before logging in.",
@@ -102,7 +109,6 @@ export const loginUser = async ({ email, password }) => {
   const token = jwt.sign({ userId: user.user_id }, process.env.SECRETKEY, {
     expiresIn: "1h",
   });
-
   return token;
 };
 
@@ -113,6 +119,11 @@ export const getUser = async (token) => {
     const decoded = verifyJwtHelper(token);
     const user = await authModel.findUserById(decoded?.userId);
 
+    // SECURITY PATCH: Invalidate token if user was deactivated
+    if (!user || user.is_active === false) {
+      throw new Error("User deactivated"); // This pushes execution to the catch block
+    }
+
     return user;
   } catch (_e) {
     throw new AppError("Invalid or expire token", 404);
@@ -122,7 +133,8 @@ export const getUser = async (token) => {
 export const verifyEmailToken = async (token) => {
   const user = await authModel.getUserByVerificationToken(token);
 
-  if (!user) {
+  // SECURITY PATCH: Ensure user is active
+  if (!user || user.is_active === false) {
     throw new AppError("Invalid verification token", 400);
   }
 
@@ -158,4 +170,107 @@ export const verifyEmailToken = async (token) => {
   );
 
   return { user: updatedUser, accessToken };
+};
+
+export const deleteAccount = async (userId) => {
+  const user = await authModel.findUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  if (user.is_active === false)
+    throw new AppError("Account is already deactivated.", 400);
+
+  await authModel.deactivateUserTeamMemberships(userId);
+
+  const deactivated = await authModel.deactivateUser(userId);
+  if (!deactivated) throw new AppError("Failed to deactivate account.", 500);
+
+  return { message: "Account deactivated successfully." };
+};
+
+export const changePassword = async (
+  userId,
+  { currentPassword, newPassword },
+) => {
+  const user = await authModel.findUserById(userId);
+  // SECURITY PATCH: Ensure user is active
+  if (!user || user.is_active === false)
+    throw new AppError("User not found", 404);
+
+  const match = await comparePassword(currentPassword, user.password);
+  if (!match) throw new AppError("Current password is incorrect.", 400);
+
+  const passwordErrors = validPassword(newPassword);
+  if (passwordErrors.length)
+    throw new AppError(
+      `Password is invalid: ${passwordErrors.map((e) => e.message).join(", ")}`,
+      400,
+    );
+
+  if (currentPassword === newPassword)
+    throw new AppError(
+      "New password must be different from the current password.",
+      400,
+    );
+
+  const hashed = await hashPassword(newPassword);
+  const updated = await authModel.updateUserPassword(userId, hashed);
+  if (!updated) throw new AppError("Failed to update password.", 500);
+
+  return { message: "Password updated successfully." };
+};
+
+export const requestPasswordReset = async (email) => {
+  if (!validEmail(email)) throw new AppError("Email is invalid", 400);
+
+  const user = await authModel.findUser(email);
+
+  if (!user || user.is_active === false)
+    return {
+      message:
+        "If that email is registered, you will receive a reset link shortly.",
+    };
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  await authModel.setPasswordResetToken(user.user_id, resetToken, expiresAt);
+  await sendPasswordResetEmail(email, resetToken);
+
+  return {
+    message:
+      "If that email is registered, you will receive a reset link shortly.",
+  };
+};
+
+export const resetPassword = async (token, newPassword) => {
+  if (!token) throw new AppError("Reset token is required.", 400);
+
+  const passwordErrors = validPassword(newPassword);
+  if (passwordErrors.length)
+    throw new AppError(
+      `Password is invalid: ${passwordErrors.map((e) => e.message).join(", ")}`,
+      400,
+    );
+
+  const user = await authModel.getUserByVerificationToken(token);
+  if (!user || user.is_active === false)
+    throw new AppError("Invalid or expired reset token.", 400);
+
+  if (user.verification_used_at)
+    throw new AppError("This reset link has already been used.", 400);
+
+  if (new Date(user.verification_expires_at) < new Date())
+    throw new AppError(
+      "Reset token has expired. Please request a new one.",
+      400,
+    );
+
+  const hashed = await hashPassword(newPassword);
+  const updated = await authModel.resetPasswordAndClearToken(
+    user.user_id,
+    hashed,
+  );
+  if (!updated) throw new AppError("Failed to reset password.", 500);
+
+  return { message: "Password reset successfully. You can now log in." };
 };

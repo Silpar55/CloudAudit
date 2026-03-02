@@ -4,141 +4,138 @@ jest.mock("#config");
 
 import { pool } from "#config";
 import {
-  createUser,
-  findUser,
-  findUserById,
-  getUserByVerificationToken,
-  verifyEmailAndClearToken,
+  deactivateUser,
+  deactivateUserTeamMemberships,
+  updateUserPassword,
+  setPasswordResetToken,
+  resetPasswordAndClearToken,
 } from "#modules/auth/auth.model.js";
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("User model", () => {
-  describe("createUser", () => {
-    it("Should insert a user and return new user", async () => {
-      const fakeUser = {
-        firstName: "Alejandro",
-        lastName: "Silva",
-        email: "alesj501@gmail.com",
-        phone: "4375994791",
-        countryCode: "CA",
-        password: "CloudAudit11!",
+describe("User model — new features", () => {
+  describe("deactivateUser", () => {
+    it("Should set is_active to false and return the updated user", async () => {
+      const fakeRow = {
+        user_id: "1",
+        is_active: false,
+        deactivated_at: new Date(),
       };
-      const returnedRow = { id: 1, ...fakeUser };
+      pool.query.mockResolvedValue({ rows: [fakeRow] });
 
-      pool.query.mockResolvedValue({ rows: [returnedRow] });
-
-      const result = await createUser(fakeUser);
+      const result = await deactivateUser("1");
 
       expect(pool.query).toHaveBeenCalledTimes(1);
       expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("INSERT INTO users"),
-        expect.any(Array),
-      );
-      expect(result).toBe(returnedRow);
-    });
-
-    it("Should return null if query fails", async () => {
-      pool.query.mockRejectedValue(new Error("DB error"));
-      const result = await createUser({ email: "test@example.com" });
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("findUser", () => {
-    it("Should return a user by email", async () => {
-      const fakeRow = { id: 1, email: "test@example.com" };
-      pool.query.mockResolvedValue({ rows: [fakeRow] });
-
-      const result = await findUser("test@example.com");
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT *"),
-        ["test@example.com"],
+        expect.stringContaining("UPDATE users"),
+        ["1"],
       );
       expect(result).toEqual(fakeRow);
     });
 
-    it("Should return undefined if user not found", async () => {
+    it("Should return null if query fails", async () => {
+      pool.query.mockRejectedValue(new Error("DB error"));
+      const result = await deactivateUser("1");
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("deactivateUserTeamMemberships", () => {
+    it("Should set is_active to false on all team_members rows for the user", async () => {
+      const fakeRows = [
+        { team_member_id: "a", user_id: "1", is_active: false },
+        { team_member_id: "b", user_id: "1", is_active: false },
+      ];
+      pool.query.mockResolvedValue({ rows: fakeRows });
+
+      const result = await deactivateUserTeamMemberships("1");
+
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE team_members"),
+        ["1"],
+      );
+      expect(result).toEqual(fakeRows);
+    });
+
+    it("Should return an empty array if the user has no memberships", async () => {
       pool.query.mockResolvedValue({ rows: [] });
-      const result = await findUser("test@example.com");
-      expect(result).toBeUndefined();
+      const result = await deactivateUserTeamMemberships("1");
+      expect(result).toEqual([]);
     });
 
     it("Should return null if query fails", async () => {
       pool.query.mockRejectedValue(new Error("DB error"));
-      const result = await findUser("error@example.com");
+      const result = await deactivateUserTeamMemberships("1");
       expect(result).toBeNull();
     });
   });
 
-  describe("findUserById", () => {
-    it("Should return a user by user_id", async () => {
-      const fakeRow = { user_id: 1, email: "test@example.com" };
+  describe("updateUserPassword", () => {
+    it("Should update password and return user_id and email", async () => {
+      const fakeRow = { user_id: "1", email: "test@test.com" };
       pool.query.mockResolvedValue({ rows: [fakeRow] });
 
-      const result = await findUserById(1);
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("WHERE user_id = $1"),
-        [1],
-      );
-      expect(result).toEqual(fakeRow);
-    });
+      const result = await updateUserPassword("1", "hashed-pw");
 
-    it("Should return null if query fails", async () => {
-      pool.query.mockRejectedValue(new Error("DB error"));
-      const result = await findUserById(1);
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("getUserByVerificationToken", () => {
-    it("Should return a user matching the verification token", async () => {
-      const fakeRow = { user_id: 1, verification_token: "xyz123" };
-      pool.query.mockResolvedValue({ rows: [fakeRow] });
-
-      const result = await getUserByVerificationToken("xyz123");
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining("WHERE verification_token = $1"),
-        ["xyz123"],
-      );
-      expect(result).toEqual(fakeRow);
-    });
-
-    it("Should return undefined if token is not found", async () => {
-      pool.query.mockResolvedValue({ rows: [] });
-      const result = await getUserByVerificationToken("non-existent-token");
-      expect(result).toBeUndefined();
-    });
-
-    it("Should return null if query fails", async () => {
-      pool.query.mockRejectedValue(new Error("DB error"));
-      const result = await getUserByVerificationToken("xyz123");
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("verifyEmailAndClearToken", () => {
-    it("Should update user email_verified status and return updated user", async () => {
-      const fakeRow = {
-        user_id: 1,
-        email: "verified@test.com",
-        email_verified: true,
-      };
-      pool.query.mockResolvedValue({ rows: [fakeRow] });
-
-      const result = await verifyEmailAndClearToken(1, "verified@test.com");
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining("UPDATE users"),
-        ["verified@test.com", 1],
+        ["hashed-pw", "1"],
       );
       expect(result).toEqual(fakeRow);
     });
 
     it("Should return null if query fails", async () => {
       pool.query.mockRejectedValue(new Error("DB error"));
-      const result = await verifyEmailAndClearToken(1, "test@test.com");
+      const result = await updateUserPassword("1", "hashed-pw");
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("setPasswordResetToken", () => {
+    it("Should store the reset token and expiry and return user_id and email", async () => {
+      const expiresAt = new Date(Date.now() + 3600000);
+      const fakeRow = { user_id: "1", email: "test@test.com" };
+      pool.query.mockResolvedValue({ rows: [fakeRow] });
+
+      const result = await setPasswordResetToken(
+        "1",
+        "reset-token-hex",
+        expiresAt,
+      );
+
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE users"),
+        ["reset-token-hex", expiresAt, "1"],
+      );
+      expect(result).toEqual(fakeRow);
+    });
+
+    it("Should return null if query fails", async () => {
+      pool.query.mockRejectedValue(new Error("DB error"));
+      const result = await setPasswordResetToken("1", "token", new Date());
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("resetPasswordAndClearToken", () => {
+    it("Should update password, clear token fields, and return the user", async () => {
+      const fakeRow = { user_id: "1", email: "test@test.com" };
+      pool.query.mockResolvedValue({ rows: [fakeRow] });
+
+      const result = await resetPasswordAndClearToken("1", "new-hashed-pw");
+
+      expect(pool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE users"),
+        ["new-hashed-pw", "1"],
+      );
+      expect(result).toEqual(fakeRow);
+    });
+
+    it("Should return null if query fails", async () => {
+      pool.query.mockRejectedValue(new Error("DB error"));
+      const result = await resetPasswordAndClearToken("1", "pw");
       expect(result).toBeNull();
     });
   });

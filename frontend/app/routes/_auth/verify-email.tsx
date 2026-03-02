@@ -88,10 +88,6 @@ export default function VerifyEmailPage() {
           <p className="text-gray-500">
             You’ll be redirected to your dashboard shortly.
           </p>
-
-          <Link to="/dashboard" className="w-full">
-            <Button className="w-full">Go to Dashboard Now</Button>
-          </Link>
         </div>
       )}
 

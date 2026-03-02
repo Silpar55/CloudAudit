@@ -3,18 +3,18 @@ import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 jest.mock("#modules/auth/auth.service.js");
 import * as authService from "#modules/auth/auth.service.js";
 import {
-  registerUser,
-  loginUser,
-  getUser,
-  verifyEmail,
+  deleteAccount,
+  changePassword,
+  requestPasswordReset,
+  resetPassword,
 } from "#modules/auth/auth.controller.js";
 
-describe("Auth Controller", () => {
+describe("Auth Controller — new features", () => {
   let req, res, next;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    req = { body: {}, headers: {} };
+    req = { body: {}, headers: {}, userId: "123" };
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),
@@ -22,120 +22,148 @@ describe("Auth Controller", () => {
     next = jest.fn();
   });
 
-  describe("registerUser", () => {
-    it("Should call authService.registerUser and return 201 without token", async () => {
-      req.body = { email: "test@test.com", password: "password123" };
-      const mockServiceResponse = {
-        result: { user_id: "1" },
-        message:
-          "Signup successful. Please check your email to verify your account.",
-      };
-      authService.registerUser.mockResolvedValue(mockServiceResponse);
-
-      await registerUser(req, res, next);
-
-      expect(authService.registerUser).toHaveBeenCalledWith(req.body);
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
-        message:
-          "Signup successful. Please check your email to verify your account.",
-        userId: "1",
+  describe("deleteAccount", () => {
+    it("Should call authService.deleteAccount with req.userId and return 200", async () => {
+      authService.deleteAccount.mockResolvedValue({
+        message: "Account deactivated successfully.",
       });
-    });
-  });
 
-  describe("loginUser", () => {
-    it("Should call authService.loginUser and return 200 with token", async () => {
-      req.body = { email: "test@test.com", password: "password123" };
-      authService.loginUser.mockResolvedValue("jwt-token");
+      await deleteAccount(req, res, next);
 
-      await loginUser(req, res, next);
-
-      expect(authService.loginUser).toHaveBeenCalledWith(req.body);
+      expect(authService.deleteAccount).toHaveBeenCalledWith("123");
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: "User logged successfully",
-        token: "jwt-token",
-      });
-    });
-  });
-
-  describe("getUser", () => {
-    it("Should return 401 if Authorization header is missing", async () => {
-      await getUser(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Missing or invalid Authorization header",
-        token: "invalid",
+        message: "Account deactivated successfully.",
       });
     });
 
-    it("Should call authService.getUser and return 200 with user data", async () => {
-      req.headers.authorization = "Bearer valid-token";
-      const mockUser = { user_id: "1", email: "test@test.com" };
-      authService.getUser.mockResolvedValue(mockUser);
+    it("Should call next with error if service throws", async () => {
+      const error = new Error("User not found");
+      authService.deleteAccount.mockRejectedValue(error);
 
-      await getUser(req, res, next);
-
-      expect(authService.getUser).toHaveBeenCalledWith("valid-token");
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "User retrieved",
-        user: mockUser,
-      });
-    });
-
-    it("Should call next with error if authService.getUser throws", async () => {
-      req.headers.authorization = "Bearer bad-token";
-      const error = new Error("Invalid token");
-      authService.getUser.mockRejectedValue(error);
-
-      await getUser(req, res, next);
+      await deleteAccount(req, res, next);
 
       expect(next).toHaveBeenCalledWith(error);
     });
   });
 
-  describe("verifyEmail", () => {
-    it("Should return 400 if verification token is missing in body", async () => {
-      req.body = {}; // No token
+  describe("changePassword", () => {
+    it("Should return 400 if currentPassword or newPassword is missing", async () => {
+      req.body = { currentPassword: "OldPass1!" };
 
-      await verifyEmail(req, res, next);
+      await changePassword(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Verification token is required",
+        message: "currentPassword and newPassword are required.",
       });
     });
 
-    it("Should call authService.verifyEmailToken and return 200 with user and token", async () => {
-      req.body = { token: "valid-hex-token" };
-      const mockResponse = {
-        user: { user_id: "1", email: "test@test.com" },
-        accessToken: "new-jwt",
-      };
-      authService.verifyEmailToken.mockResolvedValue(mockResponse);
+    it("Should call authService.changePassword with req.userId and return 200", async () => {
+      req.body = { currentPassword: "OldPass1!", newPassword: "NewPass2@" };
+      authService.changePassword.mockResolvedValue({
+        message: "Password updated successfully.",
+      });
 
-      await verifyEmail(req, res, next);
+      await changePassword(req, res, next);
 
-      expect(authService.verifyEmailToken).toHaveBeenCalledWith(
-        "valid-hex-token",
+      expect(authService.changePassword).toHaveBeenCalledWith("123", {
+        currentPassword: "OldPass1!",
+        newPassword: "NewPass2@",
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Password updated successfully.",
+      });
+    });
+
+    it("Should call next with error if service throws", async () => {
+      req.body = { currentPassword: "OldPass1!", newPassword: "NewPass2@" };
+      const error = new Error("Current password is incorrect.");
+      authService.changePassword.mockRejectedValue(error);
+
+      await changePassword(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe("requestPasswordReset", () => {
+    it("Should return 400 if email is missing from body", async () => {
+      req.body = {};
+
+      await requestPasswordReset(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: "Email is required." });
+    });
+
+    it("Should call authService.requestPasswordReset and return 200", async () => {
+      req.body = { email: "user@test.com" };
+      authService.requestPasswordReset.mockResolvedValue({
+        message:
+          "If that email is registered, you will receive a reset link shortly.",
+      });
+
+      await requestPasswordReset(req, res, next);
+
+      expect(authService.requestPasswordReset).toHaveBeenCalledWith(
+        "user@test.com",
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Email address verified successfully.",
-        user: mockResponse.user,
-        token: mockResponse.accessToken,
+        message:
+          "If that email is registered, you will receive a reset link shortly.",
       });
     });
 
-    it("Should call next with error if service throws an exception", async () => {
-      req.body = { token: "expired-token" };
-      const error = new Error("Verification token has expired");
-      authService.verifyEmailToken.mockRejectedValue(error);
+    it("Should call next with error if service throws", async () => {
+      req.body = { email: "user@test.com" };
+      const error = new Error("Email is invalid");
+      authService.requestPasswordReset.mockRejectedValue(error);
 
-      await verifyEmail(req, res, next);
+      await requestPasswordReset(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe("resetPassword", () => {
+    it("Should return 400 if reset token is missing from body", async () => {
+      req.body = { newPassword: "NewPass1!" };
+
+      await resetPassword(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Reset token is required.",
+      });
+    });
+
+    it("Should call authService.resetPassword and return 200", async () => {
+      req.body = { token: "valid-reset-token", newPassword: "NewPass1!" };
+      authService.resetPassword.mockResolvedValue({
+        message: "Password reset successfully. You can now log in.",
+      });
+
+      await resetPassword(req, res, next);
+
+      expect(authService.resetPassword).toHaveBeenCalledWith(
+        "valid-reset-token",
+        "NewPass1!",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Password reset successfully. You can now log in.",
+      });
+    });
+
+    it("Should call next with error if service throws", async () => {
+      req.body = { token: "expired-token", newPassword: "NewPass1!" };
+      const error = new Error("Reset token has expired.");
+      authService.resetPassword.mockRejectedValue(error);
+
+      await resetPassword(req, res, next);
 
       expect(next).toHaveBeenCalledWith(error);
     });

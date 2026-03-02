@@ -18,3 +18,15 @@ export const useVerifyEmail = () => {
     mutationFn: authService.verifyEmail,
   });
 };
+
+export const useRequestPasswordReset = () => {
+  return useMutation({
+    mutationFn: authService.requestPasswordReset,
+  });
+};
+
+export const useResetPassword = () => {
+  return useMutation({
+    mutationFn: authService.resetPassword,
+  });
+};

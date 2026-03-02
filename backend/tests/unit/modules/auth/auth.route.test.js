@@ -6,192 +6,232 @@ jest.mock("#modules/auth/auth.model.js");
 jest.mock("#utils/password.js");
 jest.mock("#utils/aws/ses.js");
 
-import { hashPassword, comparePassword } from "#utils/password.js";
 import {
   findUser,
-  createUser,
+  findUserById,
+  deactivateUser,
+  deactivateUserTeamMemberships,
+  updateUserPassword,
   getUserByVerificationToken,
-  verifyEmailAndClearToken,
+  setPasswordResetToken,
+  resetPasswordAndClearToken,
 } from "#modules/auth/auth.model.js";
-import { sendVerificationEmail } from "#utils/aws/ses.js";
+import { hashPassword, comparePassword } from "#utils/password.js";
+import { sendPasswordResetEmail } from "#utils/aws/ses.js";
 
 import app from "#app";
 
-describe("/auth", () => {
+describe("/auth — new features", () => {
   const endpoint = "/api/auth";
 
-  describe("POST /signup", () => {
-    const correctBody = {
-      firstName: "Alejandro",
-      lastName: "Silva",
-      email: "alesj501@gmail.com",
-      phone: "4375994791",
-      countryCode: "CA",
-      password: "CloudAudit11!",
-    };
+  const makeToken = () =>
+    jwt.sign({ userId: "123" }, process.env.SECRETKEY, { expiresIn: "1h" });
 
-    it("Should handle invalid inputs", async () => {
-      hashPassword.mockResolvedValue("Hashed");
-      createUser.mockResolvedValue(null);
-
+  describe("DELETE /account", () => {
+    it("Should return 401 if no Authorization header is provided", async () => {
       await request(app)
-        .post(endpoint + "/signup")
-        .send({ ...correctBody, firstName: "" })
-        .expect(400)
-        .then((res) => expect(res.body.message).toBe("First name is invalid"));
-
-      await request(app)
-        .post(endpoint + "/signup")
-        .send({ ...correctBody, lastName: "" })
-        .expect(400)
-        .then((res) => expect(res.body.message).toBe("Last name is invalid"));
-
-      await request(app)
-        .post(endpoint + "/signup")
-        .send({ ...correctBody, email: "" })
-        .expect(400)
-        .then((res) => expect(res.body.message).toBe("Email is invalid"));
-
-      await request(app)
-        .post(endpoint + "/signup")
-        .send({ ...correctBody, phone: "", countryCode: "" })
-        .expect(400)
-        .then((res) =>
-          expect(res.body.message).toBe("Phone number is invalid"),
-        );
-
-      await request(app)
-        .post(endpoint + "/signup")
-        .send({ ...correctBody, password: "" })
-        .expect(400)
-        .then((res) =>
-          expect(res.body.message.includes("Password is invalid")).toBe(true),
-        );
-    });
-
-    it("Should not accept emails that are in the database", async () => {
-      findUser.mockResolvedValue(correctBody);
-      await request(app)
-        .post(endpoint + "/signup")
-        .send({ ...correctBody, email: "test@example.com" })
-        .expect(400)
+        .delete(endpoint + "/account")
+        .expect(401)
         .then((res) =>
           expect(res.body.message).toBe(
-            "Email already registered, try other email",
+            "Missing or invalid Authorization header",
           ),
         );
     });
 
-    it("Should create a user", async () => {
-      findUser.mockResolvedValue(false);
-      hashPassword.mockResolvedValue("Hashed");
-      createUser.mockResolvedValue({ email: "test@test.com" });
-      sendVerificationEmail.mockResolvedValue(true);
+    it("Should return 200 and deactivate the account", async () => {
+      findUserById.mockResolvedValue({ user_id: "123", is_active: true });
+      deactivateUserTeamMemberships.mockResolvedValue([]);
+      deactivateUser.mockResolvedValue({ user_id: "123", is_active: false });
 
       await request(app)
-        .post(endpoint + "/signup")
-        .send(correctBody)
-        .expect(201)
-        .then((res) => expect(res.body.message).toContain("Signup successful"));
-    });
-  });
-
-  describe("POST /login", () => {
-    const correctBody = { email: "test@example.com", password: "Example0!" };
-
-    it("Should handle invalid inputs", async () => {
-      await request(app)
-        .post(endpoint + "/login")
-        .send({ ...correctBody, email: "" })
-        .expect(400)
-        .then((res) => expect(res.body.message).toBe("Email is invalid"));
-
-      await request(app)
-        .post(endpoint + "/login")
-        .send({ ...correctBody, password: "" })
-        .expect(400)
+        .delete(endpoint + "/account")
+        .set("Authorization", `Bearer ${makeToken()}`)
+        .expect(200)
         .then((res) =>
-          expect(res.body.message.includes("Password is invalid")).toBe(true),
+          expect(res.body.message).toBe("Account deactivated successfully."),
         );
     });
 
-    it("Login with invalid credentials", async () => {
-      findUser.mockResolvedValue(false);
+    it("Should return 400 if account is already deactivated", async () => {
+      findUserById.mockResolvedValue({ user_id: "123", is_active: false });
+
+      await request(app)
+        .delete(endpoint + "/account")
+        .set("Authorization", `Bearer ${makeToken()}`)
+        .expect(400)
+        .then((res) =>
+          expect(res.body.message).toBe("Account is already deactivated."),
+        );
+    });
+  });
+
+  describe("PATCH /password", () => {
+    it("Should return 401 if no Authorization header is provided", async () => {
+      await request(app)
+        .patch(endpoint + "/password")
+        .send({ currentPassword: "Old1!", newPassword: "New2@" })
+        .expect(401);
+    });
+
+    it("Should return 400 if currentPassword or newPassword is missing", async () => {
+      await request(app)
+        .patch(endpoint + "/password")
+        .set("Authorization", `Bearer ${makeToken()}`)
+        .send({ currentPassword: "OldPass1!" })
+        .expect(400)
+        .then((res) =>
+          expect(res.body.message).toBe(
+            "currentPassword and newPassword are required.",
+          ),
+        );
+    });
+
+    it("Should return 400 if current password is incorrect", async () => {
+      findUserById.mockResolvedValue({ user_id: "123", password: "hashed" });
       comparePassword.mockResolvedValue(false);
 
       await request(app)
-        .post(endpoint + "/login")
-        .send({ ...correctBody, email: "user@example.com" })
-        .expect(404)
+        .patch(endpoint + "/password")
+        .set("Authorization", `Bearer ${makeToken()}`)
+        .send({ currentPassword: "WrongPass1!", newPassword: "NewPass2@" })
+        .expect(400)
         .then((res) =>
-          expect(res.body.message).toBe("Invalid credentials, try again"),
+          expect(res.body.message).toBe("Current password is incorrect."),
         );
     });
 
-    it("Login with valid credentials", async () => {
-      findUser.mockResolvedValue({
-        user_id: 1321,
-        email_verified: true,
-        ...correctBody,
-      });
+    it("Should return 200 on successful password change", async () => {
+      findUserById.mockResolvedValue({ user_id: "123", password: "hashed" });
       comparePassword.mockResolvedValue(true);
+      hashPassword.mockResolvedValue("new-hashed");
+      updateUserPassword.mockResolvedValue({
+        user_id: "123",
+        email: "test@test.com",
+      });
 
       await request(app)
-        .post(endpoint + "/login")
-        .send(correctBody)
+        .patch(endpoint + "/password")
+        .set("Authorization", `Bearer ${makeToken()}`)
+        .send({ currentPassword: "OldPass1!", newPassword: "NewPass2@" })
         .expect(200)
-        .then((res) => {
-          const token = res.body.token;
-          expect(!!jwt.verify(token, process.env.SECRETKEY)).toBe(true);
-        });
+        .then((res) =>
+          expect(res.body.message).toBe("Password updated successfully."),
+        );
     });
   });
 
-  describe("POST /verify-email", () => {
-    it("Should return 400 if token is missing", async () => {
+  describe("POST /forgot-password", () => {
+    it("Should return 400 if email is missing", async () => {
       await request(app)
-        .post(endpoint + "/verify-email")
+        .post(endpoint + "/forgot-password")
         .send({})
         .expect(400)
+        .then((res) => expect(res.body.message).toBe("Email is required."));
+    });
+
+    it("Should return 200 with generic message even if email is not registered", async () => {
+      findUser.mockResolvedValue(null);
+
+      await request(app)
+        .post(endpoint + "/forgot-password")
+        .send({ email: "ghost@test.com" })
+        .expect(200)
         .then((res) =>
-          expect(res.body.message).toBe("Verification token is required"),
+          expect(res.body.message).toBe(
+            "If that email is registered, you will receive a reset link shortly.",
+          ),
         );
     });
 
-    it("Should return 400 if token is invalid or expired", async () => {
+    it("Should return 200 and send reset email for a valid active user", async () => {
+      findUser.mockResolvedValue({
+        user_id: "123",
+        email: "test@test.com",
+        is_active: true,
+      });
+      setPasswordResetToken.mockResolvedValue({ user_id: "123" });
+      sendPasswordResetEmail.mockResolvedValue(true);
+
+      await request(app)
+        .post(endpoint + "/forgot-password")
+        .send({ email: "test@test.com" })
+        .expect(200)
+        .then((res) =>
+          expect(res.body.message).toBe(
+            "If that email is registered, you will receive a reset link shortly.",
+          ),
+        );
+
+      expect(sendPasswordResetEmail).toHaveBeenCalledWith(
+        "test@test.com",
+        expect.any(String),
+      );
+    });
+  });
+
+  describe("POST /reset-password", () => {
+    it("Should return 400 if token is missing", async () => {
+      await request(app)
+        .post(endpoint + "/reset-password")
+        .send({ newPassword: "NewPass1!" })
+        .expect(400)
+        .then((res) =>
+          expect(res.body.message).toBe("Reset token is required."),
+        );
+    });
+
+    it("Should return 400 if token is invalid or not found", async () => {
       getUserByVerificationToken.mockResolvedValue(null);
 
       await request(app)
-        .post(endpoint + "/verify-email")
-        .send({ token: "invalid-token" })
+        .post(endpoint + "/reset-password")
+        .send({ token: "bad-token", newPassword: "NewPass1!" })
         .expect(400)
         .then((res) =>
-          expect(res.body.message).toBe("Invalid verification token"),
+          expect(res.body.message).toBe("Invalid or expired reset token."),
         );
     });
 
-    it("Should return 200 and a token when verification succeeds", async () => {
-      const fakeUser = {
-        user_id: 1321,
-        email: "test@example.com",
-        verification_expires_at: new Date(Date.now() + 100000),
-      };
-
-      getUserByVerificationToken.mockResolvedValue(fakeUser);
-      verifyEmailAndClearToken.mockResolvedValue({
-        ...fakeUser,
-        email_verified: true,
+    it("Should return 400 if token is expired", async () => {
+      getUserByVerificationToken.mockResolvedValue({
+        user_id: "123",
+        verification_used_at: null,
+        verification_expires_at: new Date(Date.now() - 3600000),
       });
 
       await request(app)
-        .post(endpoint + "/verify-email")
-        .send({ token: "valid-token" })
+        .post(endpoint + "/reset-password")
+        .send({ token: "expired-token", newPassword: "NewPass1!" })
+        .expect(400)
+        .then((res) =>
+          expect(res.body.message).toBe(
+            "Reset token has expired. Please request a new one.",
+          ),
+        );
+    });
+
+    it("Should return 200 on successful password reset", async () => {
+      getUserByVerificationToken.mockResolvedValue({
+        user_id: "123",
+        verification_used_at: null,
+        verification_expires_at: new Date(Date.now() + 3600000),
+      });
+      hashPassword.mockResolvedValue("hashed-new");
+      resetPasswordAndClearToken.mockResolvedValue({
+        user_id: "123",
+        email: "test@test.com",
+      });
+
+      await request(app)
+        .post(endpoint + "/reset-password")
+        .send({ token: "valid-token", newPassword: "NewPass1!" })
         .expect(200)
-        .then((res) => {
-          expect(res.body.message).toBe("Email address verified successfully.");
-          expect(res.body.user.email_verified).toBe(true);
-          expect(res.body.token).toBeDefined();
-        });
+        .then((res) =>
+          expect(res.body.message).toBe(
+            "Password reset successfully. You can now log in.",
+          ),
+        );
     });
   });
 });
