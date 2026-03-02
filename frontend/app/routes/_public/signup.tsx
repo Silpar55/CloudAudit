@@ -27,7 +27,7 @@ const validateField = (name: string, value: string) => {
 };
 
 export default function Signup() {
-  const { mutateAsync, isSuccess } = useSignUp();
+  const { mutateAsync, isSuccess, isPending } = useSignUp();
   const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     firstName: "",
@@ -47,6 +47,15 @@ export default function Signup() {
     visible: false,
     variant: "info",
   });
+
+  const isFormValid =
+    validName(formData.firstName) &&
+    validName(formData.lastName) &&
+    validEmail(formData.email) &&
+    validPassword(formData.password).length === 0 &&
+    formData.phone;
+
+  const isDisabled = !isFormValid || isPending;
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -201,7 +210,9 @@ export default function Signup() {
           errorMessage={errors.phone}
           required
         />
-        <Button className="mt-5">Get started!</Button>
+        <Button className="mt-5" type="submit" disabled={isDisabled}>
+          {isPending ? "Creating account..." : "Get started!"}
+        </Button>
       </form>
     </section>
   );

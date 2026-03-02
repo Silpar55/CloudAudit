@@ -20,7 +20,7 @@ const validateField = (name: string, value: string) => {
 };
 
 export default function Login() {
-  const { mutateAsync } = useLogin();
+  const { mutateAsync, isPending } = useLogin();
   const { login } = useAuth();
 
   const [formData, setFormData] = React.useState({
@@ -36,6 +36,11 @@ export default function Login() {
     visible: false,
     variant: "info",
   });
+
+  const isFormValid =
+    validEmail(formData.email) && validPassword(formData.password).length === 0;
+
+  const isDisabled = !isFormValid || isPending;
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -127,20 +132,32 @@ export default function Login() {
           errorMessage={errors.email}
           required
         />
-        <Input
-          label="Password"
-          placeholder="Enter your password"
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={(e: any) => handleChange("password", e.target.value)}
-          onBlur={(e: any) => handleBlur("password", e.target.value)}
-          error={!!errors.password}
-          errorMessage={errors.password}
-          required
-        />
+        <div>
+          <Input
+            label="Password"
+            placeholder="Enter your password"
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={(e: any) => handleChange("password", e.target.value)}
+            onBlur={(e: any) => handleBlur("password", e.target.value)}
+            error={!!errors.password}
+            errorMessage={errors.password}
+            required
+          />
+          <div className="flex justify-end mt-1">
+            <a
+              href="/forgot-password"
+              className="text-sm font-semibold text-aws-orange hover:text-aws-orange-dark transition-colors"
+            >
+              Forgot your password?
+            </a>
+          </div>
+        </div>
 
-        <Button className="mt-5">Sign in</Button>
+        <Button className="mt-5" disabled={isDisabled}>
+          {isPending ? "Signing in..." : "Sign in"}
+        </Button>
       </form>
     </section>
   );

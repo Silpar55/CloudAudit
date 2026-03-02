@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { authService } from "~/services/authService";
 import { profileService, type ProfilePayload } from "~/services/profileService";
 
 export const useProfile = () => {
@@ -38,6 +39,22 @@ export const useVerifyEmailChange = () => {
       // Refresh profile and auth data once the email is successfully changed
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+};
+
+export const useChangePassword = () => {
+  return useMutation({
+    mutationFn: authService.changePassword,
+  });
+};
+
+export const useDeleteAccount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: authService.deleteAccount,
+    onSuccess: () => {
+      queryClient.clear(); // Clear all data on deletion
     },
   });
 };

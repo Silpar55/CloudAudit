@@ -20,7 +20,9 @@ const Navbar = ({ links = [], showAuth = true, className = "", ...props }) => {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    setTimeout(() => {
+      navigate("/");
+    }, 10);
   };
 
   const firstName = user?.first_name || "User";

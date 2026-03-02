@@ -1,15 +1,17 @@
 import { useProfile } from "~/hooks/useProfile";
 import { Alert, SectionLoader } from "~/components/ui";
-import { EmailSettings, ProfileUpdateForm } from "~/components/profile";
+import {
+  EmailSettings,
+  ProfileUpdateForm,
+  PasswordSettings,
+  DeleteAccount,
+} from "~/components/profile"; // Update imports
 
 export default function ProfilePage() {
   const { data: profile, isLoading, isError } = useProfile();
 
-  if (isLoading) {
-    return <SectionLoader />;
-  }
-
-  if (isError) {
+  if (isLoading) return <SectionLoader />;
+  if (isError)
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-8">
         <Alert
@@ -19,11 +21,9 @@ export default function ProfilePage() {
         />
       </div>
     );
-  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-12">
-      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500 mt-2">
@@ -33,7 +33,6 @@ export default function ProfilePage() {
 
       <hr className="border-gray-200" />
 
-      {/* Section 1: Basic Profile Info */}
       <section>
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -46,12 +45,17 @@ export default function ProfilePage() {
         <ProfileUpdateForm initialData={profile} />
       </section>
 
-      {/* Section 2: Email Management */}
       <section>
         <EmailSettings currentEmail={profile?.email} />
       </section>
 
-      {/* Future Sections (Password, Delete Account) will go here */}
+      <section>
+        <PasswordSettings />
+      </section>
+
+      <section className="pt-8 border-t border-gray-200">
+        <DeleteAccount currentEmail={profile?.email} />
+      </section>
     </div>
   );
 }

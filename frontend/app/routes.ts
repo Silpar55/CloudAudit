@@ -12,6 +12,8 @@ export default [
     index("routes/_public/index.tsx"),
     route("login", "routes/_public/login.tsx"),
     route("signup", "routes/_public/signup.tsx"),
+    route("forgot-password", "routes/_public/forgot-password.tsx"),
+    route("reset-password", "routes/_public/reset-password.tsx"),
   ]),
 
   // Auth/Account routes

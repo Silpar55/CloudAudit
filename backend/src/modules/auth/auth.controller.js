@@ -62,3 +62,55 @@ export const verifyEmail = async (req, res, next) => {
     next(err);
   }
 };
+
+export const deleteAccount = async (req, res, next) => {
+  try {
+    const result = await authService.deleteAccount(req.userId);
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const changePassword = async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword)
+    return res
+      .status(400)
+      .json({ message: "currentPassword and newPassword are required." });
+
+  try {
+    const result = await authService.changePassword(req.userId, {
+      currentPassword,
+      newPassword,
+    });
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const requestPasswordReset = async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: "Email is required." });
+
+  try {
+    const result = await authService.requestPasswordReset(email);
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  const { token, newPassword } = req.body;
+  if (!token)
+    return res.status(400).json({ message: "Reset token is required." });
+
+  try {
+    const result = await authService.resetPassword(token, newPassword);
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};

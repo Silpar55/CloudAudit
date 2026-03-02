@@ -1,6 +1,5 @@
 import { pool } from "#config";
 
-// ADDED: verificationToken and verificationExpiresAt to the whitelist
 const allowedFields = [
   "firstName",
   "lastName",
@@ -13,7 +12,6 @@ const allowedFields = [
 ];
 
 export const createUser = async (user) => {
-  // Whitelist fields
   const safeData = Object.fromEntries(
     Object.entries(user).filter(([key]) => allowedFields.includes(key)),
   );
@@ -106,6 +104,89 @@ export const verifyEmailAndClearToken = async (userId, emailToSet) => {
     return rows[0];
   } catch (error) {
     console.error(error);
+    return null;
+  }
+};
+
+export const deactivateUser = async (userId) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET is_active      = FALSE,
+           deactivated_at = NOW(),
+           email          = CONCAT('deleted_', EXTRACT(EPOCH FROM NOW())::BIGINT, '_', email)
+       WHERE user_id = $1
+       RETURNING *`,
+      [userId],
+    );
+    return rows[0];
+  } catch (error) {
+    console.error("Error deactivating user:", error);
+    return null;
+  }
+};
+
+export const deactivateUserTeamMemberships = async (userId) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE team_members
+       SET is_active = FALSE
+       WHERE user_id = $1
+       RETURNING *`,
+      [userId],
+    );
+    return rows;
+  } catch {
+    return null;
+  }
+};
+
+export const updateUserPassword = async (userId, hashedPassword) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET password = $1
+       WHERE user_id = $2
+       RETURNING user_id, email`,
+      [hashedPassword, userId],
+    );
+    return rows[0];
+  } catch {
+    return null;
+  }
+};
+
+export const setPasswordResetToken = async (userId, token, expiresAt) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET verification_token      = $1,
+           verification_expires_at = $2,
+           verification_used_at    = NULL
+       WHERE user_id = $3
+       RETURNING user_id, email`,
+      [token, expiresAt, userId],
+    );
+    return rows[0];
+  } catch {
+    return null;
+  }
+};
+
+export const resetPasswordAndClearToken = async (userId, hashedPassword) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET password                = $1,
+           verification_token      = NULL,
+           verification_expires_at = NULL,
+           verification_used_at    = NOW()
+       WHERE user_id = $2
+       RETURNING user_id, email`,
+      [hashedPassword, userId],
+    );
+    return rows[0];
+  } catch {
     return null;
   }
 };
