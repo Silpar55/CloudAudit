@@ -121,13 +121,31 @@ export const getUser = async (token) => {
 
 export const verifyEmailToken = async (token) => {
   const user = await authModel.getUserByVerificationToken(token);
-  if (!user) throw new AppError("Invalid or expired verification token", 400);
 
-  if (new Date(user.verification_expires_at) < new Date()) {
+  if (!user) {
+    throw new AppError("Invalid verification token", 400);
+  }
+
+  if (user.verification_used_at) {
+    const accessToken = jwt.sign(
+      { userId: user.user_id },
+      process.env.SECRETKEY,
+      { expiresIn: "1h" },
+    );
+
+    return { user, accessToken };
+  }
+
+  // Expiration check
+  if (
+    user.verification_expires_at &&
+    new Date(user.verification_expires_at) < new Date()
+  ) {
     throw new AppError("Verification token has expired.", 400);
   }
 
   const emailToSet = user.pending_email || user.email;
+
   const updatedUser = await authModel.verifyEmailAndClearToken(
     user.user_id,
     emailToSet,

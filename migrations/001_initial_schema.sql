@@ -32,6 +32,7 @@ CREATE TYPE team_status AS ENUM (
 
 -- USERS TABLE
 
+
 CREATE TABLE users (
 	user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	first_name TEXT NOT NULL,
@@ -41,6 +42,7 @@ CREATE TABLE users (
 	pending_email TEXT,
 	verification_token TEXT,
 	verification_expires_at TIMESTAMP,
+	verification_used_at TIMESTAMP,
 	password TEXT NOT NULL,
 	phone TEXT NOT NULL,
 	country_code VARCHAR(2) NOT NULL,

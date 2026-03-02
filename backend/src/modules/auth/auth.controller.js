@@ -58,6 +58,7 @@ export const verifyEmail = async (req, res, next) => {
       token: accessToken, // Send the token so frontend can seamlessly log them in!
     });
   } catch (err) {
+    console.log(err);
     next(err);
   }
 };

@@ -73,36 +73,11 @@ export const updateProfile = async (
 export const setPendingEmail = async (userId, newEmail, token, expiresAt) => {
   const query = `
     UPDATE users
-    SET pending_email = $1, verification_token = $2, verification_expires_at = $3
+    SET pending_email = $1, verification_token = $2, verification_expires_at = $3, verification_used_at = NULL
     WHERE user_id = $4
     RETURNING user_id, pending_email;
   `;
   const values = [newEmail, token, expiresAt, userId];
   const { rows } = await pool.query(query, values);
-  return rows[0];
-};
-
-export const getUserByVerificationToken = async (token) => {
-  const query = `
-    SELECT user_id, pending_email, verification_expires_at 
-    FROM users 
-    WHERE verification_token = $1
-  `;
-  const { rows } = await pool.query(query, [token]);
-  return rows[0];
-};
-
-export const confirmEmailChange = async (userId, newEmail) => {
-  const query = `
-    UPDATE users
-    SET email = $1, 
-        email_verified = true, 
-        pending_email = NULL, 
-        verification_token = NULL, 
-        verification_expires_at = NULL
-    WHERE user_id = $2
-    RETURNING user_id, email, first_name, last_name;
-  `;
-  const { rows } = await pool.query(query, [newEmail, userId]);
   return rows[0];
 };

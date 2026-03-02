@@ -96,8 +96,7 @@ export const verifyEmailAndClearToken = async (userId, emailToSet) => {
     SET email = $1,
         email_verified = true,
         pending_email = NULL,
-        verification_token = NULL,
-        verification_expires_at = NULL
+        verification_used_at = NOW()
     WHERE user_id = $2
     RETURNING *;
   `;

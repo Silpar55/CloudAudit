@@ -34,26 +34,3 @@ export const requestEmailChange = async (userId, newEmail) => {
 
   return { message: "Verification email sent" };
 };
-
-export const verifyEmailChange = async (token) => {
-  // 1. Retrieve user by token
-  const user = await profileModel.getUserByVerificationToken(token);
-  if (!user) {
-    throw new AppError("Invalid or expired verification token", 400);
-  }
-
-  // 2. Check if token has expired
-  if (new Date(user.verification_expires_at) < new Date()) {
-    throw new AppError(
-      "Verification token has expired. Please request a new email change.",
-      400,
-    );
-  }
-
-  // 3. Confirm the change in the database
-  const updatedProfile = await profileModel.confirmEmailChange(
-    user.user_id,
-    user.pending_email,
-  );
-  return updatedProfile;
-};
