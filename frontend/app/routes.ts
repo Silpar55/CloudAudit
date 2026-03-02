@@ -14,6 +14,11 @@ export default [
     route("signup", "routes/_public/signup.tsx"),
   ]),
 
+  // Auth/Account routes
+  layout("routes/_auth/layout.tsx", [
+    route("verify-email", "routes/_auth/verify-email.tsx"),
+  ]),
+
   // Protected App Area
   layout("routes/_app/layout.tsx", [
     route("dashboard", "routes/_app/dashboard.tsx"),

@@ -52,7 +52,7 @@ export const verifyEmailChange = async (token) => {
 
   // 3. Confirm the change in the database
   const updatedProfile = await profileModel.confirmEmailChange(
-    user.id,
+    user.user_id,
     user.pending_email,
   );
   return updatedProfile;

@@ -11,3 +11,5 @@ export { default as Badge } from "./Badge";
 export { default as Alert } from "./Alert";
 export { default as Spinner } from "./Spinner";
 export { default as Modal } from "./Modal";
+export { default as PageLoader } from "./PageLoader";
+export { default as SectionLoader } from "./SectionLoader";

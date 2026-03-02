@@ -284,14 +284,16 @@ const Sidebar = ({
     >
       {/* ── Logo + Team Switcher ─────────────────────────────────────────── */}
       <div className="p-6 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 bg-linear-to-br from-aws-orange to-brand-coral rounded-xl flex items-center justify-center">
-            <Cloud className="w-6 h-6 text-white" />
+        <Link to="/">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 bg-linear-to-br from-aws-orange to-brand-coral rounded-xl flex items-center justify-center">
+              <Cloud className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-bold font-display text-gray-900 dark:text-white">
+              Cloud<span className="text-aws-orange">Audit</span>
+            </span>
           </div>
-          <span className="text-xl font-bold font-display text-gray-900 dark:text-white">
-            Cloud<span className="text-aws-orange">Audit</span>
-          </span>
-        </div>
+        </Link>
 
         {/* Team Selector */}
         <div className="relative">
