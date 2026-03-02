@@ -38,7 +38,7 @@ describe("Profile Service - Email Verification", () => {
       const futureDate = new Date(Date.now() + 3600000);
 
       profileModel.getUserByVerificationToken.mockResolvedValue({
-        id: "user-1",
+        user_id: "user-1",
         pending_email: "new@example.com",
         verification_expires_at: futureDate,
       });
@@ -71,7 +71,7 @@ describe("Profile Service - Email Verification", () => {
       const pastDate = new Date(Date.now() - 3600000);
 
       profileModel.getUserByVerificationToken.mockResolvedValue({
-        id: "user-1",
+        user_id: "user-1",
         verification_expires_at: pastDate,
       });
 
