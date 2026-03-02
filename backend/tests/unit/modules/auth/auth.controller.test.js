@@ -18,20 +18,27 @@ describe("Auth Controller", () => {
   });
 
   describe("registerUser", () => {
-    it("Should call authService.registerUser and return 201 with token", async () => {
+    it("Should call authService.registerUser and return 201 without token", async () => {
       req.body = { email: "test@test.com", password: "password123" };
-      // FIXED: Service returns user_id
-      const mockResult = { user_id: "1", token: "jwt-token" };
-      authService.registerUser.mockResolvedValue(mockResult);
+
+      // FIXED: Service now returns { result, message }
+      const mockServiceResponse = {
+        result: { user_id: "1" },
+        message:
+          "Signup successful. Please check your email to verify your account.",
+      };
+      authService.registerUser.mockResolvedValue(mockServiceResponse);
 
       await registerUser(req, res, next);
 
       expect(authService.registerUser).toHaveBeenCalledWith(req.body);
       expect(res.status).toHaveBeenCalledWith(201);
+
+      // FIXED: Controller no longer returns a token on signup, it returns the verification message
       expect(res.json).toHaveBeenCalledWith({
-        message: "User registered successfully",
+        message:
+          "Signup successful. Please check your email to verify your account.",
         userId: "1",
-        token: "jwt-token",
       });
     });
   });
@@ -47,7 +54,7 @@ describe("Auth Controller", () => {
       expect(authService.loginUser).toHaveBeenCalledWith(req.body);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: "User loged successfully", // Matching your exact string
+        message: "User logged successfully", // Matching your exact string
         token: "jwt-token",
       });
     });

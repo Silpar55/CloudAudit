@@ -1,5 +1,6 @@
 import { pool } from "#config";
 
+// ADDED: verificationToken and verificationExpiresAt to the whitelist
 const allowedFields = [
   "firstName",
   "lastName",
@@ -7,6 +8,8 @@ const allowedFields = [
   "password",
   "phone",
   "countryCode",
+  "verificationToken",
+  "verificationExpiresAt",
 ];
 
 export const createUser = async (user) => {
@@ -64,6 +67,43 @@ export const findUserById = async (userId) => {
 
   try {
     const { rows } = await pool.query(query, [userId]);
+    return rows[0];
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export const getUserByVerificationToken = async (token) => {
+  const query = `
+    SELECT *
+    FROM users
+    WHERE verification_token = $1;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [token]);
+    return rows[0];
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export const verifyEmailAndClearToken = async (userId, emailToSet) => {
+  const query = `
+    UPDATE users
+    SET email = $1,
+        email_verified = true,
+        pending_email = NULL,
+        verification_token = NULL,
+        verification_expires_at = NULL
+    WHERE user_id = $2
+    RETURNING *;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [emailToSet, userId]);
     return rows[0];
   } catch (error) {
     console.error(error);
