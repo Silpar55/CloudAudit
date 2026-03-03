@@ -5,7 +5,7 @@ import {
   ProfileUpdateForm,
   PasswordSettings,
   DeleteAccount,
-} from "~/components/profile"; // Update imports
+} from "~/components/profile";
 
 export default function ProfilePage() {
   const { data: profile, isLoading, isError } = useProfile();
@@ -13,7 +13,7 @@ export default function ProfilePage() {
   if (isLoading) return <SectionLoader />;
   if (isError)
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-8">
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
         <Alert
           variant="danger"
           title="Error"
@@ -23,39 +23,36 @@ export default function ProfilePage() {
     );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-12">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500 mt-2">
-          Manage your account settings and preferences.
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Page Header */}
+      <div className="mb-10 border-b border-gray-200 dark:border-gray-800 pb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Account Settings
+        </h1>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Manage your account settings, secure your profile, and control your
+          preferences.
         </p>
       </div>
 
-      <hr className="border-gray-200" />
-
-      <section>
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Personal Information
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Update your name and contact details.
-          </p>
+      {/* Settings Sections - Divided by horizontal lines */}
+      <div className="space-y-12 divide-y divide-gray-200 dark:divide-gray-800">
+        <div className="pt-2">
+          <ProfileUpdateForm initialData={profile} />
         </div>
-        <ProfileUpdateForm initialData={profile} />
-      </section>
 
-      <section>
-        <EmailSettings currentEmail={profile?.email} />
-      </section>
+        <div className="pt-12">
+          <EmailSettings currentEmail={profile?.email} />
+        </div>
 
-      <section>
-        <PasswordSettings />
-      </section>
+        <div className="pt-12">
+          <PasswordSettings />
+        </div>
 
-      <section className="pt-8 border-t border-gray-200">
-        <DeleteAccount currentEmail={profile?.email} />
-      </section>
+        <div className="pt-12">
+          <DeleteAccount currentEmail={profile?.email} />
+        </div>
+      </div>
     </div>
   );
 }
