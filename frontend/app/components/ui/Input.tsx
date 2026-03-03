@@ -78,6 +78,7 @@ const Input = ({
               onBlur={onBlur}
               disabled={disabled}
               defaultCountry="CA"
+              international={false}
               className={cn(
                 "[&>.PhoneInputInput]:bg-transparent [&>.PhoneInputInput]:outline-none",
                 "[&>.PhoneInputCountry]:mr-2",
