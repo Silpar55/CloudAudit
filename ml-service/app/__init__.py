@@ -1,0 +1,15 @@
+"""
+app/__init__.py
+Flask application factory.
+"""
+from flask import Flask
+from .routes.health import health_bp
+
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+
+    # --- Register blueprints ---
+    app.register_blueprint(health_bp)
+
+    return app

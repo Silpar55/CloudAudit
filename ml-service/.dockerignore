@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments — never copy local venv into Docker
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+
+# Git
+.git/
+.gitignore
+
+# Docs / editor
+*.md
+.vscode/
+.idea/
