@@ -1,0 +1,18 @@
+# ============================================================
+# CloudAudit ML Service — Python 3.12
+# ============================================================
+
+# --- Web Framework ---
+flask==3.1.1                  # HTTP layer for REST endpoints called by Node.js backend
+gunicorn==23.0.0              # Production WSGI server (never use Flask dev server in Docker)
+
+# --- Data & ML Core ---
+pandas==2.2.3                 # DataFrame manipulation for daily_cost_summaries / cost_data
+numpy==2.2.4                  # Numerical ops underlying scikit-learn models
+scikit-learn==1.6.1           # Isolation Forest for anomaly detection + future models
+
+# --- Database ---
+psycopg2-binary==2.9.10       # PostgreSQL driver — reads daily_cost_summaries, writes cost_anomalies & recommendations
+
+# --- Configuration ---
+python-dotenv==1.1.0          # Loads .env secrets (DB_URL, etc.) without hardcoding
