@@ -1,7 +1,13 @@
--- Database: cloudaudit v6.0
+-- ==============================================================================
+-- CloudAudit v6.0 - Database Reset & Initial Schema Definition
+-- ==============================================================================
 
--- DROP FIRST TABLES WITH FOREIGN KEYS
-DROP VIEW team_dashboard_view;
+-- ==============================================================================
+-- 1. DATABASE RESET (Deletes tables, views, types, and triggers to start fresh)
+-- ==============================================================================
+DROP TRIGGER IF EXISTS trg_update_daily_cost ON cost_data;
+DROP FUNCTION IF EXISTS update_daily_cost_summaries();
+DROP VIEW IF EXISTS team_dashboard_view;
 DROP TABLE IF EXISTS cost_anomalies;
 DROP TABLE IF EXISTS cost_data;
 DROP TABLE IF EXISTS daily_cost_summaries;
@@ -13,9 +19,20 @@ DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS teams;
-DROP TYPE aws_account_status;
-DROP TYPE team_status;
+DROP TYPE IF EXISTS aws_account_status;
+DROP TYPE IF EXISTS team_status;
 
+
+-- ==============================================================================
+-- 2. EXTENSIONS & CONFIGURATIONS
+-- ==============================================================================
+-- Required for native bcrypt password hashing matching Node.js implementation
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+-- ==============================================================================
+-- 3. ENUMS & CUSTOM TYPES 
+-- ==============================================================================
 CREATE TYPE aws_account_status AS ENUM (
     'role_provided',
     'testing',
@@ -30,9 +47,12 @@ CREATE TYPE team_status AS ENUM (
     'suspended'
 );
 
+
+-- ==============================================================================
+-- 4. TABLE CREATION
+-- ==============================================================================
+
 -- USERS TABLE
-
-
 CREATE TABLE users (
 	user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	first_name TEXT NOT NULL,
@@ -52,73 +72,43 @@ CREATE TABLE users (
 	UNIQUE(user_id, email)
 );
 
-
 -- TEAMS TABLE
-
 CREATE TABLE teams (
     team_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
-
     status team_status NOT NULL DEFAULT 'aws_required',
-
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- TEAM_MEMBERS TABLE
-
 CREATE TABLE team_members (
 	team_member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	
-	team_id UUID NOT NULL
-		REFERENCES teams (team_id)
-		ON DELETE CASCADE,
-	
-	user_id UUID NOT NULL
-		REFERENCES users (user_id)
-		ON DELETE CASCADE,
-	
-	role TEXT NOT NULL
-	CHECK (role IN ('owner', 'admin', 'member')),
-
+	team_id UUID NOT NULL REFERENCES teams (team_id) ON DELETE CASCADE,
+	user_id UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+	role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
 	is_active BOOL NOT NULL DEFAULT TRUE,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	
 	UNIQUE (team_id, user_id)
 );
 
-
--- AWS_ACCOUNT TABLE
-
+-- AWS_ACCOUNTS TABLE
 CREATE TABLE aws_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    team_id UUID NOT NULL
-        REFERENCES teams (team_id)
-        ON DELETE CASCADE,
-
+    team_id UUID NOT NULL REFERENCES teams (team_id) ON DELETE CASCADE,
     aws_account_id VARCHAR(12) UNIQUE,
-
     external_id UUID NOT NULL DEFAULT gen_random_uuid(),
     iam_role_arn TEXT NOT NULL,
-
     status aws_account_status NOT NULL DEFAULT 'role_provided',
-
     last_tested_at TIMESTAMP WITH TIME ZONE,
     last_error TEXT,
-
     connected_at TIMESTAMP WITH TIME ZONE,
     disconnected_at TIMESTAMP WITH TIME ZONE,
-
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-
     UNIQUE(team_id)
 );
 
-
-
 -- COST_DATA TABLE
-
 CREATE TABLE cost_data (
     cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
@@ -126,26 +116,24 @@ CREATE TABLE cost_data (
     product_code TEXT NOT NULL,
     usage_type TEXT NOT NULL,
     operation TEXT NOT NULL,
-    resource_id TEXT,  -- NULLABLE: some line items don't have resource_id
+    resource_id TEXT,  
     usage_amount DECIMAL NOT NULL,
     unblended_cost DECIMAL NOT NULL,
-    region TEXT,  -- NULLABLE: some services are global
-    instance_type TEXT,  -- NULLABLE: not applicable to all services
+    region TEXT,  
+    instance_type TEXT,  
     pricing_unit TEXT,
     usage_unit TEXT, 
-    public_cost DECIMAL,  -- NULLABLE
+    public_cost DECIMAL,  
     blended_cost DECIMAL NOT NULL,
     amortized_cost DECIMAL NOT NULL,
-    tag_environment TEXT,  -- NULLABLE
-    tag_project TEXT,  -- NULLABLE
-    tag_owner TEXT,  -- NULLABLE
+    tag_environment TEXT,  
+    tag_project TEXT,  
+    tag_owner TEXT,  
     bill_period DATE NOT NULL,
     loaded_at TIMESTAMP DEFAULT NOW()
 );
 
-
 -- DAILY_COST_SUMMARIES TABLE
-
 CREATE TABLE daily_cost_summaries (
     daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
@@ -155,14 +143,11 @@ CREATE TABLE daily_cost_summaries (
     region TEXT NOT NULL,
     total_cost DECIMAL NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    -- Add source tracking
     data_source VARCHAR(20) DEFAULT 'cur' CHECK (data_source IN ('cur', 'cost_explorer')),
-    -- Prevent duplicates
     UNIQUE(aws_account_id, time_period_start, service, region, data_source)
 );
 
--- NEW: Cost Explorer cache for real-time/recent data
-
+-- COST_EXPLORER_CACHE TABLE
 CREATE TABLE cost_explorer_cache (
     cache_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
@@ -175,17 +160,14 @@ CREATE TABLE cost_explorer_cache (
     usage_quantity DECIMAL,
 	usage_quantity_unit TEXT,
     retrieved_at TIMESTAMP DEFAULT NOW(),
-    -- Cache expiry tracking
     is_stale BOOLEAN DEFAULT FALSE,
     UNIQUE(aws_account_id, time_period_start, service, region)
 );
 
 -- RESOURCES TABLE
-
 CREATE TABLE resources (
 	resource_id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id UUID REFERENCES aws_accounts(id)
-		ON DELETE CASCADE,
+	aws_account_id UUID REFERENCES aws_accounts(id) ON DELETE CASCADE,
 	service TEXT NOT NULL,
 	instance_type TEXT NOT NULL,
 	region TEXT NOT NULL,
@@ -193,7 +175,6 @@ CREATE TABLE resources (
 );
 
 -- COST_ANOMALIES TABLE
-
 CREATE TABLE cost_anomalies (
 	anomaly_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) NOT NULL,
@@ -203,11 +184,13 @@ CREATE TABLE cost_anomalies (
 	expected_cost DECIMAL NOT NULL,
 	deviation_pct DECIMAL NOT NULL,
 	severity INT NOT NULL, 
-	model_version TEXT NOT NULL
+	model_version TEXT NOT NULL,
+	root_cause_details JSONB,
+	UNIQUE (daily_cost_id, model_version)
 );
 
--- RECOMMENDATIONS TABLE
 
+-- RECOMMENDATIONS TABLE
 CREATE TABLE recommendations (
 	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
@@ -220,8 +203,7 @@ CREATE TABLE recommendations (
 	status INTEGER
 );
 
--- AUDIT_LOGS TABLES
-
+-- AUDIT_LOGS TABLE
 CREATE TABLE audit_logs (
 	audit_log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	team_id  UUID REFERENCES teams (team_id) NOT NULL,
@@ -232,27 +214,61 @@ CREATE TABLE audit_logs (
 );
 
 
--- VIEWS
+-- ==============================================================================
+-- 5. VIEWS, FUNCTIONS & TRIGGERS (Automated Data Warehousing)
+-- ==============================================================================
 
+-- TEAM DASHBOARD VIEW
 CREATE VIEW team_dashboard_view AS
 SELECT 
     t.team_id,
     t.name,
     t.description,
     t.status,
-
     COUNT(tm.user_id) FILTER (WHERE tm.is_active = TRUE) AS member_count,
-
     a.aws_account_id,
     a.status AS aws_status,
-
     SUM(dcs.total_cost) AS monthly_cost
-
 FROM teams t
 LEFT JOIN team_members tm ON tm.team_id = t.team_id
 LEFT JOIN aws_accounts a ON a.team_id = t.team_id
 LEFT JOIN daily_cost_summaries dcs
     ON dcs.aws_account_id = a.id
     AND date_trunc('month', dcs.time_period_start) = date_trunc('month', NOW())
-
 GROUP BY t.team_id, a.aws_account_id, a.status;
+
+-- AGGREGATION FUNCTION: Listens to cost_data inserts and UPSERTs into daily_cost_summaries
+CREATE OR REPLACE FUNCTION update_daily_cost_summaries()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO daily_cost_summaries (
+        aws_account_id,
+        time_period_start,
+        time_period_end,
+        service,
+        region,
+        total_cost,
+        data_source
+    )
+    VALUES (
+        NEW.aws_account_id,
+        date_trunc('day', NEW.time_interval),
+        date_trunc('day', NEW.time_interval) + interval '23 hours 59 minutes 59 seconds',
+        NEW.product_code, 
+        NEW.region,
+        NEW.unblended_cost,
+        'cur'
+    )
+    ON CONFLICT (aws_account_id, time_period_start, service, region, data_source)
+    DO UPDATE SET 
+        total_cost = daily_cost_summaries.total_cost + EXCLUDED.total_cost;
+        
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- EVENT LISTENER: Attach the aggregation function to the cost_data table
+CREATE TRIGGER trg_update_daily_cost
+AFTER INSERT ON cost_data
+FOR EACH ROW
+EXECUTE FUNCTION update_daily_cost_summaries();
