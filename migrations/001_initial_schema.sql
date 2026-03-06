@@ -48,10 +48,9 @@ CREATE TABLE users (
 	country_code VARCHAR(2) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	is_active BOOLEAN NOT NULL DEFAULT TRUE,
-	deactivated_at TIMESTAMP;
+	deactivated_at TIMESTAMP,
 	UNIQUE(user_id, email)
 );
-
 
 
 -- TEAMS TABLE
@@ -199,7 +198,7 @@ CREATE TABLE cost_anomalies (
 	anomaly_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) NOT NULL,
 	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
-	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
+	resource_id TEXT REFERENCES resources (resource_id),
 	detected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	expected_cost DECIMAL NOT NULL,
 	deviation_pct DECIMAL NOT NULL,
@@ -212,7 +211,7 @@ CREATE TABLE cost_anomalies (
 CREATE TABLE recommendations (
 	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
-	resource_id TEXT REFERENCES resources (resource_id) NOT NULL,
+	resource_id TEXT REFERENCES resources (resource_id),
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
 	recommendation_type TEXT NOT NULL, 
 	description TEXT NOT NULL,
