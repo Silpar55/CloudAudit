@@ -29,16 +29,11 @@ export const getTeamsByUserId = async (userId) => {
   return teams;
 };
 
-export const getTeamById = async (teamId) => {
-  const team = await teamModel.getTeamById(teamId);
-
-  return team;
-};
+// PERFORMANCE FIX: getTeamById was removed from the service
+// because it is now handled directly by the middleware and controller.
 
 export const getTeamMemberById = async (teamId, userId) => {
   const teamMember = await teamModel.getTeamMemberById(teamId, userId);
-  // Return user information and teamMember information
-
   return teamMember;
 };
 
@@ -87,7 +82,7 @@ export const addTeamMember = async (email, teamId) => {
 };
 
 export const deactivateTeamMember = async (teamId, userId) => {
-  // Check if user is in the team
+  // Check if target user is in the team
   const member = await teamModel.getTeamMemberById(teamId, userId);
 
   if (!member) throw new AppError("User is not in the team", 404);
@@ -105,7 +100,7 @@ export const changeMemberRole = async (teamId, userId, newRole) => {
   // Confirm is a valid role
   if (!TEAM_ROLES[newRole]) throw new AppError("This role does not exist", 404);
 
-  // Check if user is in the team
+  // Check if target user is in the team
   const member = await teamModel.getTeamMemberById(teamId, userId);
   if (!member) throw new AppError("User is not in the team", 404);
 
