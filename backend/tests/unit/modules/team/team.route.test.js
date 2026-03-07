@@ -110,7 +110,7 @@ describe("/team", () => {
       const teamId = "123";
       deleteTeam.mockResolvedValueOnce({ team_id: teamId });
       const response = await request(app).delete(`${url}/${teamId}`);
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(200);
       expect(response.body.deletedTeamId).toBe(teamId);
     });
   });
@@ -175,16 +175,16 @@ describe("/team", () => {
       const response = await request(app).delete(
         `${url}/${teamId}/members/unactive-user-id`,
       );
-      expect(response.status).toBe(201);
-      expect(response.body.message).toBe("Member removed into the team");
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Member removed from the team");
     });
 
     it("Should remove the member correctly", async () => {
       const response = await request(app).delete(
         `${url}/${teamId}/members/active-user-id`,
       );
-      expect(response.status).toBe(201);
-      expect(response.body.message).toBe("Member removed into the team");
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Member removed from the team");
     });
   });
 
@@ -213,8 +213,8 @@ describe("/team", () => {
       const response = await request(app)
         .patch(`${url}/${teamId}/members/active-user-id`)
         .send({ newRole: "admin" });
-      expect(response.status).toBe(201);
-      expect(response.body.message).toBe(`Member change from member to admin`);
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe(`Member changed from member to admin`);
     });
   });
 });

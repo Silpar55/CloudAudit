@@ -3,8 +3,7 @@ import * as teamService from "./team.service.js";
 export const getTeamsByUserId = async (req, res, next) => {
   try {
     const teams = await teamService.getTeamsByUserId(req.userId);
-
-    return res.status(201).send({ teams });
+    return res.status(200).send({ teams }); // Changed 201 to 200 (Standard for GET)
   } catch (err) {
     next(err);
   }
@@ -12,11 +11,9 @@ export const getTeamsByUserId = async (req, res, next) => {
 
 export const getTeamById = async (req, res, next) => {
   try {
-    const { teamId } = req.params;
-
-    const team = await teamService.getTeamById(teamId);
-
-    return res.status(201).send({ team });
+    // PERFORMANCE FIX: req.team is populated by verifyTeamId middleware.
+    // Zero redundant database calls!
+    return res.status(200).send({ team: req.team });
   } catch (err) {
     next(err);
   }
@@ -25,7 +22,6 @@ export const getTeamById = async (req, res, next) => {
 export const createTeam = async (req, res, next) => {
   try {
     const { name, description } = req.body;
-
     const teamId = await teamService.createTeam(name, req.userId, description);
 
     return res
@@ -55,12 +51,11 @@ export const updateTeam = async (req, res, next) => {
 export const deleteTeam = async (req, res, next) => {
   try {
     const { teamId } = req.params;
-
     const deletedTeamId = await teamService.deleteTeam(teamId);
 
     return res
-      .status(201)
-      .send({ message: "Team deleted successfully", deletedTeamId });
+      .status(200)
+      .send({ message: "Team deleted successfully", deletedTeamId }); // Changed 201 to 200
   } catch (err) {
     next(err);
   }
@@ -69,10 +64,9 @@ export const deleteTeam = async (req, res, next) => {
 export const getTeamMemberById = async (req, res, next) => {
   try {
     const { teamId } = req.params;
-
     const teamMember = await teamService.getTeamMemberById(teamId, req.userId);
 
-    return res.status(201).send({ teamMember });
+    return res.status(200).send({ teamMember }); // Changed 201 to 200
   } catch (err) {
     next(err);
   }
@@ -98,8 +92,8 @@ export const deactivateTeamMember = async (req, res, next) => {
     const teamMemberId = await teamService.deactivateTeamMember(teamId, userId);
 
     return res
-      .status(201)
-      .send({ message: "Member removed into the team", teamMemberId });
+      .status(200)
+      .send({ message: "Member removed from the team", teamMemberId }); // Changed 201 to 200
   } catch (err) {
     next(err);
   }
@@ -115,10 +109,10 @@ export const changeMemberRole = async (req, res, next) => {
       newRole,
     );
 
-    return res.status(201).send({
-      message: `Member change from ${prevRole} to ${role}`,
+    return res.status(200).send({
+      message: `Member changed from ${prevRole} to ${role}`,
       teamMemberId,
-    });
+    }); // Changed 201 to 200
   } catch (err) {
     next(err);
   }

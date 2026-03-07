@@ -19,7 +19,13 @@ describe("Team Controller", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    req = { body: {}, params: {}, userId: "user-123" };
+    req = {
+      body: {},
+      params: {},
+      userId: "user-123",
+      team: {},
+      teamMember: {},
+    };
     res = {
       status: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnThis(),
@@ -28,10 +34,10 @@ describe("Team Controller", () => {
   });
 
   describe("getTeamsByUserId", () => {
-    it("Should fetch teams and return 201", async () => {
+    it("Should fetch teams and return 200", async () => {
       teamService.getTeamsByUserId.mockResolvedValue([{ team_id: "team-123" }]);
       await getTeamsByUserId(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith({
         teams: [{ team_id: "team-123" }],
       });
@@ -46,20 +52,17 @@ describe("Team Controller", () => {
   });
 
   describe("getTeamById", () => {
-    it("Should fetch a single team and return 201", async () => {
+    it("Should fetch a single team directly from req.team and return 200", async () => {
       req.params = { teamId: "team-123" };
-      teamService.getTeamById.mockResolvedValue({ team_id: "team-123" });
-      await getTeamById(req, res, next);
-      expect(teamService.getTeamById).toHaveBeenCalledWith("team-123");
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.send).toHaveBeenCalledWith({ team: { team_id: "team-123" } });
-    });
+      // Middleware now injects this, bypassing the service
+      req.team = { team_id: "team-123", name: "Engineering" };
 
-    it("Should handle errors and call next()", async () => {
-      const error = new Error("DB Error");
-      teamService.getTeamById.mockRejectedValue(error);
       await getTeamById(req, res, next);
-      expect(next).toHaveBeenCalledWith(error);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith({
+        team: { team_id: "team-123", name: "Engineering" },
+      });
     });
   });
 
@@ -100,7 +103,7 @@ describe("Team Controller", () => {
   });
 
   describe("getTeamMemberById", () => {
-    it("Should fetch team member and return 201", async () => {
+    it("Should fetch team member and return 200", async () => {
       req.params = { teamId: "team-123" };
       teamService.getTeamMemberById.mockResolvedValue({ role: "admin" });
       await getTeamMemberById(req, res, next);
@@ -108,7 +111,7 @@ describe("Team Controller", () => {
         "team-123",
         "user-123",
       );
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     it("Should handle errors and call next()", async () => {
@@ -130,16 +133,16 @@ describe("Team Controller", () => {
   });
 
   describe("deactivateTeamMember", () => {
-    it("Should deactivate a member and return 201", async () => {
+    it("Should deactivate a member and return 200", async () => {
       req.params = { teamId: "team-123", userId: "user-456" };
       teamService.deactivateTeamMember.mockResolvedValue("tm-123");
       await deactivateTeamMember(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 
   describe("changeMemberRole", () => {
-    it("Should change role and return 201", async () => {
+    it("Should change role and return 200", async () => {
       req.body = { newRole: "admin" };
       req.params = { teamId: "team-123", userId: "user-456" };
       teamService.changeMemberRole.mockResolvedValue({
@@ -148,16 +151,16 @@ describe("Team Controller", () => {
         role: "admin",
       });
       await changeMemberRole(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 
   describe("deleteTeam", () => {
-    it("Should delete team and return 201", async () => {
+    it("Should delete team and return 200", async () => {
       req.params = { teamId: "team-123" };
       teamService.deleteTeam.mockResolvedValue("team-123");
       await deleteTeam(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 });
