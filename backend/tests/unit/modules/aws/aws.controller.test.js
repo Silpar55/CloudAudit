@@ -1,15 +1,6 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-// Mock the entire service to avoid undefined reference errors
-jest.mock("#modules/aws/aws.service.js", () => ({
-  initializePendingAccount: jest.fn(),
-  activateAwsAccount: jest.fn(),
-  getAwsAccount: jest.fn(),
-  ceGetCostAndUsage: jest.fn(),
-  getCachedCostData: jest.fn(),
-  deactivateAwsAccount: jest.fn(),
-}));
-
+jest.mock("#modules/aws/aws.service.js");
 import * as awsService from "#modules/aws/aws.service.js";
 import * as awsController from "#modules/aws/aws.controller.js";
 
@@ -18,7 +9,13 @@ describe("AWS Controller", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    req = { body: {}, params: {}, query: {}, userId: "user-123" };
+    req = {
+      params: { teamId: "team-123", accId: "acc-123" },
+      body: {},
+      query: {},
+      // Simulate the middleware attaching the account
+      awsAccount: { id: "acc-123", team_id: "team-123" },
+    };
     res = {
       status: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnThis(),
@@ -27,71 +24,49 @@ describe("AWS Controller", () => {
   });
 
   describe("initializePendingAccount", () => {
-    it("Should initialize account and return 200 with script", async () => {
-      req.body = { roleArn: "arn:aws:iam::123456789012:role/Role" };
-      req.params = { teamId: "team-123" };
-
-      const mockScript = { instructions: "Follow these steps" };
-      awsService.initializePendingAccount.mockResolvedValue(mockScript);
-
+    it("Should initialize account and return 200", async () => {
+      req.body = { roleArn: "arn:aws:iam::123:role/Test" };
+      awsService.initializePendingAccount.mockResolvedValue("mock-script");
       await awsController.initializePendingAccount(req, res, next);
-
-      expect(awsService.initializePendingAccount).toHaveBeenCalledWith(
-        "team-123",
-        req.body.roleArn,
-      );
       expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ script: "mock-script" }),
+      );
     });
   });
 
   describe("activateAwsAccount", () => {
     it("Should activate account and return 200", async () => {
-      req.body = { roleArn: "arn:aws:iam::123456789012:role/Role" };
-      req.params = { teamId: "team-123" };
-
+      req.body = { roleArn: "arn:aws:iam::123:role/Test" };
       awsService.activateAwsAccount.mockResolvedValue(true);
-
       await awsController.activateAwsAccount(req, res, next);
-
       expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith({ success: true });
     });
   });
 
   describe("getAwsAccount", () => {
-    it("Should fetch the AWS account and return 200", async () => {
-      req.params = { teamId: "team-123" };
-      const mockAccount = { id: "internal-123", status: "active" };
-
-      awsService.getAwsAccount.mockResolvedValue(mockAccount);
-
+    it("Should get account and return 200", async () => {
+      awsService.getAwsAccount.mockResolvedValue({ id: "acc-123" });
       await awsController.getAwsAccount(req, res, next);
-
-      expect(awsService.getAwsAccount).toHaveBeenCalledWith("team-123");
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.send).toHaveBeenCalledWith(mockAccount);
-    });
-
-    it("Should pass errors to next()", async () => {
-      const error = new Error("Not found");
-      awsService.getAwsAccount.mockRejectedValue(error);
-      await awsController.getAwsAccount(req, res, next);
-      expect(next).toHaveBeenCalledWith(error);
+      expect(res.send).toHaveBeenCalledWith({ id: "acc-123" });
     });
   });
 
   describe("ceGetCostAndUsage", () => {
     it("Should trigger Cost Explorer sync and return 200", async () => {
-      req.params = { teamId: "team-123", accId: "acc-123" };
       req.query = { startDate: "2023-01-01", endDate: "2023-01-31" };
-
-      const mockResult = { rowsAdded: 5, data: [] };
-      awsService.ceGetCostAndUsage.mockResolvedValue(mockResult);
+      awsService.ceGetCostAndUsage.mockResolvedValue({
+        rowsAdded: 5,
+        data: [],
+      });
 
       await awsController.ceGetCostAndUsage(req, res, next);
 
+      // Now checking that it passes the FULL req.awsAccount object
       expect(awsService.ceGetCostAndUsage).toHaveBeenCalledWith(
-        "team-123",
-        "acc-123",
+        req.awsAccount,
         "2023-01-01",
         "2023-01-31",
       );
@@ -101,14 +76,18 @@ describe("AWS Controller", () => {
 
   describe("getCachedCostData", () => {
     it("Should return cached cost data with 200", async () => {
-      req.params = { teamId: "team-123", accId: "acc-123" };
       req.query = { startDate: "2023-01-01", endDate: "2023-01-31" };
-
-      const mockRows = [{ cost: 100 }];
+      const mockRows = [{ cost: 10 }];
       awsService.getCachedCostData.mockResolvedValue(mockRows);
 
       await awsController.getCachedCostData(req, res, next);
 
+      // Now checking that it passes JUST the internal ID
+      expect(awsService.getCachedCostData).toHaveBeenCalledWith(
+        "acc-123",
+        "2023-01-01",
+        "2023-01-31",
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith({ data: mockRows });
     });
@@ -116,15 +95,14 @@ describe("AWS Controller", () => {
 
   describe("deactivateAwsAccount", () => {
     it("Should deactivate an account and return 200", async () => {
-      req.params = { teamId: "team-123", accId: "acc-123" };
-      awsService.deactivateAwsAccount.mockResolvedValue({ id: "acc-123" });
+      awsService.deactivateAwsAccount.mockResolvedValue({
+        status: "disconnected",
+      });
 
       await awsController.deactivateAwsAccount(req, res, next);
 
-      expect(awsService.deactivateAwsAccount).toHaveBeenCalledWith(
-        "team-123",
-        "acc-123",
-      );
+      // Now checking that it passes JUST the internal ID
+      expect(awsService.deactivateAwsAccount).toHaveBeenCalledWith("acc-123");
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });

@@ -1,11 +1,11 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-// FIXED: Mock the exact function used in the middleware
+// Mock the correct function that the middleware now uses
 jest.mock("#modules/aws/aws.model.js", () => ({
-  findAwsAccountByAccId: jest.fn(),
+  findAwsAccountById: jest.fn(),
 }));
 
-import { findAwsAccountByAccId } from "#modules/aws/aws.model.js";
+import { findAwsAccountById } from "#modules/aws/aws.model.js";
 import { verifyAwsAccId } from "#middleware";
 
 describe("verifyAwsAccId Middleware", () => {
@@ -15,7 +15,7 @@ describe("verifyAwsAccId Middleware", () => {
     req = {
       params: {
         teamId: "team-123",
-        accId: "aws-acc-456",
+        accId: "acc-456", // Internal UUID
       },
     };
     res = {
@@ -27,44 +27,42 @@ describe("verifyAwsAccId Middleware", () => {
     jest.clearAllMocks();
   });
 
-  it("Should call next() if the AWS account exists", async () => {
+  it("Should call next() and attach awsAccount if the account exists and matches team", async () => {
     const mockAccount = {
-      aws_account_id: "aws-acc-456",
+      id: "acc-456",
       team_id: "team-123",
       is_active: true,
     };
-    findAwsAccountByAccId.mockResolvedValue(mockAccount);
+    findAwsAccountById.mockResolvedValue(mockAccount);
 
     await verifyAwsAccId(req, res, next);
 
-    expect(findAwsAccountByAccId).toHaveBeenCalledWith(
-      "aws-acc-456",
-      "team-123",
-    );
+    expect(findAwsAccountById).toHaveBeenCalledWith("acc-456");
+    expect(req.awsAccount).toEqual(mockAccount); // Ensure it was attached
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
   });
 
   it("Should return 404 if the AWS account does not exist", async () => {
-    findAwsAccountByAccId.mockResolvedValue(null);
+    findAwsAccountById.mockResolvedValue(null);
 
     await verifyAwsAccId(req, res, next);
 
-    expect(findAwsAccountByAccId).toHaveBeenCalledWith(
-      "aws-acc-456",
-      "team-123",
-    );
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: "Account id does not exists",
+        message: "Account not found or access denied",
       }),
     );
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("Should return 404 if findAwsAccountByAccId returns undefined", async () => {
-    findAwsAccountByAccId.mockResolvedValue(undefined);
+  it("Should return 404 if the AWS account belongs to a different team", async () => {
+    const mockAccount = {
+      id: "acc-456",
+      team_id: "wrong-team", // Mismatch!
+    };
+    findAwsAccountById.mockResolvedValue(mockAccount);
 
     await verifyAwsAccId(req, res, next);
 
