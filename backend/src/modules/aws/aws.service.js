@@ -55,17 +55,6 @@ export const activateAwsAccount = async (teamId, roleArn) => {
   return true;
 };
 
-export const deactivateAwsAccount = async (teamId, internalAccId) => {
-  const account = await awsModel.findAwsAccountById(internalAccId);
-
-  if (!account || account.team_id !== teamId) {
-    throw new AppError("Account not found or access denied", 404);
-  }
-
-  const result = await awsModel.deactivateAwsAccount(internalAccId);
-  return result;
-};
-
 /**
  * Get the AWS account record for a team.
  * Used by the dashboard on first load to retrieve the internal UUID.
@@ -81,31 +70,17 @@ export const getAwsAccount = async (teamId) => {
   return safeAccount;
 };
 
-/**
- * Trigger a Cost Explorer sync for the given account + date range.
- * Upserts rows into cost_explorer_cache (ON CONFLICT DO UPDATE in the model).
- * Returns both rowsAdded count AND the freshly cached rows so the
- * frontend can render immediately without a second round-trip.
- *
- * NOTE: accId here is the internal UUID (aws_accounts.id), NOT the
- * 12-digit AWS account ID. The route /:accId carries the internal UUID.
- */
+export const deactivateAwsAccount = async (internalAccId) => {
+  // Redundant DB query and ownership check removed!
+  const result = await awsModel.deactivateAwsAccount(internalAccId);
+  return result;
+};
+
 export const ceGetCostAndUsage = async (
-  teamId,
-  accId,
+  account, // Now expects the full account object from the controller
   startDate = dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   endDate = dayjs().format("YYYY-MM-DD"),
 ) => {
-  // Look up by internal UUID — the frontend sends aws_accounts.id
-  const account = await awsModel.findAwsAccountById(accId);
-
-  if (!account) throw new AppError("Account not found", 404);
-
-  // Ownership check — make sure this account belongs to the requesting team
-  if (account.team_id !== teamId) {
-    throw new AppError("Account not found or access denied", 403);
-  }
-
   const result = await getCostAndUsage(account, startDate, endDate);
 
   let rowsAdded = 0;
@@ -128,35 +103,17 @@ export const ceGetCostAndUsage = async (
     }),
   );
 
-  // After upserting, read back the full cached rows for this date window
-  // so the frontend gets data in a single round-trip — no second request needed.
   const rows = await awsModel.getCachedCostData(account.id, startDate, endDate);
 
   return { rowsAdded, data: rows ?? [] };
 };
 
-/**
- * Read cached Cost Explorer rows from the DB — no AWS API call.
- * The frontend calls this endpoint for normal page loads / date range changes
- * after the initial sync has already populated the cache.
- *
- * accId is the internal UUID (aws_accounts.id).
- */
 export const getCachedCostData = async (
-  teamId,
-  accId,
+  internalId, // Now expects just the string ID from the controller
   startDate = dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   endDate = dayjs().format("YYYY-MM-DD"),
 ) => {
-  const account = await awsModel.findAwsAccountById(accId);
-
-  if (!account) throw new AppError("Account not found", 404);
-
-  if (account.team_id !== teamId) {
-    throw new AppError("Account not found or access denied", 403);
-  }
-
-  const rows = await awsModel.getCachedCostData(account.id, startDate, endDate);
+  const rows = await awsModel.getCachedCostData(internalId, startDate, endDate);
 
   if (rows === null) {
     throw new AppError("Failed to retrieve cached cost data", 500);
