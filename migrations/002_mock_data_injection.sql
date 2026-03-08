@@ -2,19 +2,19 @@
 -- CloudAudit v6.0 - Mock Data Injection Script (Event-Driven Data Warehousing)
 -- ==============================================================================
 
--- 1. MOCK USERS (Passwords: 'Test_11!' - Hashed with custom salt '2004_cloudaudit_11')
+-- 1. MOCK USERS (Passwords: 'Test_11!' - Hashed )
 -- email_verified set to TRUE to allow immediate UI login
 INSERT INTO users (user_id, first_name, last_name, email, email_verified, password, phone, country_code, is_active, created_at) VALUES
-('11111111-1111-4111-a111-111111111111', 'Alejandro', 'Silva', 'asilva.tech@gmail.com', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550100', 'CA', TRUE, NOW()),
-('22222222-2222-4222-a222-222222222222', 'Sarah', 'Connor', 's.connor@stabletech.com', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550101', 'US', TRUE, NOW()),
-('33333333-3333-4333-a333-333333333333', 'Marcus', 'Wright', 'm.wright@spikecorp.com', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550102', 'US', TRUE, NOW()),
-('44444444-4444-4444-a444-444444444444', 'Elena', 'Rust', 'elena@spikecorp.com', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550103', 'UK', TRUE, NOW()),
-('55555555-5555-4555-a555-555555555555', 'David', 'Kim', 'dkim@spikecorp.com', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550104', 'CA', TRUE, NOW()),
-('66666666-6666-4666-a666-666666666666', 'Priya', 'Patel', 'priya@volatilelabs.io', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550105', 'IN', TRUE, NOW()),
-('77777777-7777-4777-a777-777777777777', 'James', 'Holden', 'jholden@volatilelabs.io', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550106', 'US', TRUE, NOW()),
-('88888888-8888-4888-a888-888888888888', 'Naomi', 'Nagata', 'naomi@volatilelabs.io', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550107', 'JP', TRUE, NOW()),
-('99999999-9999-4999-a999-999999999999', 'Amos', 'Burton', 'amos@volatilelabs.io', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550108', 'US', TRUE, NOW()),
-('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', 'Chrisjen', 'Avasarala', 'chrisjen@volatilelabs.io', TRUE, crypt('Test_11!', '2004_cloudaudit_11'), '5550109', 'IN', TRUE, NOW());
+('11111111-1111-4111-a111-111111111111', 'Alejandro', 'Silva', 'asilva.tech@gmail.com', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550100', 'CA', TRUE, NOW()),
+('22222222-2222-4222-a222-222222222222', 'Sarah', 'Connor', 's.connor@stabletech.com', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550101', 'US', TRUE, NOW()),
+('33333333-3333-4333-a333-333333333333', 'Marcus', 'Wright', 'm.wright@spikecorp.com', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550102', 'US', TRUE, NOW()),
+('44444444-4444-4444-a444-444444444444', 'Elena', 'Rust', 'elena@spikecorp.com', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550103', 'UK', TRUE, NOW()),
+('55555555-5555-4555-a555-555555555555', 'David', 'Kim', 'dkim@spikecorp.com', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550104', 'CA', TRUE, NOW()),
+('66666666-6666-4666-a666-666666666666', 'Priya', 'Patel', 'priya@volatilelabs.io', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550105', 'IN', TRUE, NOW()),
+('77777777-7777-4777-a777-777777777777', 'James', 'Holden', 'jholden@volatilelabs.io', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550106', 'US', TRUE, NOW()),
+('88888888-8888-4888-a888-888888888888', 'Naomi', 'Nagata', 'naomi@volatilelabs.io', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550107', 'JP', TRUE, NOW()),
+('99999999-9999-4999-a999-999999999999', 'Amos', 'Burton', 'amos@volatilelabs.io', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550108', 'US', TRUE, NOW()),
+('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', 'Chrisjen', 'Avasarala', 'chrisjen@volatilelabs.io', TRUE,  '$2b$10$IxMhNurlQe/JdeX/2JUIeeln5Qc3UupfY8lHByNAnItr3NvCz9Hza', '5550109', 'IN', TRUE, NOW());
 
 -- 2. MOCK TEAMS
 INSERT INTO teams (team_id, name, status, created_at) VALUES
