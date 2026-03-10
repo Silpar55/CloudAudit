@@ -4,8 +4,8 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  useRef,
   useEffect,
+  useRef,
 } from "react";
 import {
   AreaChart,
@@ -29,543 +29,25 @@ import {
   Globe,
   Calendar,
   AlertCircle,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   CloudOff,
-  Search,
-  X,
+  Sparkles,
+  Info,
 } from "lucide-react";
-import {
-  useGetCachedCostData,
-  useSyncCostAndUsage,
-  type CostRow,
-} from "~/hooks/useAws";
+import { useGetCachedCostData, useSyncCostAndUsage } from "~/hooks/useAws";
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useParams } from "react-router";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Refactored Component Imports ─────────────────────────────────────────────
+import {
+  fmt,
+  fmtShort,
+  fmtDate,
+  daysAgo,
+  today,
+  colorFor,
+} from "~/utils/format";
+import { ChartTooltip, CostTable, DateRangePicker, MetricTile } from ".";
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-
-const fmtShort = (n: number) => {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
-  return `$${n.toFixed(2)}`;
-};
-
-const fmtDate = (d: string) => {
-  const dt = new Date(d + "T00:00:00");
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-const daysAgo = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().split("T")[0];
-};
-
-const today = () => new Date().toISOString().split("T")[0];
-
-const PALETTE = [
-  "#6366f1",
-  "#22d3ee",
-  "#f59e0b",
-  "#10b981",
-  "#f43f5e",
-  "#a78bfa",
-  "#34d399",
-  "#fb923c",
-  "#38bdf8",
-  "#e879f9",
-  "#4ade80",
-  "#facc15",
-  "#f87171",
-  "#60a5fa",
-  "#c084fc",
-];
-
-const colorFor = (index: number) => PALETTE[index % PALETTE.length];
-
-// ─── Date Range Presets ───────────────────────────────────────────────────────
-
-type Preset = { label: string; start: string; end: string };
-
-const PRESETS: Preset[] = [
-  { label: "Last 7 days", start: daysAgo(7), end: today() },
-  { label: "Last 14 days", start: daysAgo(14), end: today() },
-  { label: "Last 30 days", start: daysAgo(30), end: today() },
-  { label: "Last 90 days", start: daysAgo(90), end: today() },
-];
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-interface MetricTileProps {
-  label: string;
-  value: string;
-  sub?: string;
-  icon: React.ReactNode;
-}
-
-const MetricTile = ({ label, value, sub, icon }: MetricTileProps) => (
-  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 flex flex-col gap-3">
-    <div className="flex items-center justify-between">
-      <span className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-        {label}
-      </span>
-      <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500">
-        {icon}
-      </div>
-    </div>
-    <div>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white font-mono">
-        {value}
-      </p>
-      {sub && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>
-      )}
-    </div>
-  </div>
-);
-
-// ─── Custom Tooltip ───────────────────────────────────────────────────────────
-
-const ChartTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 shadow-xl text-xs">
-      <p className="text-gray-400 mb-2 font-medium">{label}</p>
-      {payload.map((p: any, i: number) => (
-        <div key={i} className="flex items-center gap-2 text-white">
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ background: p.color || p.fill }}
-          />
-          <span className="text-gray-300">{p.name}:</span>
-          <span className="font-mono font-semibold">{fmtShort(p.value)}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ─── Date Range Picker ────────────────────────────────────────────────────────
-
-interface DateRangePickerProps {
-  startDate: string;
-  endDate: string;
-  onChangeStart: (v: string) => void;
-  onChangeEnd: (v: string) => void;
-}
-
-const DateRangePicker = ({
-  startDate,
-  endDate,
-  onChangeStart,
-  onChangeEnd,
-}: DateRangePickerProps) => {
-  const [open, setOpen] = useState(false);
-
-  const selectedPreset = PRESETS.find(
-    (p) => p.start === startDate && p.end === endDate,
-  );
-
-  const handlePreset = (p: Preset) => {
-    onChangeStart(p.start);
-    onChangeEnd(p.end);
-    setOpen(false);
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-200 hover:border-indigo-400 transition-colors"
-      >
-        <Calendar className="w-4 h-4 text-indigo-400" />
-        <span>
-          {selectedPreset ? selectedPreset.label : `${startDate} → ${endDate}`}
-        </span>
-        <ChevronDown className="w-3 h-3 text-gray-400" />
-      </button>
-
-      {open && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-4 w-80">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Quick select
-            </p>
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  onClick={() => handlePreset(p)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors
-                    ${
-                      selectedPreset?.label === p.label
-                        ? "bg-indigo-500 text-white"
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
-                    }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Custom range
-            </p>
-            <div className="flex flex-col gap-2">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">From</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  max={endDate}
-                  onChange={(e) => onChangeStart(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">To</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  min={startDate}
-                  max={today()}
-                  onChange={(e) => onChangeEnd(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="mt-1 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-// ─── CostTable: paginated + filterable table ─────────────────────────────────
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-interface CostTableProps {
-  rows: CostRow[];
-}
-
-const CostTable = ({ rows }: CostTableProps) => {
-  const [search, setSearch] = useState("");
-  const [serviceFilter, setServiceFilter] = useState<string>("all");
-  const [regionFilter, setRegionFilter] = useState<string>("all");
-  const [pageSize, setPageSize] = useState(25);
-  const [page, setPage] = useState(1);
-
-  // Unique values for filter dropdowns
-  const services = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((r) => r.service))).sort()],
-    [rows],
-  );
-  const regions = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((r) => r.region))).sort()],
-    [rows],
-  );
-
-  // Reset to page 1 whenever filters change
-  const handleSearch = (v: string) => {
-    setSearch(v);
-    setPage(1);
-  };
-  const handleService = (v: string) => {
-    setServiceFilter(v);
-    setPage(1);
-  };
-  const handleRegion = (v: string) => {
-    setRegionFilter(v);
-    setPage(1);
-  };
-  const handlePageSize = (v: number) => {
-    setPageSize(v);
-    setPage(1);
-  };
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return rows.filter((r) => {
-      if (serviceFilter !== "all" && r.service !== serviceFilter) return false;
-      if (regionFilter !== "all" && r.region !== regionFilter) return false;
-      if (q) {
-        return (
-          r.service.toLowerCase().includes(q) ||
-          r.region.toLowerCase().includes(q) ||
-          r.time_period_start.includes(q)
-        );
-      }
-      return true;
-    });
-  }, [rows, search, serviceFilter, regionFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageSlice = filtered.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
-
-  const hasActiveFilters =
-    search !== "" || serviceFilter !== "all" || regionFilter !== "all";
-
-  const clearFilters = () => {
-    setSearch("");
-    setServiceFilter("all");
-    setRegionFilter("all");
-    setPage(1);
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-      {/* Table header + filters */}
-      <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-            Raw Cost Records
-          </h2>
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
-              >
-                <X className="w-3 h-3" />
-                Clear filters
-              </button>
-            )}
-            <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">
-              {filtered.length.toLocaleString()} of{" "}
-              {rows.length.toLocaleString()} rows
-            </span>
-          </div>
-        </div>
-
-        {/* Filter bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search */}
-          <div className="relative flex-1 min-w-40">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search service, region, date…"
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors"
-            />
-            {search && (
-              <button
-                onClick={() => handleSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Service filter */}
-          <select
-            value={serviceFilter}
-            onChange={(e) => handleService(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors max-w-48"
-          >
-            {services.map((s) => (
-              <option key={s} value={s}>
-                {s === "all" ? "All services" : s}
-              </option>
-            ))}
-          </select>
-
-          {/* Region filter */}
-          <select
-            value={regionFilter}
-            onChange={(e) => handleRegion(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors"
-          >
-            {regions.map((r) => (
-              <option key={r} value={r}>
-                {r === "all" ? "All regions" : r}
-              </option>
-            ))}
-          </select>
-
-          {/* Rows per page */}
-          <select
-            value={pageSize}
-            onChange={(e) => handlePageSize(Number(e.target.value))}
-            className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors"
-          >
-            {PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n} per page
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-800/50">
-              {["Date", "Service", "Region", "Cost", "Usage Qty", "Unit"].map(
-                (h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-            {pageSlice.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-10 text-center text-gray-400 text-xs"
-                >
-                  No records match your filters.
-                </td>
-              </tr>
-            ) : (
-              pageSlice.map((row) => (
-                <tr
-                  key={row.cache_id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
-                >
-                  <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">
-                    {row.time_period_start.split("T")[0]}
-                  </td>
-                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-200 font-medium whitespace-nowrap max-w-48 truncate">
-                    {row.service}
-                  </td>
-                  <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {row.region}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono font-semibold text-gray-800 dark:text-white whitespace-nowrap">
-                    {fmt(Number(row.unblended_cost))}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {Number(row.usage_quantity).toFixed(4)}
-                  </td>
-                  <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">
-                    {row.usage_quantity_unit}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination footer */}
-      <div className="px-6 py-3 border-t border-gray-50 dark:border-gray-800 flex items-center justify-between gap-4">
-        <p className="text-xs text-gray-400">
-          {filtered.length === 0
-            ? "No results"
-            : `Showing ${((safePage - 1) * pageSize + 1).toLocaleString()}–${Math.min(safePage * pageSize, filtered.length).toLocaleString()} of ${filtered.length.toLocaleString()}`}
-        </p>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setPage(1)}
-            disabled={safePage === 1}
-            className="px-2 py-1 text-xs rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            «
-          </button>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={safePage === 1}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Page number pills */}
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter(
-              (p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
-            )
-            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-              if (
-                idx > 0 &&
-                typeof arr[idx - 1] === "number" &&
-                (p as number) - (arr[idx - 1] as number) > 1
-              ) {
-                acc.push("…");
-              }
-              acc.push(p);
-              return acc;
-            }, [])
-            .map((p, i) =>
-              p === "…" ? (
-                <span
-                  key={`ellipsis-${i}`}
-                  className="px-1 text-xs text-gray-400"
-                >
-                  …
-                </span>
-              ) : (
-                <button
-                  key={p}
-                  onClick={() => setPage(p as number)}
-                  className={`min-w-7 h-7 px-2 text-xs rounded-lg font-medium transition-colors ${
-                    safePage === p
-                      ? "bg-indigo-500 text-white"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  {p}
-                </button>
-              ),
-            )}
-
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={safePage === totalPages}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setPage(totalPages)}
-            disabled={safePage === totalPages}
-            className="px-2 py-1 text-xs rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            »
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-// No props needed — teamId and awsAccountInternalId come from context.
 const CostDashboard = () => {
   const { teamId } = useParams<{ teamId: string }>();
   const { account } = useAwsAccount();
@@ -574,10 +56,8 @@ const CostDashboard = () => {
   const [startDate, setStartDate] = useState(daysAgo(30));
   const [endDate, setEndDate] = useState(today());
 
-  // Track if we have already auto-triggered the sync to prevent infinite loops
   const hasAttemptedAutoSync = useRef(false);
 
-  // ── Read: DB cache only, fast and cheap ──────────────────────────────────
   const {
     data: rows = [],
     isLoading,
@@ -586,8 +66,6 @@ const CostDashboard = () => {
     error,
     dataUpdatedAt,
   } = useGetCachedCostData(teamId, awsAccountInternalId, startDate, endDate);
-
-  // ── Write: live AWS sync, only on user action ─────────────────────────────
   const {
     mutate: runSync,
     isPending: isSyncing,
@@ -596,15 +74,13 @@ const CostDashboard = () => {
   } = useSyncCostAndUsage(teamId, awsAccountInternalId, startDate, endDate);
 
   const handleRefresh = useCallback(() => {
-    hasAttemptedAutoSync.current = true; // Mark as user-triggered
+    hasAttemptedAutoSync.current = true;
     runSync();
   }, [runSync]);
 
   const isBusy = isFetching || isSyncing;
 
-  // ── Auto-Sync on Empty Cache ──────────────────────────────────
   useEffect(() => {
-    // If we finished loading the cache, it's empty, and we haven't tried syncing yet
     if (
       !isLoading &&
       !isFetching &&
@@ -616,7 +92,6 @@ const CostDashboard = () => {
     }
   }, [isLoading, isFetching, rows.length, runSync]);
 
-  // If the auto-sync fired, reset the ref when the user changes dates so it can auto-sync the new dates if they are empty too!
   useEffect(() => {
     hasAttemptedAutoSync.current = false;
   }, [startDate, endDate]);
@@ -680,7 +155,6 @@ const CostDashboard = () => {
 
   const topService = byService[0];
   const topRegion = byRegion[0];
-
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", {
         hour: "2-digit",
@@ -688,7 +162,7 @@ const CostDashboard = () => {
       })
     : null;
 
-  // ── Loading state ─────────────────────────────────────────────────────────
+  // ── Loading & Error states ────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -698,8 +172,6 @@ const CostDashboard = () => {
       </div>
     );
   }
-
-  // ── Error state ───────────────────────────────────────────────────────────
 
   if (isError || isSyncError) {
     const msg =
@@ -725,12 +197,25 @@ const CostDashboard = () => {
     );
   }
 
-  // ── Empty state — no cache yet for this date range ────────────────────────
-
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
-        {/* Keep the header visible so users can change the date range */}
+        {account?.cur_status === "pending" && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
+                AWS is preparing your high-fidelity billing data
+              </h3>
+              <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
+                Your basic Cost Explorer data is available below. Advanced AI
+                features and deep anomaly detection will automatically unlock
+                when AWS finishes generating your complete usage report (this
+                usually takes about 24 hours).
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Cost Explorer
@@ -752,9 +237,19 @@ const CostDashboard = () => {
               />
               {isSyncing ? "Syncing…" : "Sync from AWS"}
             </button>
+            <button
+              disabled={account?.cur_status === "pending" || isBusy}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-all shadow-sm"
+              title={
+                account?.cur_status === "pending"
+                  ? "Waiting for AWS to generate data..."
+                  : "Run Machine Learning Analysis"
+              }
+            >
+              <Sparkles className="w-4 h-4" /> Run AI Analysis
+            </button>
           </div>
         </div>
-
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
             <CloudOff className="w-6 h-6 text-gray-400" />
@@ -782,11 +277,27 @@ const CostDashboard = () => {
     );
   }
 
-  // ── Dashboard ─────────────────────────────────────────────────────────────
+  // ── Dashboard Layout ──────────────────────────────────────────────────────
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {account?.cur_status === "pending" && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+          <div>
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
+              AWS is preparing your high-fidelity billing data
+            </h3>
+            <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
+              Your basic Cost Explorer data is available below. Advanced AI
+              features and deep anomaly detection will automatically unlock when
+              AWS finishes generating your complete usage report (this usually
+              takes about 24 hours).
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -814,10 +325,20 @@ const CostDashboard = () => {
             <RefreshCw className={`w-4 h-4 ${isBusy ? "animate-spin" : ""}`} />
             {isSyncing ? "Syncing…" : "Refresh"}
           </button>
+          <button
+            disabled={account?.cur_status === "pending" || isBusy}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-all shadow-sm"
+            title={
+              account?.cur_status === "pending"
+                ? "Waiting for AWS to generate data..."
+                : "Run Machine Learning Analysis"
+            }
+          >
+            <Sparkles className="w-4 h-4" /> Run AI Analysis
+          </button>
         </div>
       </div>
 
-      {/* Metric Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricTile
           label="Total Cost"
@@ -845,7 +366,6 @@ const CostDashboard = () => {
         />
       </div>
 
-      {/* Daily Cost Trend */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
           Daily Cost Trend
@@ -894,7 +414,6 @@ const CostDashboard = () => {
         </ResponsiveContainer>
       </div>
 
-      {/* Two-col: Stacked by Service + Service Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
@@ -1003,7 +522,6 @@ const CostDashboard = () => {
         </div>
       </div>
 
-      {/* Two-col: Region Bar + Service Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
@@ -1097,7 +615,6 @@ const CostDashboard = () => {
         </div>
       </div>
 
-      {/* Raw Data Table — paginated + filtered */}
       <CostTable rows={rows} />
     </div>
   );
