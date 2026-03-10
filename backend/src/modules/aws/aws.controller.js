@@ -70,6 +70,25 @@ export const getCachedCostData = async (req, res, next) => {
   }
 };
 
+export const syncCurData = async (req, res, next) => {
+  try {
+    const result = await awsService.syncCurData(req.awsAccount);
+
+    return res.status(200).send(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const retryCurSetup = async (req, res, next) => {
+  try {
+    const result = await awsService.retryCurSetup(req.awsAccount);
+    return res.status(200).send(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const deactivateAwsAccount = async (req, res, next) => {
   try {
     // PERFORMANCE FIX: Pass just the internal ID to the service

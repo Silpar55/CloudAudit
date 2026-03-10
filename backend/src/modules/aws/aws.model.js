@@ -212,3 +212,9 @@ export const getCachedCostData = async (internalId, startDate, endDate) => {
     return null;
   }
 };
+
+export const updateCurStatus = async (internalId, status) => {
+  const query = `UPDATE aws_accounts SET cur_status = $1 WHERE id = $2 RETURNING cur_status;`;
+  const { rows } = await pool.query(query, [status, internalId]);
+  return rows[0];
+};
