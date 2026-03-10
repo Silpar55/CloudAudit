@@ -6,6 +6,8 @@ import {
   deactivateAwsAccount,
   ceGetCostAndUsage,
   getCachedCostData,
+  syncCurData,
+  retryCurSetup,
 } from "./aws.controller.js";
 import { verifyAwsAccId } from "#middleware";
 import { anomalyRoutes } from "#modules/anomaly/anomaly.route.js";
@@ -26,6 +28,10 @@ router.delete("/:accId", verifyAwsAccId, deactivateAwsAccount);
 // Middleware applied to CE routes so they don't have to query the DB themselves
 router.get("/ce/cost-usage/:accId", verifyAwsAccId, ceGetCostAndUsage);
 router.get("/ce/cost-usage/:accId/cached", verifyAwsAccId, getCachedCostData);
+
+// ── Cost and Usage Report (CUR) ───────────────────────────────────────────────
+router.post("/cur/sync/:accId", verifyAwsAccId, syncCurData);
+router.post("/cur/retry-setup/:accId", verifyAwsAccId, retryCurSetup);
 
 // ── Anomalies Sub-Resource ──────────────────────────────────────────────────
 // By applying the middleware here, your new Anomaly module will automatically

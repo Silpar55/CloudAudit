@@ -5,10 +5,12 @@ import dayjs from "dayjs";
 
 import * as awsModel from "./aws.model.js";
 import * as teamModel from "../team/team.model.js";
+import * as curService from "./services/cur.service.js";
+import * as costExplorerService from "./services/cost-explorer.service.js";
+import * as curSetupService from "./services/cur-setup.service.js";
 
 import { validateSTSConnection } from "#utils/aws/sts.js";
 import { generateScripts } from "#utils/aws/policy-generator.js";
-import { getCostAndUsage } from "./services/cost-explorer.service.js";
 
 export const initializePendingAccount = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
@@ -35,24 +37,58 @@ export const initializePendingAccount = async (teamId, roleArn) => {
 };
 
 export const activateAwsAccount = async (teamId, roleArn) => {
-  if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
+  // 1. Validate STS
+  const pendingAccount = await awsModel.findAwsAccountByAccId(
+    roleArn.split(":")[4], // Extract AWS Account ID
+    teamId,
+  );
 
-  const accId = roleArn.split(":")[4];
+  if (!pendingAccount) throw new AppError("Account not found", 404);
 
-  const account = await awsModel.findAwsAccountByAccId(accId, teamId);
-
-  if (!account) throw new AppError("Account not initialized", 404);
-
-  const isValid = await validateSTSConnection(account);
+  const isValid = await validateSTSConnection({
+    iam_role_arn: roleArn,
+    external_id: pendingAccount.external_id,
+  });
 
   if (!isValid)
-    throw new AppError("Validation Failed: Check Trust Policy", 400);
+    throw new AppError(
+      "STS connection failed. Verify role ARN and external ID.",
+      400,
+    );
 
-  await awsModel.activateAwsAccount(account.id);
-
+  // 2. Activate the account in DB and set aws status as active in the team
+  const account = await awsModel.activateAwsAccount(pendingAccount.id);
   await teamModel.updateTeamStatus(teamId, "active");
 
+  // 3. THE AUTOMATION: Trigger CUR Setup asynchronously (Don't await it!)
+  // This lets the API respond immediately to the frontend, while the bucket builds in the background.
+  curSetupService
+    .automateCURSetup(account)
+    .then(() => {
+      // We keep status as 'pending' because AWS takes 24hrs, but we know the bucket setup worked.
+      console.log("CUR automation completed.");
+    })
+    .catch(async (err) => {
+      // If setup failed (e.g. missing permissions), mark as failed so we can prompt them in UI
+      await awsModel.updateCurStatus(account.id, "failed");
+    });
+
   return true;
+};
+
+export const retryCurSetup = async (account) => {
+  try {
+    // Attempt to automate the setup again
+    await curSetupService.automateCURSetup(account);
+
+    // If successful, flip the status back to pending (waiting 24h for AWS)
+    await awsModel.updateCurStatus(account.id, "pending");
+    return { success: true, message: "CUR Setup successfully initialized." };
+  } catch (error) {
+    // Keep it as failed if it crashes again
+    await awsModel.updateCurStatus(account.id, "failed");
+    throw new AppError(`Retry failed: ${error.message}`, 500);
+  }
 };
 
 /**
@@ -81,7 +117,11 @@ export const ceGetCostAndUsage = async (
   startDate = dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   endDate = dayjs().format("YYYY-MM-DD"),
 ) => {
-  const result = await getCostAndUsage(account, startDate, endDate);
+  const result = await costExplorerService.getCostAndUsage(
+    account,
+    startDate,
+    endDate,
+  );
 
   let rowsAdded = 0;
   await Promise.all(
@@ -120,4 +160,26 @@ export const getCachedCostData = async (
   }
 
   return rows;
+};
+
+/**
+ * Triggers the Cost and Usage Report (CUR) synchronization
+ * Handles the logic between Mocked test accounts and Real AWS accounts
+ */
+export const syncCurData = async (account) => {
+  // 1. The Interceptor: Check if this is a mocked account
+  const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
+
+  if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
+    // Return immediately. The database already has the granular data from 002_mock_data_injection.sql
+    return {
+      status: "mock_success",
+      message:
+        "Mock account detected: Skipping AWS CUR fetch. Granular testing data is already synchronized in the database.",
+    };
+  }
+
+  // 2. If it is a real account, trigger the Athena extraction pipeline
+  const result = await curService.fetchAndSyncCUR(account);
+  return result;
 };

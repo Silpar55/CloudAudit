@@ -287,11 +287,32 @@ describe("AWS Utilities", () => {
 
       // Verify permissions policy structure
       expect(permissionsPolicy.Version).toBe("2012-10-17");
-      expect(permissionsPolicy.Statement).toHaveLength(1);
+      expect(permissionsPolicy.Statement).toHaveLength(3);
+
+      // 1. Validate Cost Explorer Block
+      expect(permissionsPolicy.Statement[0].Sid).toBe(
+        "CostExplorerAndBasicAccess",
+      );
       expect(permissionsPolicy.Statement[0].Effect).toBe("Allow");
       expect(permissionsPolicy.Statement[0].Resource).toBe("*");
       expect(permissionsPolicy.Statement[0].Action).toContain(
-        "sts:GetCallerIdentity",
+        "ce:GetCostAndUsage",
+      );
+
+      // 2. Validate Athena/CUR Block
+      expect(permissionsPolicy.Statement[1].Sid).toBe("AthenaCURQueryAccess");
+      expect(permissionsPolicy.Statement[1].Effect).toBe("Allow");
+      expect(permissionsPolicy.Statement[1].Action).toContain(
+        "athena:StartQueryExecution",
+      );
+
+      // 3. Validate CUR Setup Block
+      expect(permissionsPolicy.Statement[2].Sid).toBe(
+        "CURAutomatedSetupAccess",
+      );
+      expect(permissionsPolicy.Statement[2].Effect).toBe("Allow");
+      expect(permissionsPolicy.Statement[2].Action).toContain(
+        "s3:CreateBucket",
       );
     });
   });
