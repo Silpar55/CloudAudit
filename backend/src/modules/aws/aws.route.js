@@ -8,6 +8,7 @@ import {
   getCachedCostData,
   syncCurData,
   retryCurSetup,
+  checkCurStatus,
 } from "./aws.controller.js";
 import { verifyAwsAccId } from "#middleware";
 import { anomalyRoutes } from "#modules/anomaly/anomaly.route.js";
@@ -30,6 +31,7 @@ router.get("/ce/cost-usage/:accId", verifyAwsAccId, ceGetCostAndUsage);
 router.get("/ce/cost-usage/:accId/cached", verifyAwsAccId, getCachedCostData);
 
 // ── Cost and Usage Report (CUR) ───────────────────────────────────────────────
+router.get("/cur/status/:accId", verifyAwsAccId, checkCurStatus);
 router.post("/cur/sync/:accId", verifyAwsAccId, syncCurData);
 router.post("/cur/retry-setup/:accId", verifyAwsAccId, retryCurSetup);
 

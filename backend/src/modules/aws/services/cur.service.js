@@ -1,4 +1,8 @@
-import { createAthenaClient } from "#utils/aws/client-factory.js";
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+import {
+  createAthenaClient,
+  createS3Client,
+} from "#utils/aws/client-factory.js";
 import { getTemporaryCredentials } from "#utils/aws/sts.js";
 import {
   startQuery,
@@ -65,5 +69,40 @@ export const fetchAndSyncCUR = async (account) => {
   } catch (error) {
     console.error("CUR Sync Error:", error);
     throw new AppError(`Failed to sync CUR data: ${error.message}`, 500);
+  }
+};
+
+export const checkCurReadiness = async (account) => {
+  try {
+    const credentials = await getTemporaryCredentials(account);
+    const s3Client = createS3Client("us-east-1", credentials);
+    const bucketName = `cloudaudit-cur-data-${account.aws_account_id}`;
+
+    // Look inside the "cur/" folder where we told AWS to dump the reports
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: "cur/",
+      MaxKeys: 100,
+    });
+
+    const response = await s3Client.send(command);
+
+    // If AWS has generated the report, there will be .parquet data files present
+    if (response.Contents && response.Contents.length > 0) {
+      const hasData = response.Contents.some((obj) =>
+        obj.Key.endsWith(".parquet"),
+      );
+      return hasData;
+    }
+
+    return false;
+  } catch (error) {
+    console.log(error);
+    // If the bucket is completely empty or hasn't been provisioned fully yet
+    console.log(
+      `[CUR Status] Account ${account.aws_account_id} not ready:`,
+      error.name,
+    );
+    return false;
   }
 };

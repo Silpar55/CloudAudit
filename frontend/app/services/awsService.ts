@@ -49,6 +49,13 @@ export const awsService = {
     return response.data;
   },
 
+  checkCurStatus: async (teamId: string, accId: string) => {
+    const response = await apiClient.get(
+      `/teams/${teamId}/aws-accounts/cur/status/${accId}`,
+    );
+    return response.data; // { status: "active" | "pending" }
+  },
+
   /**
    * Fetch the cached cost explorer rows directly from the DB-backed endpoint.
    * Used for display after a sync has been triggered.
