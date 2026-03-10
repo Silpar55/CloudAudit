@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Cloud,
   ChevronDown,
@@ -199,13 +199,33 @@ const Sidebar = ({
   }, []);
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  const { data: costRows = [] } = useGetCachedCostData(
+  // Added refetch extraction here
+  const { data: costRows = [], refetch } = useGetCachedCostData(
     currentTeam?.team_id,
     awsAccountInternalId,
     ninetyDaysAgo,
     todayStr,
     { enabled: !!awsAccountInternalId && currentTeam?.status === "active" },
   );
+
+  // ── FIX: Synchronize sidebar with Dashboard's initial sync ─────────────────
+  // Because the dashboard runs the initial AWS sync asynchronously, the sidebar's
+  // 90-day cache query might fire while the DB is still empty.
+  // This polls the local cache every 3 seconds until the data arrives.
+  useEffect(() => {
+    if (currentTeam?.status !== "active" || !awsAccountInternalId) return;
+    if (costRows.length > 0) return;
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      refetch();
+      // Stop polling after 30 seconds (10 attempts) to prevent infinite loops on truly empty accounts
+      if (attempts >= 10) clearInterval(interval);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentTeam?.status, awsAccountInternalId, costRows.length, refetch]);
 
   // Deduplicate services and resolve to { label, Icon, slug }
   const resourceServices = useMemo(() => {

@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import {
   AreaChart,
   Area,
@@ -568,6 +574,9 @@ const CostDashboard = () => {
   const [startDate, setStartDate] = useState(daysAgo(30));
   const [endDate, setEndDate] = useState(today());
 
+  // Track if we have already auto-triggered the sync to prevent infinite loops
+  const hasAttemptedAutoSync = useRef(false);
+
   // ── Read: DB cache only, fast and cheap ──────────────────────────────────
   const {
     data: rows = [],
@@ -586,9 +595,31 @@ const CostDashboard = () => {
     error: syncError,
   } = useSyncCostAndUsage(teamId, awsAccountInternalId, startDate, endDate);
 
-  const handleRefresh = useCallback(() => runSync(), [runSync]);
+  const handleRefresh = useCallback(() => {
+    hasAttemptedAutoSync.current = true; // Mark as user-triggered
+    runSync();
+  }, [runSync]);
 
   const isBusy = isFetching || isSyncing;
+
+  // ── Auto-Sync on Empty Cache ──────────────────────────────────
+  useEffect(() => {
+    // If we finished loading the cache, it's empty, and we haven't tried syncing yet
+    if (
+      !isLoading &&
+      !isFetching &&
+      rows.length === 0 &&
+      !hasAttemptedAutoSync.current
+    ) {
+      hasAttemptedAutoSync.current = true;
+      runSync();
+    }
+  }, [isLoading, isFetching, rows.length, runSync]);
+
+  // If the auto-sync fired, reset the ref when the user changes dates so it can auto-sync the new dates if they are empty too!
+  useEffect(() => {
+    hasAttemptedAutoSync.current = false;
+  }, [startDate, endDate]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
 

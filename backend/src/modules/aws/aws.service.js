@@ -38,12 +38,12 @@ export const initializePendingAccount = async (teamId, roleArn) => {
 
 export const activateAwsAccount = async (teamId, roleArn) => {
   // 1. Validate STS
-  const pendingAccount = await awsModel.findAwsAccountByAccId(
-    roleArn.split(":")[4], // Extract AWS Account ID
-    teamId,
-  );
+  const pendingAccount = await awsModel.getAwsAccountByTeamId(teamId);
 
   if (!pendingAccount) throw new AppError("Account not found", 404);
+
+  // Extract the real AWS Account ID from the final roleArn they pasted
+  const realAwsAccountId = roleArn.split(":")[4];
 
   const isValid = await validateSTSConnection({
     iam_role_arn: roleArn,
@@ -57,7 +57,12 @@ export const activateAwsAccount = async (teamId, roleArn) => {
     );
 
   // 2. Activate the account in DB and set aws status as active in the team
-  const account = await awsModel.activateAwsAccount(pendingAccount.id);
+  // Note: Since we are changing the workflow of how the user activate their AWS, we need to make sure we are storing real values
+  const account = await awsModel.activateAwsAccount(
+    pendingAccount.id,
+    realAwsAccountId,
+    roleArn,
+  );
   await teamModel.updateTeamStatus(teamId, "active");
 
   // 3. THE AUTOMATION: Trigger CUR Setup asynchronously (Don't await it!)

@@ -27,10 +27,12 @@ export const initializePendingAccount = async ({
   }
 };
 
-export const activateAwsAccount = async (internalId) => {
+export const activateAwsAccount = async (internalId, awsAccId, roleArn) => {
   const query = `
     UPDATE aws_accounts 
     SET status = 'active', 
+        aws_account_id = $2,
+        iam_role_arn = $3,
         connected_at = NOW(), 
         last_tested_at = NOW(),
         last_error = NULL
@@ -39,7 +41,7 @@ export const activateAwsAccount = async (internalId) => {
   `;
 
   try {
-    const { rows } = await pool.query(query, [internalId]);
+    const { rows } = await pool.query(query, [internalId, awsAccId, roleArn]);
     return rows[0];
   } catch (error) {
     console.log(error);
