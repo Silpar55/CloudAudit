@@ -22,7 +22,6 @@ DROP TABLE IF EXISTS teams;
 DROP TYPE IF EXISTS aws_account_status;
 DROP TYPE IF EXISTS team_status;
 
-
 -- ==============================================================================
 -- 2. EXTENSIONS & CONFIGURATIONS
 -- ==============================================================================
@@ -105,6 +104,8 @@ CREATE TABLE aws_accounts (
     connected_at TIMESTAMP WITH TIME ZONE,
     disconnected_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	cur_status VARCHAR(20) DEFAULT 'pending' 
+	CHECK (cur_status IN ('pending', 'active', 'failed')),
     UNIQUE(team_id)
 );
 
