@@ -52,7 +52,7 @@ describe("AWS Service", () => {
 
   describe("activateAwsAccount", () => {
     it("Should activate account if STS validation passes", async () => {
-      awsModel.findAwsAccountByAccId.mockResolvedValue({ id: "acc-123" });
+      awsModel.getAwsAccountByTeamId.mockResolvedValue({ id: "acc-123" });
       validateSTSConnection.mockResolvedValue(true);
       awsModel.activateAwsAccount.mockResolvedValue({ id: "acc-123" });
       teamModel.updateTeamStatus.mockResolvedValue(true);
@@ -63,7 +63,11 @@ describe("AWS Service", () => {
       );
 
       expect(result).toBe(true);
-      expect(awsModel.activateAwsAccount).toHaveBeenCalledWith("acc-123");
+      expect(awsModel.activateAwsAccount).toHaveBeenCalledWith(
+        "acc-123",
+        "123456789012",
+        "arn:aws:iam::123456789012:role/Test",
+      );
     });
 
     it("Should throw AppError if STS validation fails", async () => {
