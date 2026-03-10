@@ -106,10 +106,7 @@ export const loginUser = async ({ email, password }) => {
     );
   }
 
-  const token = jwt.sign({ userId: user.user_id }, process.env.SECRETKEY, {
-    expiresIn: "1h",
-  });
-  return token;
+  return user;
 };
 
 export const getUser = async (token) => {
