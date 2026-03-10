@@ -133,3 +133,10 @@ export const useSyncCostAndUsage = (
     },
   });
 };
+
+export const useCheckCurStatus = () => {
+  return useMutation({
+    mutationFn: ({ teamId, accId }: { teamId: string; accId: string }) =>
+      awsService.checkCurStatus(teamId, accId),
+  });
+};

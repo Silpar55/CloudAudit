@@ -188,3 +188,23 @@ export const syncCurData = async (account) => {
   const result = await curService.fetchAndSyncCUR(account);
   return result;
 };
+
+export const checkCurStatus = async (account) => {
+  // 1. Instantly approve mock accounts
+  const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
+  if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
+    await awsModel.updateCurStatus(account.id, "active");
+    return { status: "active", message: "Mock account ready." };
+  }
+
+  // 2. Ping S3 for real accounts
+  const isReady = await curService.checkCurReadiness(account);
+
+  if (isReady) {
+    // Data found! Instantly unlock the AI features in the database
+    await awsModel.updateCurStatus(account.id, "active");
+    return { status: "active", message: "CUR data is ready!" };
+  }
+
+  return { status: "pending", message: "Still waiting for AWS..." };
+};

@@ -33,7 +33,11 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
-import { useGetCachedCostData, useSyncCostAndUsage } from "~/hooks/useAws";
+import {
+  useCheckCurStatus,
+  useGetCachedCostData,
+  useSyncCostAndUsage,
+} from "~/hooks/useAws";
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useParams } from "react-router";
 
@@ -50,7 +54,7 @@ import { ChartTooltip, CostTable, DateRangePicker, MetricTile } from ".";
 
 const CostDashboard = () => {
   const { teamId } = useParams<{ teamId: string }>();
-  const { account } = useAwsAccount();
+  const { account, refreshAccount } = useAwsAccount();
   const awsAccountInternalId = account?.id;
 
   const [startDate, setStartDate] = useState(daysAgo(30));
@@ -72,6 +76,35 @@ const CostDashboard = () => {
     isError: isSyncError,
     error: syncError,
   } = useSyncCostAndUsage(teamId, awsAccountInternalId, startDate, endDate);
+
+  const { mutate: checkCur, isPending: isCheckingCur } = useCheckCurStatus();
+
+  // ── Silent S3 Status Check on Dashboard Load ──────────────────
+  useEffect(() => {
+    if (account?.cur_status === "pending") {
+      checkCur(
+        { teamId: teamId!, accId: awsAccountInternalId! },
+        {
+          onSuccess: (data) => {
+            // If the backend S3 check says it's ready, refresh the context to unlock the UI!
+            if (data.status === "active") refreshAccount();
+          },
+        },
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run exactly once when the component mounts
+
+  const handleManualStatusCheck = () => {
+    checkCur(
+      { teamId: teamId!, accId: awsAccountInternalId! },
+      {
+        onSuccess: (data) => {
+          if (data.status === "active") refreshAccount();
+        },
+      },
+    );
+  };
 
   const handleRefresh = useCallback(() => {
     hasAttemptedAutoSync.current = true;
@@ -162,6 +195,40 @@ const CostDashboard = () => {
       })
     : null;
 
+  // ── Reusable Banner Component ─────────────────────────────────────────────
+  const PendingBanner = () => {
+    if (account?.cur_status !== "pending") return null;
+    return (
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-start gap-4 animate-in fade-in slide-in-from-top-4">
+        <div className="flex items-start gap-3 flex-1">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+          <div>
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
+              AWS is preparing your high-fidelity billing data
+            </h3>
+            <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
+              Your basic Cost Explorer data is available below. Advanced AI
+              features and deep anomaly detection will automatically unlock when
+              AWS finishes generating your complete usage report (this usually
+              takes about 24 hours).
+            </p>
+          </div>
+        </div>
+        {/* The Manual Override Button! */}
+        <button
+          onClick={handleManualStatusCheck}
+          disabled={isCheckingCur}
+          className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-800 dark:hover:bg-blue-700 dark:text-blue-200 rounded-lg transition-colors shrink-0 whitespace-nowrap"
+        >
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${isCheckingCur ? "animate-spin" : ""}`}
+          />
+          {isCheckingCur ? "Checking AWS..." : "Check Status"}
+        </button>
+      </div>
+    );
+  };
+
   // ── Loading & Error states ────────────────────────────────────────────────
 
   if (isLoading) {
@@ -200,22 +267,7 @@ const CostDashboard = () => {
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
-        {account?.cur_status === "pending" && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
-            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
-                AWS is preparing your high-fidelity billing data
-              </h3>
-              <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
-                Your basic Cost Explorer data is available below. Advanced AI
-                features and deep anomaly detection will automatically unlock
-                when AWS finishes generating your complete usage report (this
-                usually takes about 24 hours).
-              </p>
-            </div>
-          </div>
-        )}
+        <PendingBanner />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Cost Explorer
@@ -281,23 +333,7 @@ const CostDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {account?.cur_status === "pending" && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
-          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-          <div>
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
-              AWS is preparing your high-fidelity billing data
-            </h3>
-            <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
-              Your basic Cost Explorer data is available below. Advanced AI
-              features and deep anomaly detection will automatically unlock when
-              AWS finishes generating your complete usage report (this usually
-              takes about 24 hours).
-            </p>
-          </div>
-        </div>
-      )}
-
+      <PendingBanner />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
