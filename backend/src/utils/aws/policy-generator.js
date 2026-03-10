@@ -5,7 +5,7 @@
  * Responsibilities:
  * - Generate trust policies (who can assume the role)
  * - Generate permission policies (what the role can do)
- * - Return formatted JSON strings for UI display
+ * - Return formatted JSON strings for UI display and Bash script for CloudShell
  */
 
 export const generateScripts = (pendingAccount) => {
@@ -15,14 +15,11 @@ export const generateScripts = (pendingAccount) => {
       {
         Effect: "Allow",
         Principal: {
-          // IMPORTANT FOR TESTING: Put YOUR local ARN here (the SSO one we found earlier).
-          // IN PRODUCTION: This would be "arn:aws:iam::YOUR_SAAS_ACCOUNT_ID:root"
           AWS: "arn:aws:iam::906063354856:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_565401acba252927",
         },
         Action: "sts:AssumeRole",
         Condition: {
           StringEquals: {
-            // This binds this specific Role to this specific Team/Integration
             "sts:ExternalId": pendingAccount.external_id,
           },
         },
@@ -34,22 +31,112 @@ export const generateScripts = (pendingAccount) => {
     Version: "2012-10-17",
     Statement: [
       {
+        Sid: "CostExplorerAndBasicAccess",
         Effect: "Allow",
         Action: [
           "sts:GetCallerIdentity",
-
           "ec2:DescribeInstances",
           "s3:ListAllMyBuckets",
           "ce:GetCostAndUsage",
+          "ce:GetDimensionValues",
+          "ce:GetCostForecast",
+          "ce:GetUsageForecast",
+          "ce:GetTags",
         ],
         Resource: "*",
+      },
+      {
+        Sid: "AthenaCURQueryAccess",
+        Effect: "Allow",
+        Action: [
+          "athena:StartQueryExecution",
+          "athena:GetQueryExecution",
+          "athena:GetQueryResults",
+          "athena:GetWorkGroup",
+          "glue:GetDatabase",
+          "glue:GetTable",
+          "glue:GetPartitions",
+          "s3:GetBucketLocation",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:PutObject",
+        ],
+        Resource: "*",
+      },
+      {
+        Sid: "CURAutomatedSetupAccess",
+        Effect: "Allow",
+        Action: [
+          "s3:CreateBucket",
+          "s3:PutBucketPolicy",
+          "s3:GetBucketPolicy",
+          "s3:GetBucketAcl",
+          "cur:PutReportDefinition",
+          "cur:DescribeReportDefinitions",
+        ],
+        Resource: [
+          "arn:aws:s3:::cloudaudit-cur-data-*",
+          "arn:aws:s3:::cloudaudit-cur-data-*/*",
+          "*",
+        ],
       },
     ],
   };
 
+  const roleName = "CloudAuditRole";
+  const policyName = "CloudAuditAccessPolicy";
+
+  const cloudShellScript = `#!/bin/bash
+# ==============================================================================
+# CloudAudit IAM Role Setup Script
+# Run this in your AWS CloudShell to grant CloudAudit access to your billing data
+# ==============================================================================
+
+ROLE_NAME="${roleName}"
+POLICY_NAME="${policyName}"
+
+echo "Creating Trust Policy..."
+cat << 'EOF' > trust-policy.json
+${JSON.stringify(trustPolicy, null, 2)}
+EOF
+
+echo "Creating Access Policy..."
+cat << 'EOF' > access-policy.json
+${JSON.stringify(permissionsPolicy, null, 2)}
+EOF
+
+echo "Creating IAM Role ($ROLE_NAME)..."
+aws iam create-role \\
+  --role-name $ROLE_NAME \\
+  --assume-role-policy-document file://trust-policy.json > /dev/null
+
+echo "Creating IAM Policy ($POLICY_NAME)..."
+POLICY_ARN=$(aws iam create-policy \\
+  --policy-name $POLICY_NAME \\
+  --policy-document file://access-policy.json \\
+  --query 'Policy.Arn' \\
+  --output text)
+
+echo "Attaching Policy to Role..."
+aws iam attach-role-policy \\
+  --role-name $ROLE_NAME \\
+  --policy-arn $POLICY_ARN
+
+# Clean up
+rm trust-policy.json access-policy.json
+
+# Output the final ARN required for the CloudAudit dashboard
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+echo ""
+echo "✅ Success! Please copy the following ARN into your CloudAudit dashboard:"
+echo "arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME"
+echo ""
+`;
+
   return {
     trustPolicyJson: JSON.stringify(trustPolicy, null, 2),
     permissionsPolicyJson: JSON.stringify(permissionsPolicy, null, 2),
+    cloudShellScript: cloudShellScript,
 
     instructions: {
       step1: "Go to the IAM Console > Roles > select your role.",
@@ -57,7 +144,7 @@ export const generateScripts = (pendingAccount) => {
         "Click 'Trust relationships' > 'Edit trust policy' and paste the Trust Policy JSON.",
       step3:
         "Click 'Permissions' > 'Add permissions' > 'Create inline policy' and paste the Permissions Policy JSON.",
-      externalId: pendingAccount.externalId,
+      externalId: pendingAccount.external_id,
     },
   };
 };
@@ -90,10 +177,10 @@ export const generateCostExplorerPolicy = () => {
         Effect: "Allow",
         Action: [
           "ce:GetCostAndUsage",
-          "ce:GetCostForecast",
           "ce:GetDimensionValues",
-          "ce:GetReservationUtilization",
-          "ce:GetSavingsPlansUtilization",
+          "ce:GetCostForecast",
+          "ce:GetUsageForecast",
+          "ce:GetTags",
         ],
         Resource: "*",
       },

@@ -12,12 +12,11 @@ import {
   GetCallerIdentityCommand,
   AssumeRoleCommand,
 } from "@aws-sdk/client-sts";
-
 import { CostExplorerClient } from "@aws-sdk/client-cost-explorer";
-
 import { S3Client } from "@aws-sdk/client-s3";
-
 import { EC2Client } from "@aws-sdk/client-ec2";
+import { CostAndUsageReportServiceClient } from "@aws-sdk/client-cost-and-usage-report-service";
+import { AthenaClient } from "@aws-sdk/client-athena";
 
 export const createSTSClient = (region = "us-east-1", credentials = null) => {
   const config = { region };
@@ -46,6 +45,18 @@ export const createEC2Client = (region = "us-east-1", credentials) => {
     region,
     credentials,
   });
+};
+
+export const getCEClient = (region, credentials) => {
+  return new CostExplorerClient({ region, credentials });
+};
+
+export const createCURClient = (region, credentials) => {
+  return new CostAndUsageReportServiceClient({ region, credentials });
+};
+
+export const createAthenaClient = (region, credentials) => {
+  return new AthenaClient({ region, credentials });
 };
 
 export const getCallerIdentity = async (client) => {
