@@ -7,6 +7,9 @@
  * - Generate permission policies (what the role can do)
  * - Return formatted JSON strings for UI display and Bash script for CloudShell
  */
+/**
+ * AWS IAM Policy Generator
+ */
 
 export const generateScripts = (pendingAccount) => {
   const trustPolicy = {
@@ -86,6 +89,7 @@ export const generateScripts = (pendingAccount) => {
   const roleName = "CloudAuditRole";
   const policyName = "CloudAuditAccessPolicy";
 
+  // Dynamically inject the exact JSON into the bash script
   const cloudShellScript = `#!/bin/bash
 # ==============================================================================
 # CloudAudit IAM Role Setup Script
@@ -136,15 +140,22 @@ echo ""
   return {
     trustPolicyJson: JSON.stringify(trustPolicy, null, 2),
     permissionsPolicyJson: JSON.stringify(permissionsPolicy, null, 2),
-    cloudShellScript: cloudShellScript,
+    cloudShellScript,
 
     instructions: {
-      step1: "Go to the IAM Console > Roles > select your role.",
+      step1: "Go to the AWS IAM Console > Roles.",
       step2:
-        "Click 'Trust relationships' > 'Edit trust policy' and paste the Trust Policy JSON.",
+        "Click 'Create Role', select 'Custom trust policy', and paste the Trust Policy JSON.",
       step3:
-        "Click 'Permissions' > 'Add permissions' > 'Create inline policy' and paste the Permissions Policy JSON.",
+        "Click 'Next', add a new inline policy, and paste the Permissions Policy JSON.",
       externalId: pendingAccount.external_id,
+    },
+    cloudShellInstructions: {
+      step1:
+        "Log into your AWS Console and click the 'CloudShell' icon (the terminal prompt symbol `>_` at the top right).",
+      step2: "Wait a few seconds for the terminal environment to prepare.",
+      step3:
+        "Paste the entire script below into the terminal and press Enter. It will automatically output your new Role ARN!",
     },
   };
 };
