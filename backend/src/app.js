@@ -1,6 +1,7 @@
 import express from "express";
 import { config } from "dotenv";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 import { errorHandler, verifyToken } from "#middleware";
 import { healthRoutes, authRoutes, teamRoutes, profileRoutes } from "#modules";
@@ -8,11 +9,13 @@ import { healthRoutes, authRoutes, teamRoutes, profileRoutes } from "#modules";
 // App Setup
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 config();
 
 // CORS
 var corsOptions = {
   origin: "http://localhost:5173",
+  credentials: true,
   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 

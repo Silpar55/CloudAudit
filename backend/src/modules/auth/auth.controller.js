@@ -1,4 +1,5 @@
 import * as authService from "./auth.service.js";
+import * as jwtHelper from "#utils/helper/jwt-helper.js";
 
 export const registerUser = async (req, res, next) => {
   try {
@@ -15,8 +16,44 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   try {
-    const token = await authService.loginUser(req.body);
-    return res.status(200).json({ message: "User logged successfully", token });
+    const user = await authService.loginUser(req.body);
+    const accessToken = jwtHelper.generateToken(user.user_id);
+    const refreshToken = jwtHelper.generateRefreshToken(user.user_id);
+
+    // Set the refresh token as a secure, HTTP-Only cookie
+    res.cookie("jwt_refresh", refreshToken, {
+      httpOnly: true, // Javascript cannot read this (Secure against XSS)
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    console.log(accessToken);
+    return res.status(200).send({
+      message: "User logged successfully",
+      token: accessToken,
+    });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
+};
+
+export const refreshAccessToken = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.jwt_refresh;
+    if (!refreshToken)
+      return res.status(401).json({ message: "No refresh token provided" });
+
+    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
+      if (err)
+        return res
+          .status(403)
+          .json({ message: "Invalid or expired refresh token" });
+
+      const newAccessToken = jwtHelper.generateToken(decoded.id);
+      return res.status(200).json({ token: newAccessToken });
+    });
   } catch (err) {
     next(err);
   }
