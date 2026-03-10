@@ -13,8 +13,6 @@ export default function TeamWorkspace() {
     enabled: !!teamId,
   });
 
-  // ── AWS account — fetched once in layout via AwsAccountProvider ───────────
-  // No fetch here. The layout owns this; we just read from context.
   const { account: awsAccount, isLoading: isAwsLoading } = useAwsAccount();
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -53,7 +51,7 @@ export default function TeamWorkspace() {
 
   // ── Active ─────────────────────────────────────────────────────────────────
   if (team.status === "active") {
-    // Context is still resolving the AWS account on first load
+    // Show loader while resolving AWS account
     if (isAwsLoading) {
       return <SectionLoader />;
     }
@@ -69,12 +67,9 @@ export default function TeamWorkspace() {
       );
     }
 
+    // Pass the responsibility completely to the Dashboard!
     return (
       <div className="p-8 mx-auto w-full">
-        {/*
-         * CostDashboard reads teamId + awsAccountInternalId from context
-         * internally — no props needed here.
-         */}
         <CostDashboard />
       </div>
     );

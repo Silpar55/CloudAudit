@@ -1,4 +1,3 @@
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import {
   sendVerificationEmail,
@@ -15,9 +14,9 @@ import {
 import { hashPassword, comparePassword } from "#utils/password.js";
 
 import { AppError } from "#utils/helper/AppError.js";
-import { verifyJwtHelper } from "#utils/helper/jwt-helper.js";
 
 import * as authModel from "#modules/auth/auth.model.js";
+import * as jwtHelper from "#utils/helper/jwt-helper.js";
 
 export const registerUser = async ({
   firstName,
@@ -113,7 +112,7 @@ export const getUser = async (token) => {
   if (!token) throw new AppError("Access denied", 401);
 
   try {
-    const decoded = verifyJwtHelper(token);
+    const decoded = jwtHelper.verifyJwtHelper(token);
     const user = await authModel.findUserById(decoded?.userId);
 
     // SECURITY PATCH: Invalidate token if user was deactivated
@@ -136,11 +135,7 @@ export const verifyEmailToken = async (token) => {
   }
 
   if (user.verification_used_at) {
-    const accessToken = jwt.sign(
-      { userId: user.user_id },
-      process.env.SECRETKEY,
-      { expiresIn: "1h" },
-    );
+    const accessToken = jwtHelper.generateToken(user.user_id);
 
     return { user, accessToken };
   }
@@ -160,11 +155,7 @@ export const verifyEmailToken = async (token) => {
     emailToSet,
   );
 
-  const accessToken = jwt.sign(
-    { userId: updatedUser.user_id },
-    process.env.SECRETKEY,
-    { expiresIn: "1h" },
-  );
+  const refreshToken = jwtHelper.generateRefreshToken(user.user_id);
 
   return { user: updatedUser, accessToken };
 };
