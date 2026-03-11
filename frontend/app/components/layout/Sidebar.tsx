@@ -29,7 +29,9 @@ import { getAvatarColor, getInitials } from "~/utils/format";
 import { Link, useNavigate } from "react-router";
 import { useGetTeamsByUserId } from "~/hooks/useTeam";
 import { useGetCachedCostData } from "~/hooks/useAws";
+
 import { useAwsAccount } from "~/context/AwsAccountContext";
+import { useGetAnomalies } from "~/hooks/useAnomaly";
 
 // ─── Service name → { label, Icon } map ──────────────────────────────────────
 // Keys are substrings of the full AWS Cost Explorer display names.
@@ -162,7 +164,7 @@ const Sidebar = ({
   currentTeam,
   user,
   role,
-  counts = { anomalies: 0, recommendations: 0 },
+  counts = { recommendations: 0 },
   activeRoute = "/",
   onNavigate,
   className = "",
@@ -173,7 +175,7 @@ const Sidebar = ({
   const navigate = useNavigate();
 
   const handleNavigation = (path: string) => {
-    if (onNavigate) onNavigate(path);
+    if (onNavigate) return onNavigate(path);
   };
 
   const handleTeamSwitch = (teamId: string) => {
@@ -188,6 +190,13 @@ const Sidebar = ({
   // ── AWS account from context — fetched once in the layout ────────────────
   const { account } = useAwsAccount();
   const awsAccountInternalId = account?.id;
+
+  const { data: anomalies = [] } = useGetAnomalies(
+    currentTeam?.team_id,
+    awsAccountInternalId,
+  );
+
+  const anomalyCount = anomalies.length;
 
   // ── Dynamic resource list from cost explorer cache ──────────────────────
   // Pull last 90 days so we catch historically used services even if
@@ -253,7 +262,7 @@ const Sidebar = ({
     const isActive = activeRoute === href;
     return (
       <Link
-        to={href}
+        to={handleNavigation(href)}
         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all ${
           isActive
             ? "bg-aws-orange text-white font-semibold"
@@ -395,7 +404,7 @@ const Sidebar = ({
               href="/anomalies"
               icon={AlertTriangle}
               label="Anomalies"
-              badge={counts.anomalies}
+              badge={anomalyCount}
               badgeVariant="red"
             />
             <NavLink
