@@ -37,11 +37,15 @@ import {
   useCheckCurStatus,
   useGetCachedCostData,
   useSyncCostAndUsage,
+  useSyncCurData,
 } from "~/hooks/useAws";
+import { useTriggerAnalysis } from "~/hooks/useAnomaly";
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useParams } from "react-router";
 
-// ─── Refactored Component Imports ─────────────────────────────────────────────
+// UI Components
+import { Alert, Button, Card, Spinner } from "~/components/ui";
+
 import {
   fmt,
   fmtShort,
@@ -60,6 +64,12 @@ const CostDashboard = () => {
   const [startDate, setStartDate] = useState(daysAgo(30));
   const [endDate, setEndDate] = useState(today());
 
+  // ── Global Alert State ────────────────────────────────────────────────────
+  const [alertInfo, setAlertInfo] = useState<{
+    variant: "success" | "danger" | "warning" | "info";
+    message: string;
+  } | null>(null);
+
   const hasAttemptedAutoSync = useRef(false);
 
   const {
@@ -70,6 +80,7 @@ const CostDashboard = () => {
     error,
     dataUpdatedAt,
   } = useGetCachedCostData(teamId, awsAccountInternalId, startDate, endDate);
+
   const {
     mutate: runSync,
     isPending: isSyncing,
@@ -79,21 +90,25 @@ const CostDashboard = () => {
 
   const { mutate: checkCur, isPending: isCheckingCur } = useCheckCurStatus();
 
-  // ── Silent S3 Status Check on Dashboard Load ──────────────────
+  const { mutate: syncCur, isPending: isSyncingCur } = useSyncCurData();
+
+  const { mutate: runAnalysis, isPending: isRunningAnalysis } =
+    useTriggerAnalysis();
+
+  // ── Silent S3 Status Check on Dashboard Load ──────────────────────────────
   useEffect(() => {
     if (account?.cur_status === "pending") {
       checkCur(
         { teamId: teamId!, accId: awsAccountInternalId! },
         {
           onSuccess: (data) => {
-            // If the backend S3 check says it's ready, refresh the context to unlock the UI!
             if (data.status === "active") refreshAccount();
           },
         },
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run exactly once when the component mounts
+  }, []);
 
   const handleManualStatusCheck = () => {
     checkCur(
@@ -110,6 +125,52 @@ const CostDashboard = () => {
     hasAttemptedAutoSync.current = true;
     runSync();
   }, [runSync]);
+
+  // ── ML Analysis Handler ──────────────────────────────────────────────
+  const handleRunAnalysis = () => {
+    if (!teamId || !awsAccountInternalId) return;
+
+    // Clear any previous alerts
+    setAlertInfo(null);
+
+    syncCur(
+      { teamId, accId: awsAccountInternalId },
+      {
+        onSuccess: (data) => {
+          console.log("Data Pipeline:", data.message);
+
+          runAnalysis(
+            { teamId, accId: awsAccountInternalId },
+            {
+              onSuccess: () => {
+                setAlertInfo({
+                  variant: "success",
+                  message:
+                    "The recent CUR data is fully added and the AI analysis has been successfully completed!",
+                });
+              },
+              onError: (err) => {
+                console.error("ML Service Error:", err);
+                setAlertInfo({
+                  variant: "danger",
+                  message:
+                    "Data is fully synced, but the AI analysis encountered an error. Please try again.",
+                });
+              },
+            },
+          );
+        },
+        onError: (err) => {
+          console.error("Failed to sync CUR data before ML Analysis", err);
+          setAlertInfo({
+            variant: "danger",
+            message:
+              "Failed to synchronize AWS billing data. Cannot run AI analysis.",
+          });
+        },
+      },
+    );
+  };
 
   const isBusy = isFetching || isSyncing;
 
@@ -214,17 +275,17 @@ const CostDashboard = () => {
             </p>
           </div>
         </div>
-        {/* The Manual Override Button! */}
-        <button
+        <Button
+          size="sm"
           onClick={handleManualStatusCheck}
           disabled={isCheckingCur}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-800 dark:hover:bg-blue-700 dark:text-blue-200 rounded-lg transition-colors shrink-0 whitespace-nowrap"
+          className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-800 dark:hover:bg-blue-700 dark:text-blue-200 transition-colors shrink-0 whitespace-nowrap shadow-none border-none"
         >
           <RefreshCw
             className={`w-3.5 h-3.5 ${isCheckingCur ? "animate-spin" : ""}`}
           />
           {isCheckingCur ? "Checking AWS..." : "Check Status"}
-        </button>
+        </Button>
       </div>
     );
   };
@@ -234,7 +295,7 @@ const CostDashboard = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-10 h-10 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+        <Spinner size={40} className="border-indigo-500 border-t-transparent" />
         <p className="text-sm text-gray-400">Loading cost data…</p>
       </div>
     );
@@ -254,12 +315,12 @@ const CostDashboard = () => {
           Failed to load cost data
         </p>
         <p className="text-sm text-gray-400 max-w-xs">{msg}</p>
-        <button
+        <Button
           onClick={handleRefresh}
-          className="mt-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
+          className="mt-2 bg-indigo-500 hover:bg-indigo-600 text-white transition-colors border-none shadow-none"
         >
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
@@ -267,6 +328,16 @@ const CostDashboard = () => {
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
+        {alertInfo && (
+          <Alert
+            variant={alertInfo.variant}
+            title={alertInfo.variant === "success" ? "Success" : "Error"}
+            dismissible
+            onDismiss={() => setAlertInfo(null)}
+          >
+            {alertInfo.message}
+          </Alert>
+        )}
         <PendingBanner />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -279,27 +350,42 @@ const CostDashboard = () => {
               onChangeStart={setStartDate}
               onChangeEnd={setEndDate}
             />
-            <button
+            <Button
               onClick={handleRefresh}
               disabled={isBusy}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+              className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white transition-colors border-none shadow-none"
             >
               <RefreshCw
                 className={`w-4 h-4 ${isBusy ? "animate-spin" : ""}`}
               />
               {isSyncing ? "Syncing…" : "Sync from AWS"}
-            </button>
-            <button
-              disabled={account?.cur_status === "pending" || isBusy}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-all shadow-sm"
+            </Button>
+            <Button
+              onClick={handleRunAnalysis}
+              disabled={
+                account?.cur_status === "pending" ||
+                isBusy ||
+                isSyncingCur ||
+                isRunningAnalysis
+              }
+              className="bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all shadow-sm border-none"
               title={
                 account?.cur_status === "pending"
                   ? "Waiting for AWS to generate data..."
                   : "Run Machine Learning Analysis"
               }
             >
-              <Sparkles className="w-4 h-4" /> Run AI Analysis
-            </button>
+              {isSyncingCur || isRunningAnalysis ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              {isSyncingCur
+                ? "Preparing Data..."
+                : isRunningAnalysis
+                  ? "Running AI Model..."
+                  : "Run AI Analysis"}
+            </Button>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
@@ -316,14 +402,14 @@ const CostDashboard = () => {
             </span>
             . Run a sync to pull the latest data from AWS Cost Explorer.
           </p>
-          <button
+          <Button
             onClick={handleRefresh}
             disabled={isBusy}
-            className="mt-1 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+            className="mt-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white transition-colors border-none shadow-none"
           >
             <RefreshCw className={`w-4 h-4 ${isBusy ? "animate-spin" : ""}`} />
             {isSyncing ? "Syncing from AWS…" : "Sync now"}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -333,6 +419,16 @@ const CostDashboard = () => {
 
   return (
     <div className="space-y-8">
+      {alertInfo && (
+        <Alert
+          variant={alertInfo.variant}
+          title={alertInfo.variant === "success" ? "Success" : "Error"}
+          dismissible
+          onDismiss={() => setAlertInfo(null)}
+        >
+          {alertInfo.message}
+        </Alert>
+      )}
       <PendingBanner />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -353,25 +449,40 @@ const CostDashboard = () => {
             onChangeStart={setStartDate}
             onChangeEnd={setEndDate}
           />
-          <button
+          <Button
             onClick={handleRefresh}
             disabled={isBusy}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+            className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white transition-colors border-none shadow-none"
           >
             <RefreshCw className={`w-4 h-4 ${isBusy ? "animate-spin" : ""}`} />
             {isSyncing ? "Syncing…" : "Refresh"}
-          </button>
-          <button
-            disabled={account?.cur_status === "pending" || isBusy}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-all shadow-sm"
+          </Button>
+          <Button
+            onClick={handleRunAnalysis}
+            disabled={
+              account?.cur_status === "pending" ||
+              isBusy ||
+              isSyncingCur ||
+              isRunningAnalysis
+            }
+            className="bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all shadow-sm border-none"
             title={
               account?.cur_status === "pending"
                 ? "Waiting for AWS to generate data..."
                 : "Run Machine Learning Analysis"
             }
           >
-            <Sparkles className="w-4 h-4" /> Run AI Analysis
-          </button>
+            {isSyncingCur || isRunningAnalysis ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {isSyncingCur
+              ? "Preparing Data..."
+              : isRunningAnalysis
+                ? "Running AI Model..."
+                : "Run AI Analysis"}
+          </Button>
         </div>
       </div>
 
@@ -402,7 +513,10 @@ const CostDashboard = () => {
         />
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+      <Card
+        padding="md"
+        className="bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-none"
+      >
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
           Daily Cost Trend
         </h2>
@@ -448,10 +562,13 @@ const CostDashboard = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+        <Card
+          padding="md"
+          className="bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-none"
+        >
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
             Daily Cost by Service (Top 5)
           </h2>
@@ -514,9 +631,12 @@ const CostDashboard = () => {
               ))}
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+        <Card
+          padding="md"
+          className="bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-none"
+        >
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
             Cost by Service
           </h2>
@@ -555,11 +675,14 @@ const CostDashboard = () => {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+        <Card
+          padding="md"
+          className="bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-none"
+        >
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-6">
             Cost by Region
           </h2>
@@ -598,9 +721,12 @@ const CostDashboard = () => {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+        <Card
+          padding="md"
+          className="bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-none"
+        >
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Service Distribution
           </h2>
@@ -648,7 +774,7 @@ const CostDashboard = () => {
               )}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       <CostTable rows={rows} />

@@ -305,6 +305,9 @@ describe("AWS Utilities", () => {
       expect(permissionsPolicy.Statement[1].Action).toContain(
         "athena:StartQueryExecution",
       );
+      expect(permissionsPolicy.Statement[1].Action).toContain(
+        "glue:CreateDatabase",
+      );
 
       // 3. Validate CUR Setup Block
       expect(permissionsPolicy.Statement[2].Sid).toBe(

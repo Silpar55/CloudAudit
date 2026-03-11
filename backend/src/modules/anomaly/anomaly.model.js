@@ -1,5 +1,18 @@
 import { pool } from "#config";
 
+export const ensureFallbackResourceExists = async () => {
+  const query = `
+    INSERT INTO resources (resource_id, aws_account_id, service, instance_type, region)
+    VALUES ('Unknown', NULL, 'Account-Level', 'N/A', 'Global')
+    ON CONFLICT (resource_id) DO NOTHING;
+  `;
+  try {
+    await pool.query(query);
+  } catch (error) {
+    console.error("Failed to ensure fallback resource exists:", error);
+  }
+};
+
 export const getAnomaliesByAccountId = async (internalId) => {
   const query = `
     SELECT 
