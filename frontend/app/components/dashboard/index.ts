@@ -11,3 +11,4 @@ export { default as MetricTile } from "./MetricTile";
 export { default as ChartTooltip } from "./ChartToolTip";
 export { default as DateRangePicker } from "./DateRangePicker";
 export { default as CostTable } from "./CostTable";
+export { default as AnomalyDashboard } from "./AnomalyDashboard";

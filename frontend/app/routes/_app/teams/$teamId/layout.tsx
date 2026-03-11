@@ -97,9 +97,9 @@ export default function TeamLayout() {
   // Handle navigation from sidebar
   const handleNavigate = (path: string) => {
     if (path === "/") {
-      navigate(`/teams/${teamId}`);
+      return `/teams/${teamId}`;
     } else {
-      navigate(`/teams/${teamId}${path}`);
+      return `/teams/${teamId}${path}`;
     }
   };
 

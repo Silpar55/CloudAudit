@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // This ensures that as soon as 'setToken' has a value, 'useMe' starts fetching.
   const { data: user, isLoading } = useMe(!!token);
 
-  console.log(user);
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (storedToken) {
