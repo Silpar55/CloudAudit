@@ -140,3 +140,10 @@ export const useCheckCurStatus = () => {
       awsService.checkCurStatus(teamId, accId),
   });
 };
+
+export const useSyncCurData = () => {
+  return useMutation({
+    mutationFn: ({ teamId, accId }: { teamId: string; accId: string }) =>
+      awsService.syncCurData(teamId, accId),
+  });
+};

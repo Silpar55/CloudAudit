@@ -36,8 +36,6 @@ router.post("/cur/sync/:accId", verifyAwsAccId, syncCurData);
 router.post("/cur/retry-setup/:accId", verifyAwsAccId, retryCurSetup);
 
 // ── Anomalies Sub-Resource ──────────────────────────────────────────────────
-// By applying the middleware here, your new Anomaly module will automatically
-// receive req.awsAccount and never have to query the DB for it!
 router.use("/:accId/anomalies", verifyAwsAccId, anomalyRoutes);
 
 export const awsRoutes = router;

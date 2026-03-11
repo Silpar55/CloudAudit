@@ -122,6 +122,18 @@ export const ceGetCostAndUsage = async (
   startDate = dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   endDate = dayjs().format("YYYY-MM-DD"),
 ) => {
+  // MOCK INTERCEPTOR: Prevent AWS calls for test accounts
+  const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
+  if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
+    // Just return the cached data that we injected via SQL
+    const rows = await awsModel.getCachedCostData(
+      account.id,
+      startDate,
+      endDate,
+    );
+    return { rowsAdded: 0, data: rows ?? [] };
+  }
+
   const result = await costExplorerService.getCostAndUsage(
     account,
     startDate,
@@ -176,7 +188,6 @@ export const syncCurData = async (account) => {
   const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
 
   if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
-    // Return immediately. The database already has the granular data from 002_mock_data_injection.sql
     return {
       status: "mock_success",
       message:
@@ -184,8 +195,32 @@ export const syncCurData = async (account) => {
     };
   }
 
-  // 2. If it is a real account, trigger the Athena extraction pipeline
+  // 2. The Cooldown Check: Prevent 500 errors and duplicate data
+  const lastSync = await awsModel.getLastCurSyncTime(account.id);
+  if (lastSync) {
+    const hoursSinceLastSync = dayjs().diff(dayjs(lastSync), "hour");
+    if (hoursSinceLastSync < 12) {
+      return {
+        status: "already_synced",
+        message: "The latest CUR report is already stored in the database.",
+      };
+    }
+  }
+
+  // 3. Fetch the parsed rows from Athena
   const result = await curService.fetchAndSyncCUR(account);
+
+  // 4. Save the rows to the database mapping to the real schema
+  if (result.data && result.data.length > 0) {
+    const rowsInserted = await awsModel.batchInsertCurData(
+      account.id,
+      result.data,
+    );
+    result.message = `Successfully synced and saved ${rowsInserted} records to the database.`;
+  }
+
+  delete result.data;
+
   return result;
 };
 

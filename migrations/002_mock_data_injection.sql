@@ -2,6 +2,11 @@
 -- CloudAudit v6.0 - Mock Data Injection Script (Event-Driven Data Warehousing)
 -- ==============================================================================
 
+
+INSERT INTO resources (resource_id, aws_account_id, service, instance_type, region)
+VALUES ('Unknown', NULL, 'Account-Level', 'N/A', 'Global')
+ON CONFLICT (resource_id) DO NOTHING;
+
 -- 1. MOCK USERS (Passwords: 'Test_11!' - Hashed )
 -- email_verified set to TRUE to allow immediate UI login
 INSERT INTO users (user_id, first_name, last_name, email, email_verified, password, phone, country_code, is_active, created_at) VALUES
@@ -84,3 +89,28 @@ SELECT
     '33333333-cccc-4333-a333-333333333333', d, 'AmazonRDS', 'Aurora:StorageUsage', 'AuroraStorage', 'db-XYZ123ABC987DEF', 100, 
     130.00 + (random() * 100.00 - 50.00), 'us-west-2', 130.00, 130.00, date_trunc('month', d)::date
 FROM generate_series(CURRENT_DATE - INTERVAL '60 days', CURRENT_DATE - INTERVAL '1 day', '1 day') AS d;
+
+
+
+-- 7. POPULATE COST EXPLORER CACHE FOR INSTANT DASHBOARD RENDERING
+INSERT INTO cost_explorer_cache (
+    aws_account_id, time_period_start, time_period_end, 
+    service, region, unblended_cost, unblended_unit, 
+    usage_quantity, usage_quantity_unit
+)
+SELECT 
+    aws_account_id, 
+    date_trunc('day', time_interval)::date AS time_period_start,
+    date_trunc('day', time_interval)::date AS time_period_end,
+    product_code AS service,
+    region,
+    SUM(unblended_cost) AS unblended_cost,
+    'USD' AS unblended_unit,
+    SUM(usage_amount) AS usage_quantity,
+    'Hrs/GB' AS usage_quantity_unit
+FROM cost_data
+GROUP BY aws_account_id, date_trunc('day', time_interval)::date, product_code, region
+ON CONFLICT (aws_account_id, time_period_start, service, region) 
+DO UPDATE SET 
+    unblended_cost = EXCLUDED.unblended_cost,
+    usage_quantity = EXCLUDED.usage_quantity;
