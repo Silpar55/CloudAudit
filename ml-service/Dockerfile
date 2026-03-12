@@ -38,6 +38,9 @@ WORKDIR /app
 # Minimal runtime system dep (libpq for psycopg2 at runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    build-essential \
+    gcc \
+    g++ \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy the venv from builder — no gcc, no apt build tools in this image

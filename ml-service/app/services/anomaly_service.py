@@ -58,6 +58,7 @@ class AnomalyService:
 				target_date=row['time_period_start']
 			)
 
+
 			resource_id = root_cause['resource_id'] if root_cause else None
 			root_cause_json = json.dumps(root_cause) if root_cause else None
 

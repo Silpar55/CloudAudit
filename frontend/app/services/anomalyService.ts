@@ -10,7 +10,7 @@ export const anomalyService = {
 
   triggerAnalysis: async (teamId: string, accId: string) => {
     const response = await apiClient.post(
-      `/teams/${teamId}/aws-accounts/${accId}/anomalies/analyze`,
+      `/teams/${teamId}/aws-accounts/${accId}/anomalies/analyze?version=2`,
     );
 
     console.log(response);
