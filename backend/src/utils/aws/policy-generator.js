@@ -87,6 +87,20 @@ export const generateScripts = (pendingAccount) => {
           "*",
         ],
       },
+      {
+        Sid: "CloudAuditRemediationAndMetricsAccess",
+        Effect: "Allow",
+        Action: [
+          "cloudwatch:GetMetricStatistics",
+          "cloudwatch:GetMetricData",
+          "cloudwatch:ListMetrics",
+          "ec2:StopInstances",
+          "ec2:StartInstances",
+          "rds:ModifyDBInstance",
+          "rds:DescribeDBInstances",
+        ],
+        Resource: "*",
+      },
     ],
   };
 

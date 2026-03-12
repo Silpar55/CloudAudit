@@ -8,11 +8,11 @@
 DROP TRIGGER IF EXISTS trg_update_daily_cost ON cost_data;
 DROP FUNCTION IF EXISTS update_daily_cost_summaries();
 DROP VIEW IF EXISTS team_dashboard_view;
+DROP TABLE IF EXISTS recommendations;
 DROP TABLE IF EXISTS cost_anomalies;
 DROP TABLE IF EXISTS cost_data;
 DROP TABLE IF EXISTS daily_cost_summaries;
 DROP TABLE IF EXISTS cost_explorer_cache;
-DROP TABLE IF EXISTS recommendations;
 DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS aws_accounts;
 DROP TABLE IF EXISTS team_members;
@@ -21,6 +21,8 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS teams;
 DROP TYPE IF EXISTS aws_account_status;
 DROP TYPE IF EXISTS team_status;
+DROP TYPE IF EXISTS resource_type_enum;
+DROP TYPE IF EXISTS recommendation_status;
 
 -- ==============================================================================
 -- 2. EXTENSIONS & CONFIGURATIONS
@@ -47,6 +49,18 @@ CREATE TYPE team_status AS ENUM (
 );
 
 
+CREATE TYPE resource_type_enum AS ENUM (
+    'ec2_instance', 
+    'rds_instance', 
+    's3_bucket'
+);
+
+CREATE TYPE recommendation_status AS ENUM (
+    'pending', 
+    'implemented', 
+    'rolled_back', 
+    'dismissed'
+);
 -- ==============================================================================
 -- 4. TABLE CREATION
 -- ==============================================================================
@@ -196,12 +210,19 @@ CREATE TABLE recommendations (
 	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
 	resource_id TEXT REFERENCES resources (resource_id),
+	resource_type resource_type_enum NOT NULL,
+	anomaly_id UUID REFERENCES cost_anomalies(anomaly_id), -- Nullable, as requested
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
 	recommendation_type TEXT NOT NULL, 
 	description TEXT NOT NULL,
 	estimated_monthly_savings DECIMAL NOT NULL, 
 	confidence_score DECIMAL NOT NULL,
-	status INTEGER
+	status recommendation_status NOT NULL DEFAULT 'pending',
+	metadata JSONB,
+	implemented_at TIMESTAMP,
+	implemented_by UUID REFERENCES users (user_id),
+	rolled_back_at TIMESTAMP,
+	rollback_reason TEXT
 );
 
 -- AUDIT_LOGS TABLE
