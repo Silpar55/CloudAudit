@@ -18,18 +18,18 @@ _service_v2 = AnomalyServiceV2()
 
 @ml_bp.post("/api/ml/analyze")
 def analyze_costs():
-    data = request.get_json()
-    aws_account_id = data.get("aws_account_id")
+	data = request.get_json()
+	aws_account_id = data.get("aws_account_id")
 
-    if not aws_account_id:
-        return jsonify({"error": "aws_account_id is required"}), 400
+	if not aws_account_id:
+		return jsonify({"error": "aws_account_id is required"}), 400
 
-    # Default to v2 — pass ?version=1 to run legacy Isolation Forest
-    version = request.args.get("version", "2")
-    service = _service_v1 if version == "1" else _service_v2
+	# Default to v2 — pass ?version=1 to run legacy Isolation Forest
+	version = request.args.get("version", "2")
+	service = _service_v1 if version == "1" else _service_v2
 
-    try:
-        result = service.run_analysis_for_account(aws_account_id)
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+	try:
+		result = service.run_analysis_for_account(aws_account_id)
+		return jsonify(result), 200
+	except Exception as e:
+		return jsonify({"error": str(e)}), 500
