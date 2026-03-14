@@ -13,7 +13,6 @@ export const anomalyService = {
       `/teams/${teamId}/aws-accounts/${accId}/anomalies/analyze?version=2`,
     );
 
-    console.log(response);
     return response.data;
   },
 };

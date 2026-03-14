@@ -32,6 +32,8 @@ import { useGetCachedCostData } from "~/hooks/useAws";
 
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useGetAnomalies } from "~/hooks/useAnomaly";
+import { useRecommendations } from "~/hooks/useRecommendations";
+import { useParams } from "react-router";
 
 // ─── Service name → { label, Icon } map ──────────────────────────────────────
 // Keys are substrings of the full AWS Cost Explorer display names.
@@ -164,7 +166,7 @@ const Sidebar = ({
   currentTeam,
   user,
   role,
-  counts = { recommendations: 0 },
+  counts,
   activeRoute = "/",
   onNavigate,
   className = "",
@@ -195,8 +197,15 @@ const Sidebar = ({
     currentTeam?.team_id,
     awsAccountInternalId,
   );
+  const { recommendations } = useRecommendations(
+    currentTeam?.team_id,
+    account?.id,
+  );
 
   const anomalyCount = anomalies.length;
+  const pendingCount = recommendations.filter(
+    (r) => r.status === "pending",
+  ).length;
 
   // ── Dynamic resource list from cost explorer cache ──────────────────────
   // Pull last 90 days so we catch historically used services even if
@@ -411,7 +420,7 @@ const Sidebar = ({
               href="/recommendations"
               icon={TrendingDown}
               label="Recommendations"
-              badge={counts.recommendations}
+              badge={pendingCount}
               badgeVariant="green"
             />
 
