@@ -18,6 +18,7 @@ import { EC2Client } from "@aws-sdk/client-ec2";
 import { CostAndUsageReportServiceClient } from "@aws-sdk/client-cost-and-usage-report-service";
 import { AthenaClient } from "@aws-sdk/client-athena";
 import { CloudWatchClient } from "@aws-sdk/client-cloudwatch";
+import { RDSClient } from "@aws-sdk/client-rds";
 
 export const createSTSClient = (region = "us-east-1", credentials = null) => {
   const config = { region };
@@ -62,6 +63,10 @@ export const createAthenaClient = (region, credentials) => {
 
 export const createCloudWatchClient = (region = "us-east-1", credentials) => {
   return new CloudWatchClient({ region, credentials });
+};
+
+export const createRDSClient = (region = "us-east-1", credentials) => {
+  return new RDSClient({ region, credentials });
 };
 
 export const getCallerIdentity = async (client) => {

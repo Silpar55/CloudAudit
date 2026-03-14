@@ -89,6 +89,34 @@ export const getEC2NetworkIO = async (
   };
 };
 
+export const getRecentEC2CpuMax = async (
+  accountCredentials,
+  instanceId,
+  hours = 2,
+) => {
+  const client = createCloudWatchClient("us-east-1", accountCredentials);
+  const EndTime = new Date();
+  const StartTime = new Date(EndTime.getTime() - hours * 60 * 60 * 1000);
+
+  try {
+    const command = new GetMetricStatisticsCommand({
+      Namespace: "AWS/EC2",
+      MetricName: "CPUUtilization",
+      Dimensions: [{ Name: "InstanceId", Value: instanceId }],
+      StartTime,
+      EndTime,
+      Period: 300, // 5-minute granularity for pre-flight
+      Statistics: ["Maximum"],
+    });
+
+    const response = await client.send(command);
+    if (!response.Datapoints || response.Datapoints.length === 0) return null;
+    return Math.max(...response.Datapoints.map((dp) => dp.Maximum));
+  } catch (error) {
+    return null;
+  }
+};
+
 export const getRDSCpuUtilization = async (
   accountCredentials,
   dbInstanceId,
