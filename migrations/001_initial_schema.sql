@@ -53,13 +53,15 @@ CREATE TYPE resource_type_enum AS ENUM (
     'ec2_instance', 
     'rds_instance', 
     's3_bucket'
+	'other'
 );
 
 CREATE TYPE recommendation_status AS ENUM (
     'pending', 
     'implemented', 
     'rolled_back', 
-    'dismissed'
+    'dismissed',
+	'resolved'
 );
 -- ==============================================================================
 -- 4. TABLE CREATION
@@ -222,8 +224,12 @@ CREATE TABLE recommendations (
 	implemented_at TIMESTAMP,
 	implemented_by UUID REFERENCES users (user_id),
 	rolled_back_at TIMESTAMP,
-	rollback_reason TEXT
+	rollback_reason TEXT,
+	resolution_type VARCHAR(20) NOT NULL DEFAULT 'automated' 
+    CHECK (resolution_type IN ('automated', 'manual')),
+	action_steps JSONB
 );
+
 
 -- AUDIT_LOGS TABLE
 CREATE TABLE audit_logs (

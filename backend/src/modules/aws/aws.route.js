@@ -12,6 +12,7 @@ import {
 } from "./aws.controller.js";
 import { verifyAwsAccId } from "#middleware";
 import { anomalyRoutes } from "#modules/anomaly/anomaly.route.js";
+import { recommendationRoutes } from "#modules/recommendations/recommendations.route.js";
 
 const router = Router({ mergeParams: true });
 
@@ -37,5 +38,8 @@ router.post("/cur/retry-setup/:accId", verifyAwsAccId, retryCurSetup);
 
 // ── Anomalies Sub-Resource ──────────────────────────────────────────────────
 router.use("/:accId/anomalies", verifyAwsAccId, anomalyRoutes);
+
+// ── Recommendations Sub-Resource ──────────────────────────────────────────────────
+router.use("/:accId/recommendations", verifyAwsAccId, recommendationRoutes);
 
 export const awsRoutes = router;
