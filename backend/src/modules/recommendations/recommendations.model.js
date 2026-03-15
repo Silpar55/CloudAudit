@@ -1,13 +1,13 @@
 import { pool } from "#config";
 
-export const getRecommendationsByAccountId = async (internalId) => {
+export const getRecommendationsByInternalId = async (internalAccountId) => {
   const query = `
     SELECT * FROM recommendations 
     WHERE aws_account_id = $1 
     ORDER BY estimated_monthly_savings DESC, created_at DESC;
   `;
   try {
-    const { rows } = await pool.query(query, [internalId]);
+    const { rows } = await pool.query(query, [internalAccountId]);
     return rows;
   } catch (error) {
     console.error("Error fetching recommendations:", error);
@@ -45,51 +45,91 @@ export const upsertRecommendation = async (recData) => {
     ? JSON.stringify(recData.action_steps)
     : null;
 
-  const query = `
-    INSERT INTO recommendations (
-      aws_account_id, resource_id, resource_type, anomaly_id, 
-      recommendation_type, description, estimated_monthly_savings, 
-      confidence_score, status, metadata, resolution_type, action_steps
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11)
-    ON CONFLICT (recommendation_id) 
-    DO UPDATE SET
-      description = EXCLUDED.description,
-      estimated_monthly_savings = EXCLUDED.estimated_monthly_savings,
-      confidence_score = EXCLUDED.confidence_score,
-      metadata = EXCLUDED.metadata,
-      resolution_type = EXCLUDED.resolution_type,
-      action_steps = EXCLUDED.action_steps;
-  `;
-
-  const values = [
-    recData.aws_account_id,
-    recData.resource_id,
-    recData.resource_type,
-    recData.anomaly_id,
-    recData.recommendation_type,
-    recData.description,
-    recData.estimated_monthly_savings,
-    recData.confidence_score,
-    recData.metadata,
-    resolutionType,
-    actionSteps,
-  ];
-
   try {
-    await pool.query(query, values);
+    // 1. Check if a pending recommendation already exists for this exact resource and action
+    const checkQuery = `
+      SELECT recommendation_id FROM recommendations 
+      WHERE aws_account_id = $1 
+        AND resource_id = $2 
+        AND recommendation_type = $3 
+        AND status = 'pending'
+      LIMIT 1;
+    `;
+    const { rows } = await pool.query(checkQuery, [
+      recData.aws_account_id,
+      recData.resource_id,
+      recData.recommendation_type,
+    ]);
+
+    if (rows.length > 0) {
+      const existingRecId = rows[0].recommendation_id;
+      const updateQuery = `
+        UPDATE recommendations 
+        SET description = $1,
+            estimated_monthly_savings = $2,
+            confidence_score = $3,
+            metadata = $4,
+            resolution_type = $5,
+            action_steps = $6,
+            anomaly_id = COALESCE($7, anomaly_id), -- Keep existing anomaly link if not provided
+            updated_at = NOW()
+        WHERE recommendation_id = $8;
+      `;
+      await pool.query(updateQuery, [
+        recData.description,
+        recData.estimated_monthly_savings,
+        recData.confidence_score,
+        recData.metadata,
+        resolutionType,
+        actionSteps,
+        recData.anomaly_id,
+        existingRecId,
+      ]);
+    } else {
+      const insertQuery = `
+        INSERT INTO recommendations (
+          aws_account_id, resource_id, resource_type, anomaly_id, 
+          recommendation_type, description, estimated_monthly_savings, 
+          confidence_score, status, metadata, resolution_type, action_steps
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11);
+      `;
+      await pool.query(insertQuery, [
+        recData.aws_account_id,
+        recData.resource_id,
+        recData.resource_type,
+        recData.anomaly_id,
+        recData.recommendation_type,
+        recData.description,
+        recData.estimated_monthly_savings,
+        recData.confidence_score,
+        recData.metadata,
+        resolutionType,
+        actionSteps,
+      ]);
+    }
   } catch (error) {
     console.error("Error upserting recommendation:", error);
   }
 };
 
-export const getRecommendationById = async (id, accountId) => {
+export const getRecommendationById = async (
+  recommendationId,
+  internalAccountId,
+) => {
   const query = `SELECT * FROM recommendations WHERE recommendation_id = $1 AND aws_account_id = $2;`;
-  const { rows } = await pool.query(query, [id, accountId]);
+  const { rows } = await pool.query(query, [
+    recommendationId,
+    internalAccountId,
+  ]);
   return rows[0];
 };
 
-export const updateRecommendationStatus = async (id, status, updates = {}) => {
+export const updateRecommendationStatus = async (
+  recommendationId,
+  status,
+  updates = {},
+) => {
   const { implementedBy, rollbackReason, metadata } = updates;
   const metadataUpdate = metadata ? `, metadata = $4` : ``;
 
@@ -107,7 +147,7 @@ export const updateRecommendationStatus = async (id, status, updates = {}) => {
 
   const values = [status, implementedBy || null, rollbackReason || null];
   if (metadata) values.push(metadata);
-  values.push(id);
+  values.push(recommendationId);
 
   const { rows } = await pool.query(query, values);
   return rows[0];
@@ -118,8 +158,7 @@ export const logAuditAction = async (teamId, userId, action, details) => {
   await pool.query(query, [teamId, userId, action, JSON.stringify(details)]);
 };
 
-// Add this new function
-export const getOrphanedAnomalies = async (accountId) => {
+export const getOrphanedAnomalies = async (internalAccountId) => {
   const query = `
     SELECT 
       a.anomaly_id, a.resource_id, a.expected_cost, a.deviation_pct, a.root_cause_details,
@@ -131,7 +170,7 @@ export const getOrphanedAnomalies = async (accountId) => {
       AND r.recommendation_id IS NULL;
   `;
   try {
-    const { rows } = await pool.query(query, [accountId]);
+    const { rows } = await pool.query(query, [internalAccountId]);
     return rows;
   } catch (error) {
     console.error("Error fetching orphaned anomalies:", error);

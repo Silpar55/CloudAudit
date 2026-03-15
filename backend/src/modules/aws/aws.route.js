@@ -23,23 +23,38 @@ router.post("/provision", initializePendingAccount);
 router.post("/activate", activateAwsAccount);
 
 // Middleware applied here
-router.delete("/:accId", verifyAwsAccId, deactivateAwsAccount);
+router.delete("/:internalAccountId", verifyAwsAccId, deactivateAwsAccount);
 
 // ── Cost Explorer ─────────────────────────────────────────────────────────────
 
-// Middleware applied to CE routes so they don't have to query the DB themselves
-router.get("/ce/cost-usage/:accId", verifyAwsAccId, ceGetCostAndUsage);
-router.get("/ce/cost-usage/:accId/cached", verifyAwsAccId, getCachedCostData);
+router.get(
+  "/ce/cost-usage/:internalAccountId",
+  verifyAwsAccId,
+  ceGetCostAndUsage,
+);
+router.get(
+  "/ce/cost-usage/:internalAccountId/cached",
+  verifyAwsAccId,
+  getCachedCostData,
+);
 
 // ── Cost and Usage Report (CUR) ───────────────────────────────────────────────
-router.get("/cur/status/:accId", verifyAwsAccId, checkCurStatus);
-router.post("/cur/sync/:accId", verifyAwsAccId, syncCurData);
-router.post("/cur/retry-setup/:accId", verifyAwsAccId, retryCurSetup);
+router.get("/cur/status/:internalAccountId", verifyAwsAccId, checkCurStatus);
+router.post("/cur/sync/:internalAccountId", verifyAwsAccId, syncCurData);
+router.post(
+  "/cur/retry-setup/:internalAccountId",
+  verifyAwsAccId,
+  retryCurSetup,
+);
 
 // ── Anomalies Sub-Resource ──────────────────────────────────────────────────
-router.use("/:accId/anomalies", verifyAwsAccId, anomalyRoutes);
+router.use("/:internalAccountId/anomalies", verifyAwsAccId, anomalyRoutes);
 
 // ── Recommendations Sub-Resource ──────────────────────────────────────────────────
-router.use("/:accId/recommendations", verifyAwsAccId, recommendationRoutes);
+router.use(
+  "/:internalAccountId/recommendations",
+  verifyAwsAccId,
+  recommendationRoutes,
+);
 
 export const awsRoutes = router;

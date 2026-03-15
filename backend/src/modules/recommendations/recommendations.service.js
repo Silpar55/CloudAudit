@@ -15,7 +15,7 @@ const RDS_CONN_THRESHOLD_PCT = 0.1; // 10% of max
 
 export const getRecommendations = async (account) => {
   const recommendations =
-    await recommendationsModel.getRecommendationsByAccountId(account.id);
+    await recommendationsModel.getRecommendationsByInternalId(account.id);
   if (!recommendations)
     throw new AppError("Failed to fetch recommendations", 500);
   return recommendations;
@@ -23,7 +23,7 @@ export const getRecommendations = async (account) => {
 
 export const runDetectionCycle = async (account) => {
   const anomalies =
-    (await anomalyModel.getAnomaliesByAccountId(account.id)) || [];
+    (await anomalyModel.getAnomaliesByInternalId(account.id)) || [];
 
   // 1. Run deterministic, automated engines first
   await detectUnusedEC2(account, anomalies);
@@ -349,7 +349,7 @@ export const dismissRecommendation = async (account, recommendationId) => {
 };
 
 // LYZR agent
-const fetchAIInvestigation = async (accountId, anomaly) => {
+const fetchAIInvestigation = async (internalAccountId, anomaly) => {
   const lyzrApiKey = process.env.LYZR_API_KEY;
   const agentId = process.env.LYZR_AGENT_ID;
 
@@ -375,7 +375,7 @@ const fetchAIInvestigation = async (accountId, anomaly) => {
       },
       body: JSON.stringify({
         agent_id: agentId,
-        user_id: accountId, // Tracking usage by team account ID
+        user_id: internalAccountId, // Tracking usage by team account ID
         session_id: anomaly.anomaly_id, // Keeps conversation context tied to the anomaly
         message: JSON.stringify(payload),
       }),

@@ -2,7 +2,10 @@ import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 import { AppError } from "#utils/helper/AppError.js";
 
 jest.mock("#modules/anomaly/anomaly.model.js");
+jest.mock("../../../../src/modules/recommendations/recommendations.service.js");
+
 import * as anomalyModel from "#modules/anomaly/anomaly.model.js";
+import * as recommendationsService from "../../../../src/modules/recommendations/recommendations.service.js";
 import {
   getAnomalies,
   triggerAnalysis,
@@ -17,18 +20,18 @@ describe("Anomaly Service", () => {
   describe("getAnomalies", () => {
     it("Should return anomalies successfully", async () => {
       const mockAnomalies = [{ id: "1" }];
-      anomalyModel.getAnomaliesByAccountId.mockResolvedValue(mockAnomalies);
+      anomalyModel.getAnomaliesByInternalId.mockResolvedValue(mockAnomalies);
 
-      const result = await getAnomalies("acc-123");
+      const result = await getAnomalies({ id: "acc-123" });
       expect(result).toEqual(mockAnomalies);
-      expect(anomalyModel.getAnomaliesByAccountId).toHaveBeenCalledWith(
+      expect(anomalyModel.getAnomaliesByInternalId).toHaveBeenCalledWith(
         "acc-123",
       );
     });
 
     it("Should throw AppError if model returns null", async () => {
-      anomalyModel.getAnomaliesByAccountId.mockResolvedValue(null);
-      await expect(getAnomalies("acc-123")).rejects.toThrow(AppError);
+      anomalyModel.getAnomaliesByInternalId.mockResolvedValue(null);
+      await expect(getAnomalies({ id: "acc-123" })).rejects.toThrow(AppError);
     });
   });
 
@@ -40,19 +43,20 @@ describe("Anomaly Service", () => {
         json: async () => mockResponse,
       });
 
-      const result = await triggerAnalysis("acc-123");
+      recommendationsService.runDetectionCycle.mockResolvedValue({
+        new_recommendations: 1,
+      });
+
+      const result = await triggerAnalysis({ id: "acc-123" });
       expect(global.fetch).toHaveBeenCalled();
-      expect(result).toEqual(mockResponse);
+      expect(result.anomalies_detected).toEqual(2);
     });
 
     it("Should throw 503 AppError if ML service is unreachable", async () => {
       global.fetch.mockRejectedValue(new TypeError("fetch failed"));
 
-      await expect(triggerAnalysis("acc-123")).rejects.toThrow(
-        new AppError(
-          "AI Analysis is currently unavailable. Please try again later.",
-          503,
-        ),
+      await expect(triggerAnalysis({ id: "acc-123" })).rejects.toThrow(
+        new AppError("AI Analysis is currently unavailable.", 503),
       );
     });
 
@@ -63,11 +67,8 @@ describe("Anomaly Service", () => {
         text: async () => "Internal Server Error",
       });
 
-      await expect(triggerAnalysis("acc-123")).rejects.toThrow(
-        new AppError(
-          "AI Analysis is currently unavailable. Please try again later.",
-          503,
-        ),
+      await expect(triggerAnalysis({ id: "acc-123" })).rejects.toThrow(
+        new AppError("AI Analysis is currently unavailable.", 503),
       );
     });
   });

@@ -1,7 +1,7 @@
 import { pool } from "#config";
 
 export const initializePendingAccount = async ({
-  accId,
+  awsAccountNumber,
   teamId,
   externalId,
   roleArn,
@@ -14,7 +14,7 @@ export const initializePendingAccount = async ({
 
   try {
     const { rows } = await pool.query(query, [
-      accId,
+      awsAccountNumber,
       teamId,
       externalId,
       roleArn,
@@ -27,7 +27,11 @@ export const initializePendingAccount = async ({
   }
 };
 
-export const activateAwsAccount = async (internalId, awsAccId, roleArn) => {
+export const activateAwsAccount = async (
+  internalAccountId,
+  awsAccountNumber,
+  roleArn,
+) => {
   const query = `
     UPDATE aws_accounts 
     SET status = 'active', 
@@ -41,7 +45,11 @@ export const activateAwsAccount = async (internalId, awsAccId, roleArn) => {
   `;
 
   try {
-    const { rows } = await pool.query(query, [internalId, awsAccId, roleArn]);
+    const { rows } = await pool.query(query, [
+      internalAccountId,
+      awsAccountNumber,
+      roleArn,
+    ]);
     return rows[0];
   } catch (error) {
     console.log(error);
@@ -49,23 +57,23 @@ export const activateAwsAccount = async (internalId, awsAccId, roleArn) => {
   }
 };
 
-export const findAwsAccountByAccId = async (awsAccountId, teamId) => {
+export const findAwsAccountByAwsNumber = async (awsAccountNumber, teamId) => {
   const query = `
     SELECT * FROM aws_accounts
     WHERE aws_account_id = $1 AND team_id = $2;
   `;
   try {
-    const { rows } = await pool.query(query, [awsAccountId, teamId]);
+    const { rows } = await pool.query(query, [awsAccountNumber, teamId]);
     return rows[0];
   } catch (error) {
     return null;
   }
 };
 
-export const findAwsAccountById = async (internalId) => {
+export const findAwsAccountByInternalId = async (internalAccountId) => {
   const query = `SELECT * FROM aws_accounts WHERE id = $1;`;
   try {
-    const { rows } = await pool.query(query, [internalId]);
+    const { rows } = await pool.query(query, [internalAccountId]);
     return rows[0];
   } catch (error) {
     return null;
@@ -91,7 +99,7 @@ export const getAwsAccountByTeamId = async (teamId) => {
   }
 };
 
-export const updateAccountRole = async (internalId, roleArn) => {
+export const updateAccountRole = async (internalAccountId, roleArn) => {
   const query = `
     UPDATE aws_accounts 
     SET iam_role_arn = $1, status = 'role_provided'
@@ -100,7 +108,7 @@ export const updateAccountRole = async (internalId, roleArn) => {
   `;
 
   try {
-    const { rows } = await pool.query(query, [roleArn, internalId]);
+    const { rows } = await pool.query(query, [roleArn, internalAccountId]);
     return rows[0];
   } catch (error) {
     console.log(error);
@@ -108,7 +116,7 @@ export const updateAccountRole = async (internalId, roleArn) => {
   }
 };
 
-export const deactivateAwsAccount = async (internalId) => {
+export const deactivateAwsAccount = async (internalAccountId) => {
   const query = `
     UPDATE aws_accounts 
     SET status = 'disconnected', disconnected_at = NOW()
@@ -117,7 +125,7 @@ export const deactivateAwsAccount = async (internalId) => {
   `;
 
   try {
-    const { rows } = await pool.query(query, [internalId]);
+    const { rows } = await pool.query(query, [internalAccountId]);
     return rows[0];
   } catch (error) {
     console.log(error);
@@ -139,7 +147,7 @@ export const getAllAccounts = async () => {
 
 export const addCostExploreCostAndUsageRow = async (row) => {
   const allowedFields = [
-    "awsAccountId",
+    "awsAccountId", // Note: This actually represents the internal UUID in your DB structure mapping. I left the key name here since it matches your camelCase mapping logic safely.
     "timePeriodStart",
     "timePeriodEnd",
     "service",
@@ -191,12 +199,16 @@ export const addCostExploreCostAndUsageRow = async (row) => {
  * Read cached Cost Explorer rows for a given account + date window.
  * Called by the /cached endpoint — no AWS API call involved.
  *
- * @param {string} internalId  - aws_accounts.id (internal UUID)
+ * @param {string} internalAccountId  - aws_accounts.id (internal UUID)
  * @param {string} startDate   - YYYY-MM-DD inclusive
  * @param {string} endDate     - YYYY-MM-DD inclusive
  * @returns {Promise<Array>}
  */
-export const getCachedCostData = async (internalId, startDate, endDate) => {
+export const getCachedCostData = async (
+  internalAccountId,
+  startDate,
+  endDate,
+) => {
   const query = `
     SELECT *
     FROM cost_explorer_cache
@@ -207,7 +219,11 @@ export const getCachedCostData = async (internalId, startDate, endDate) => {
   `;
 
   try {
-    const { rows } = await pool.query(query, [internalId, startDate, endDate]);
+    const { rows } = await pool.query(query, [
+      internalAccountId,
+      startDate,
+      endDate,
+    ]);
     return rows;
   } catch (error) {
     console.error(error);
@@ -215,9 +231,9 @@ export const getCachedCostData = async (internalId, startDate, endDate) => {
   }
 };
 
-export const updateCurStatus = async (internalId, status) => {
+export const updateCurStatus = async (internalAccountId, status) => {
   const query = `UPDATE aws_accounts SET cur_status = $1 WHERE id = $2 RETURNING cur_status;`;
-  const { rows } = await pool.query(query, [status, internalId]);
+  const { rows } = await pool.query(query, [status, internalAccountId]);
   return rows[0];
 };
 
@@ -226,7 +242,7 @@ export const updateCurStatus = async (internalId, status) => {
  * Maps exactly to the cost_data table and automatically fires
  * the trg_update_daily_cost trigger to build summaries.
  */
-export const batchInsertCurData = async (internalAccId, parsedRows) => {
+export const batchInsertCurData = async (internalAccountId, parsedRows) => {
   if (!parsedRows || parsedRows.length === 0) return 0;
 
   // Map the objects to flat arrays for PG UNNEST
@@ -242,8 +258,6 @@ export const batchInsertCurData = async (internalAccId, parsedRows) => {
   const amortizedCosts = parsedRows.map((r) => r.amortized_cost);
   const billPeriods = parsedRows.map((r) => r.bill_period);
 
-  // Note: We leave out tag_* columns and instance_type for now as they can be null,
-  // but we enforce the NOT NULL requirements of your schema.
   const query = `
     INSERT INTO cost_data (
       aws_account_id, time_interval, product_code, usage_type, 
@@ -260,7 +274,7 @@ export const batchInsertCurData = async (internalAccId, parsedRows) => {
 
   try {
     const { rowCount } = await pool.query(query, [
-      internalAccId,
+      internalAccountId,
       timeIntervals,
       productCodes,
       usageTypes,
@@ -283,10 +297,10 @@ export const batchInsertCurData = async (internalAccId, parsedRows) => {
 /**
  * Gets the most recent timestamp of when CUR data was inserted for this account.
  */
-export const getLastCurSyncTime = async (internalId) => {
+export const getLastCurSyncTime = async (internalAccountId) => {
   const query = `SELECT MAX(loaded_at) as last_sync FROM cost_data WHERE aws_account_id = $1`;
   try {
-    const { rows } = await pool.query(query, [internalId]);
+    const { rows } = await pool.query(query, [internalAccountId]);
     return rows[0]?.last_sync || null;
   } catch (error) {
     console.error(error);

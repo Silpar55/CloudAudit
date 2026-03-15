@@ -3,16 +3,16 @@ import { AppError } from "#utils/helper/AppError.js";
 
 // Mock dependencies
 jest.mock("#modules/aws/aws.model.js");
-jest.mock("../../../../src/modules/team/team.model.js");
+jest.mock("#modules/team/team.model.js");
 jest.mock("#utils/aws/sts.js");
 jest.mock("#utils/aws/policy-generator.js");
-jest.mock("../../../../src/modules/aws/services/cost-explorer.service.js");
+jest.mock("#modules/aws/services/cost-explorer.service.js");
 
 import * as awsModel from "#modules/aws/aws.model.js";
-import * as teamModel from "../../../../src/modules/team/team.model.js";
+import * as teamModel from "#modules/team/team.model.js";
 import { validateSTSConnection } from "#utils/aws/sts.js";
 import { generateScripts } from "#utils/aws/policy-generator.js";
-import { getCostAndUsage } from "../../../../src/modules/aws/services/cost-explorer.service.js";
+import { getCostAndUsage } from "#modules/aws/services/cost-explorer.service.js";
 
 import {
   initializePendingAccount,
@@ -30,7 +30,7 @@ describe("AWS Service", () => {
 
   describe("initializePendingAccount", () => {
     it("Should initialize a new pending account", async () => {
-      awsModel.findAwsAccountByAccId.mockResolvedValue(null);
+      awsModel.findAwsAccountByAwsNumber.mockResolvedValue(null);
       awsModel.initializePendingAccount.mockResolvedValue({ id: "acc-123" });
       generateScripts.mockReturnValue("bash-script");
 
@@ -52,7 +52,10 @@ describe("AWS Service", () => {
 
   describe("activateAwsAccount", () => {
     it("Should activate account if STS validation passes", async () => {
-      awsModel.getAwsAccountByTeamId.mockResolvedValue({ id: "acc-123" });
+      awsModel.getAwsAccountByTeamId.mockResolvedValue({
+        id: "acc-123",
+        external_id: "ext123",
+      });
       validateSTSConnection.mockResolvedValue(true);
       awsModel.activateAwsAccount.mockResolvedValue({ id: "acc-123" });
       teamModel.updateTeamStatus.mockResolvedValue(true);
@@ -71,7 +74,10 @@ describe("AWS Service", () => {
     });
 
     it("Should throw AppError if STS validation fails", async () => {
-      awsModel.findAwsAccountByAccId.mockResolvedValue({ id: "acc-123" });
+      awsModel.getAwsAccountByTeamId.mockResolvedValue({
+        id: "acc-123",
+        external_id: "ext123",
+      });
       validateSTSConnection.mockResolvedValue(false);
 
       await expect(
