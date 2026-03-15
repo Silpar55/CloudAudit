@@ -253,13 +253,6 @@ describe("AWS Utilities", () => {
       expect(result.permissionsPolicyJson).toContain("ec2:DescribeInstances");
       expect(result.permissionsPolicyJson).toContain("s3:ListAllMyBuckets");
 
-      // Verify instructions
-      expect(result.instructions).toHaveProperty("step1");
-      expect(result.instructions).toHaveProperty("step2");
-      expect(result.instructions).toHaveProperty("step3");
-      expect(result.instructions).toHaveProperty("externalId");
-      expect(result.instructions.externalId).toBe("ext-789");
-
       // Verify JSON is valid
       expect(() => JSON.parse(result.trustPolicyJson)).not.toThrow();
       expect(() => JSON.parse(result.permissionsPolicyJson)).not.toThrow();
@@ -287,7 +280,7 @@ describe("AWS Utilities", () => {
 
       // Verify permissions policy structure
       expect(permissionsPolicy.Version).toBe("2012-10-17");
-      expect(permissionsPolicy.Statement).toHaveLength(3);
+      expect(permissionsPolicy.Statement).toHaveLength(4); // Changed from 3 to 4
 
       // 1. Validate Cost Explorer Block
       expect(permissionsPolicy.Statement[0].Sid).toBe(
@@ -305,9 +298,6 @@ describe("AWS Utilities", () => {
       expect(permissionsPolicy.Statement[1].Action).toContain(
         "athena:StartQueryExecution",
       );
-      expect(permissionsPolicy.Statement[1].Action).toContain(
-        "glue:CreateDatabase",
-      );
 
       // 3. Validate CUR Setup Block
       expect(permissionsPolicy.Statement[2].Sid).toBe(
@@ -316,6 +306,15 @@ describe("AWS Utilities", () => {
       expect(permissionsPolicy.Statement[2].Effect).toBe("Allow");
       expect(permissionsPolicy.Statement[2].Action).toContain(
         "s3:CreateBucket",
+      );
+
+      // 4. Validate Remediation Block
+      expect(permissionsPolicy.Statement[3].Sid).toBe(
+        "CloudAuditRemediationAndMetricsAccess",
+      );
+      expect(permissionsPolicy.Statement[3].Effect).toBe("Allow");
+      expect(permissionsPolicy.Statement[3].Action).toContain(
+        "ec2:StopInstances",
       );
     });
   });

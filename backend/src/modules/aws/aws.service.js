@@ -15,15 +15,18 @@ import { generateScripts } from "#utils/aws/policy-generator.js";
 export const initializePendingAccount = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
 
-  const accId = roleArn.split(":")[4];
+  const awsAccountNumber = roleArn.split(":")[4];
 
-  let pendingAccount = await awsModel.findAwsAccountByAccId(accId, teamId);
+  let pendingAccount = await awsModel.findAwsAccountByAwsNumber(
+    awsAccountNumber,
+    teamId,
+  );
 
   if (!pendingAccount) {
     pendingAccount = await awsModel.initializePendingAccount({
       roleArn,
       externalId: randomUUID(),
-      accId,
+      awsAccountNumber,
       teamId,
     });
   } else {
@@ -43,7 +46,7 @@ export const activateAwsAccount = async (teamId, roleArn) => {
   if (!pendingAccount) throw new AppError("Account not found", 404);
 
   // Extract the real AWS Account ID from the final roleArn they pasted
-  const realAwsAccountId = roleArn.split(":")[4];
+  const realAwsAccountNumber = roleArn.split(":")[4];
 
   const isValid = await validateSTSConnection({
     iam_role_arn: roleArn,
@@ -57,24 +60,20 @@ export const activateAwsAccount = async (teamId, roleArn) => {
     );
 
   // 2. Activate the account in DB and set aws status as active in the team
-  // Note: Since we are changing the workflow of how the user activate their AWS, we need to make sure we are storing real values
   const account = await awsModel.activateAwsAccount(
     pendingAccount.id,
-    realAwsAccountId,
+    realAwsAccountNumber,
     roleArn,
   );
   await teamModel.updateTeamStatus(teamId, "active");
 
   // 3. THE AUTOMATION: Trigger CUR Setup asynchronously (Don't await it!)
-  // This lets the API respond immediately to the frontend, while the bucket builds in the background.
   curSetupService
     .automateCURSetup(account)
     .then(() => {
-      // We keep status as 'pending' because AWS takes 24hrs, but we know the bucket setup worked.
       console.log("CUR automation completed.");
     })
     .catch(async (err) => {
-      // If setup failed (e.g. missing permissions), mark as failed so we can prompt them in UI
       await awsModel.updateCurStatus(account.id, "failed");
     });
 
@@ -83,49 +82,36 @@ export const activateAwsAccount = async (teamId, roleArn) => {
 
 export const retryCurSetup = async (account) => {
   try {
-    // Attempt to automate the setup again
     await curSetupService.automateCURSetup(account);
-
-    // If successful, flip the status back to pending (waiting 24h for AWS)
     await awsModel.updateCurStatus(account.id, "pending");
     return { success: true, message: "CUR Setup successfully initialized." };
   } catch (error) {
-    // Keep it as failed if it crashes again
     await awsModel.updateCurStatus(account.id, "failed");
     throw new AppError(`Retry failed: ${error.message}`, 500);
   }
 };
 
-/**
- * Get the AWS account record for a team.
- * Used by the dashboard on first load to retrieve the internal UUID.
- */
 export const getAwsAccount = async (teamId) => {
   const account = await awsModel.getAwsAccountByTeamId(teamId);
 
   if (!account) throw new AppError("No AWS account found for this team", 404);
 
-  // Strip the IAM role ARN and external ID before returning to the client —
-  // the frontend only needs the id, aws_account_id, status, and timestamps.
   const { iam_role_arn, external_id, ...safeAccount } = account;
   return safeAccount;
 };
 
-export const deactivateAwsAccount = async (internalAccId) => {
-  // Redundant DB query and ownership check removed!
-  const result = await awsModel.deactivateAwsAccount(internalAccId);
+export const deactivateAwsAccount = async (internalAccountId) => {
+  const result = await awsModel.deactivateAwsAccount(internalAccountId);
   return result;
 };
 
 export const ceGetCostAndUsage = async (
-  account, // Now expects the full account object from the controller
+  account,
   startDate = dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   endDate = dayjs().format("YYYY-MM-DD"),
 ) => {
-  // MOCK INTERCEPTOR: Prevent AWS calls for test accounts
   const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
   if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
-    // Just return the cached data that we injected via SQL
     const rows = await awsModel.getCachedCostData(
       account.id,
       startDate,
@@ -144,7 +130,7 @@ export const ceGetCostAndUsage = async (
   await Promise.all(
     result.map(async (row) => {
       const data = {
-        awsAccountId: account.id,
+        awsAccountId: account.id, // Using the internal DB UUID
         timePeriodStart: row.timePeriodStart,
         timePeriodEnd: row.timePeriodEnd,
         service: row.Keys[0],
@@ -166,11 +152,15 @@ export const ceGetCostAndUsage = async (
 };
 
 export const getCachedCostData = async (
-  internalId, // Now expects just the string ID from the controller
+  internalAccountId,
   startDate = dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   endDate = dayjs().format("YYYY-MM-DD"),
 ) => {
-  const rows = await awsModel.getCachedCostData(internalId, startDate, endDate);
+  const rows = await awsModel.getCachedCostData(
+    internalAccountId,
+    startDate,
+    endDate,
+  );
 
   if (rows === null) {
     throw new AppError("Failed to retrieve cached cost data", 500);
@@ -179,12 +169,7 @@ export const getCachedCostData = async (
   return rows;
 };
 
-/**
- * Triggers the Cost and Usage Report (CUR) synchronization
- * Handles the logic between Mocked test accounts and Real AWS accounts
- */
 export const syncCurData = async (account) => {
-  // 1. The Interceptor: Check if this is a mocked account
   const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
 
   if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
@@ -195,7 +180,6 @@ export const syncCurData = async (account) => {
     };
   }
 
-  // 2. The Cooldown Check: Prevent 500 errors and duplicate data
   const lastSync = await awsModel.getLastCurSyncTime(account.id);
   if (lastSync) {
     const hoursSinceLastSync = dayjs().diff(dayjs(lastSync), "hour");
@@ -207,10 +191,8 @@ export const syncCurData = async (account) => {
     }
   }
 
-  // 3. Fetch the parsed rows from Athena
   const result = await curService.fetchAndSyncCUR(account);
 
-  // 4. Save the rows to the database mapping to the real schema
   if (result.data && result.data.length > 0) {
     const rowsInserted = await awsModel.batchInsertCurData(
       account.id,
@@ -225,18 +207,15 @@ export const syncCurData = async (account) => {
 };
 
 export const checkCurStatus = async (account) => {
-  // 1. Instantly approve mock accounts
   const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
   if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
     await awsModel.updateCurStatus(account.id, "active");
     return { status: "active", message: "Mock account ready." };
   }
 
-  // 2. Ping S3 for real accounts
   const isReady = await curService.checkCurReadiness(account);
 
   if (isReady) {
-    // Data found! Instantly unlock the AI features in the database
     await awsModel.updateCurStatus(account.id, "active");
     return { status: "active", message: "CUR data is ready!" };
   }

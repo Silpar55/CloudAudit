@@ -1,11 +1,8 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-// Mock the correct function that the middleware now uses
-jest.mock("#modules/aws/aws.model.js", () => ({
-  findAwsAccountById: jest.fn(),
-}));
+jest.mock("#modules/aws/aws.model.js");
 
-import { findAwsAccountById } from "#modules/aws/aws.model.js";
+import * as awsModel from "#modules/aws/aws.model.js";
 import { verifyAwsAccId } from "#middleware";
 
 describe("verifyAwsAccId Middleware", () => {
@@ -15,7 +12,7 @@ describe("verifyAwsAccId Middleware", () => {
     req = {
       params: {
         teamId: "team-123",
-        accId: "acc-456", // Internal UUID
+        internalAccountId: "acc-456", // Internal UUID
       },
     };
     res = {
@@ -33,18 +30,18 @@ describe("verifyAwsAccId Middleware", () => {
       team_id: "team-123",
       is_active: true,
     };
-    findAwsAccountById.mockResolvedValue(mockAccount);
+    awsModel.findAwsAccountByInternalId.mockResolvedValue(mockAccount);
 
     await verifyAwsAccId(req, res, next);
 
-    expect(findAwsAccountById).toHaveBeenCalledWith("acc-456");
+    expect(awsModel.findAwsAccountByInternalId).toHaveBeenCalledWith("acc-456");
     expect(req.awsAccount).toEqual(mockAccount); // Ensure it was attached
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
   });
 
   it("Should return 404 if the AWS account does not exist", async () => {
-    findAwsAccountById.mockResolvedValue(null);
+    awsModel.findAwsAccountByInternalId.mockResolvedValue(null);
 
     await verifyAwsAccId(req, res, next);
 
@@ -62,7 +59,7 @@ describe("verifyAwsAccId Middleware", () => {
       id: "acc-456",
       team_id: "wrong-team", // Mismatch!
     };
-    findAwsAccountById.mockResolvedValue(mockAccount);
+    awsModel.findAwsAccountByInternalId.mockResolvedValue(mockAccount);
 
     await verifyAwsAccId(req, res, next);
 

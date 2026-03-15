@@ -3,7 +3,7 @@ import * as recommendationsService from "../recommendations/recommendations.serv
 import { AppError } from "#utils/helper/AppError.js";
 
 export const getAnomalies = async (account) => {
-  const anomalies = await anomalyModel.getAnomaliesByAccountId(account.id);
+  const anomalies = await anomalyModel.getAnomaliesByInternalId(account.id);
 
   if (!anomalies) throw new AppError("Failed to fetch anomalies", 500);
 

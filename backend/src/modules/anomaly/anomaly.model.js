@@ -13,7 +13,7 @@ export const ensureFallbackResourceExists = async () => {
   }
 };
 
-export const getAnomaliesByAccountId = async (internalId) => {
+export const getAnomaliesByInternalId = async (internalAccountId) => {
   const query = `
     SELECT 
       anomaly_id, 
@@ -32,7 +32,7 @@ export const getAnomaliesByAccountId = async (internalId) => {
   `;
 
   try {
-    const { rows } = await pool.query(query, [internalId]);
+    const { rows } = await pool.query(query, [internalAccountId]);
     return rows;
   } catch (error) {
     console.error("Error fetching anomalies:", error);

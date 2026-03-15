@@ -29,7 +29,9 @@ describe("Anomaly Controller", () => {
 
       await getAnomalies(req, res, next);
 
-      expect(anomalyService.getAnomalies).toHaveBeenCalledWith("acc-123");
+      expect(anomalyService.getAnomalies).toHaveBeenCalledWith({
+        id: "acc-123",
+      });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith({ anomalies: mockData });
     });
@@ -50,7 +52,9 @@ describe("Anomaly Controller", () => {
 
       await triggerAnalysis(req, res, next);
 
-      expect(anomalyService.triggerAnalysis).toHaveBeenCalledWith("acc-123");
+      expect(anomalyService.triggerAnalysis).toHaveBeenCalledWith({
+        id: "acc-123",
+      });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith(mockResult);
     });
