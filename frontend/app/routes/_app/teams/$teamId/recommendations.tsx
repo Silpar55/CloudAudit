@@ -4,7 +4,7 @@ import { useAwsAccount } from "../../../../context/AwsAccountContext";
 import { useParams } from "react-router";
 import { Button, SectionLoader, Card } from "~/components/ui";
 import { RecommendationCard, MetricTile } from "~/components/dashboard";
-import { Zap, TrendingUp, CheckCircle, Target, Sparkles } from "lucide-react";
+import { Zap, TrendingUp, CheckCircle, Target } from "lucide-react";
 
 export default function RecommendationsPage() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -35,7 +35,7 @@ export default function RecommendationsPage() {
       return recommendations.filter((r) => r.status === "dismissed");
     }
 
-    let filtered = pendingRecs; // Show only pending in all other tabs
+    let filtered = pendingRecs;
     if (filter === "EC2")
       filtered = filtered.filter((r) => r.resource_type === "ec2_instance");
     if (filter === "RDS")
@@ -134,7 +134,7 @@ export default function RecommendationsPage() {
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="space-y-6">
           {filteredRecs.map((rec) => (
             <RecommendationCard
               key={rec.recommendation_id}

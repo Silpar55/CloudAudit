@@ -399,7 +399,6 @@ const fetchAIInvestigation = async (internalAccountId, anomaly) => {
   }
 };
 
-// Processor function
 export const detectManualAIRecommendations = async (account) => {
   const orphans = await recommendationsModel.getOrphanedAnomalies(account.id);
 
@@ -418,15 +417,14 @@ export const detectManualAIRecommendations = async (account) => {
 
       await recommendationsModel.upsertRecommendation({
         aws_account_id: account.id,
-        resource_id: anomaly.resource_id || "Account-Level",
+        // FIX: Match the actual DB fallback value
+        resource_id: anomaly.resource_id || "Unknown",
         resource_type: resourceType,
         anomaly_id: anomaly.anomaly_id,
         recommendation_type: "Investigate",
         description: aiAdvice.explanation,
-        // Since we don't know the exact savings for a manual investigation,
-        // we use the expected cost as the baseline for potential savings
         estimated_monthly_savings: parseFloat(anomaly.expected_cost) * 30,
-        confidence_score: 0.7, // Slightly lower confidence for LLM guesses
+        confidence_score: 0.7,
         metadata: JSON.stringify({
           ai_generated: true,
           original_deviation: anomaly.deviation_pct,

@@ -71,10 +71,10 @@ export const upsertRecommendation = async (recData) => {
             metadata = $4,
             resolution_type = $5,
             action_steps = $6,
-            anomaly_id = COALESCE($7, anomaly_id), -- Keep existing anomaly link if not provided
-            updated_at = NOW()
+            anomaly_id = COALESCE($7, anomaly_id)
         WHERE recommendation_id = $8;
       `;
+      // Removed updated_at = NOW()
       await pool.query(updateQuery, [
         recData.description,
         recData.estimated_monthly_savings,

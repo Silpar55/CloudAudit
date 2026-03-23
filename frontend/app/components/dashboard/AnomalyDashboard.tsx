@@ -2,9 +2,8 @@ import React, { useMemo } from "react";
 import { useParams } from "react-router";
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useGetAnomalies } from "~/hooks/useAnomaly";
-
-// UI Components
-import { Card, Badge, Spinner, Alert } from "~/components/ui";
+import { Badge, Spinner, Alert } from "~/components/ui";
+import { InsightCard } from "~/components/ui";
 import {
   AlertTriangle,
   CheckCircle,
@@ -13,7 +12,6 @@ import {
   Server,
   Target,
 } from "lucide-react";
-
 import { fmt } from "~/utils/format";
 import { MetricTile } from ".";
 
@@ -22,7 +20,6 @@ const AnomalyDashboard = () => {
   const { account } = useAwsAccount();
   const awsAccountInternalId = account?.id;
 
-  // Uses the exact same cache key as the Sidebar Zero extra network requests.
   const {
     data: anomalies = [],
     isLoading,
@@ -31,30 +28,40 @@ const AnomalyDashboard = () => {
 
   console.log(anomalies);
 
-  // ── Derived KPI Data ──────────────────────────────────────────────────────
   const kpis = useMemo(() => {
     const total = anomalies.length;
     const critical = anomalies.filter((a: any) => a.severity >= 80).length;
-
-    // Calculate total unexpected spend (Expected Cost * Deviation Percentage)
+    // Expected cost and deviation are already formatted as numbers by our backend formatter!
     const totalImpact = anomalies.reduce((sum: number, a: any) => {
-      const excess = Number(a.expected_cost) * (Number(a.deviation_pct) / 100);
+      const excess = a.expected_cost * (a.deviation_pct / 100);
       return sum + excess;
     }, 0);
-
     return { total, critical, totalImpact };
   }, [anomalies]);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
   const getSeverityProps = (severity: number) => {
     if (severity >= 80)
-      return { variant: "danger", label: "Critical", color: "text-red-500" };
+      return {
+        variant: "danger",
+        label: "Critical",
+        color: "text-red-600 dark:text-red-400",
+        accent: "red" as const,
+      };
     if (severity >= 50)
-      return { variant: "warning", label: "Warning", color: "text-yellow-500" };
-    return { variant: "info", label: "Low", color: "text-blue-500" };
+      return {
+        variant: "warning",
+        label: "Warning",
+        color: "text-yellow-600 dark:text-yellow-400",
+        accent: "yellow" as const,
+      };
+    return {
+      variant: "info",
+      label: "Low",
+      color: "text-blue-600 dark:text-blue-400",
+      accent: "default" as const,
+    };
   };
 
-  // ── Loading & Error States ────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 w-full">
@@ -80,7 +87,6 @@ const AnomalyDashboard = () => {
 
   return (
     <div className="p-8 mx-auto w-full space-y-8 max-w-7xl">
-      {/* ── Header ───────────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Activity className="w-6 h-6 text-indigo-500" />
@@ -92,7 +98,6 @@ const AnomalyDashboard = () => {
         </p>
       </div>
 
-      {/* ── KPIs ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricTile
           label="Total Detections"
@@ -118,112 +123,78 @@ const AnomalyDashboard = () => {
         />
       </div>
 
-      {/* ── Empty State ──────────────────────────────────────────────────── */}
       {anomalies.length === 0 ? (
-        <Card
-          padding="lg"
-          className="flex flex-col items-center justify-center text-center py-20 shadow-none"
-        >
+        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700">
           <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Your infrastructure is healthy
           </h2>
-          <p className="text-sm text-gray-500 max-w-md mt-2">
+          <p className="text-sm text-gray-500 max-w-md mt-2 text-center">
             The machine learning engine has not detected any irregular spending
-            patterns or anomalies in your current billing data.
+            patterns in your current billing data.
           </p>
-        </Card>
+        </div>
       ) : (
-        /* ── Anomaly Feed ────────────────────────────────────────────────── */
-        <div className="space-y-4">
+        <div className="space-y-6">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-2">
             Detection Feed
           </h3>
 
           {anomalies.map((anomaly: any) => {
-            const { variant, label, color } = getSeverityProps(
+            const { variant, label, color, accent } = getSeverityProps(
               anomaly.severity,
             );
             const actualCost =
-              Number(anomaly.expected_cost) *
-              (1 + Number(anomaly.deviation_pct) / 100);
+              anomaly.expected_cost * (1 + anomaly.deviation_pct / 100);
 
             return (
-              <Card
+              <InsightCard
                 key={anomaly.anomaly_id}
-                padding="md"
-                className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  {/* Left Side: Details */}
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Badge variant={variant as any}>
-                        {label} (Score: {anomaly.severity})
-                      </Badge>
-                      <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                        {new Date(anomaly?.detected_at).toLocaleString(
-                          "en-CA",
-                          {
-                            dateStyle: "long",
-                            timeStyle: "medium",
-                          },
-                        )}
-                      </span>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Server className="w-4 h-4 text-gray-400" />
-                        <h4 className="text-base font-bold text-gray-900 dark:text-white">
-                          {anomaly?.resource_id === "Unknown" ||
-                          !anomaly.resource_id
-                            ? "Account-Level Resource"
-                            : anomaly.resource_id}
-                        </h4>
-                      </div>
-
-                      {/* Root Cause Details Parser */}
-                      {anomaly.root_cause_details && (
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                          <span className="font-semibold block mb-1">
-                            AI Diagnostic:
-                          </span>
-                          {typeof anomaly.root_cause_details === "string"
-                            ? anomaly.root_cause_details
-                            : JSON.stringify(anomaly.root_cause_details)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Side: Financial Math */}
-                  <div className="sm:text-right bg-red-50 dark:bg-red-900/10 rounded-xl p-4 border border-red-100 dark:border-red-900/30 min-w-50">
-                    <p className="text-xs text-red-600 dark:text-red-400 font-semibold uppercase tracking-wider mb-1">
+                accentColor={accent}
+                icon={<Server />}
+                title={
+                  anomaly?.resource_id === "Unknown" || !anomaly.resource_id
+                    ? "Account-Level Resource"
+                    : anomaly.resource_id
+                }
+                badge={
+                  <Badge variant={variant as any}>
+                    {label} (Score: {anomaly.severity})
+                  </Badge>
+                }
+                timestamp={new Date(anomaly?.detected_at).toLocaleString(
+                  "en-CA",
+                  { dateStyle: "long", timeStyle: "short" },
+                )}
+                // We pass the root cause details directly since the backend parses them now!
+                metadata={anomaly.root_cause_details}
+                metricsContent={
+                  <>
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">
                       Deviation
                     </p>
-                    <p className={`text-2xl font-bold font-mono ${color}`}>
-                      +{Number(anomaly.deviation_pct).toFixed(1)}%
+                    <p className={`text-3xl font-bold font-mono ${color}`}>
+                      +{Number(anomaly?.deviation_pct ?? 0).toFixed(1)}%
                     </p>
-                    <div className="mt-3 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Expected:</span>
                         <span className="font-mono font-medium text-gray-700 dark:text-gray-300">
-                          {fmt(Number(anomaly.expected_cost))}
+                          {fmt(anomaly.expected_cost)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Actual:</span>
-                        <span className="font-mono font-medium text-gray-700 dark:text-gray-300">
+                        <span className="font-mono font-medium text-gray-900 dark:text-white">
                           {fmt(actualCost)}
                         </span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </Card>
+                  </>
+                }
+              />
             );
           })}
         </div>

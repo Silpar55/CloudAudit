@@ -23,10 +23,11 @@ export interface Recommendation {
   description: string;
   estimated_monthly_savings: string | number;
   confidence_score: string | number;
+  confidence_score_pct: string;
   status: "pending" | "implemented" | "rolled_back" | "dismissed";
   metadata: RecommendationMetadata | string;
   resolution_type: "automated" | "manual";
-  action_steps?: string[] | string;
+  action_steps?: string[];
   created_at: string;
 }
 

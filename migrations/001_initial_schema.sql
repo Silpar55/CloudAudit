@@ -230,6 +230,10 @@ CREATE TABLE recommendations (
 	action_steps JSONB
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_recommendations_pending
+ON recommendations (aws_account_id, resource_id, recommendation_type)
+WHERE status = 'pending';
+
 
 -- AUDIT_LOGS TABLE
 CREATE TABLE audit_logs (
