@@ -433,7 +433,7 @@ const CostDashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Cost Explorer
+            Cost Overview
           </h1>
           {lastUpdated && (
             <p className="text-xs text-gray-400 mt-0.5">
