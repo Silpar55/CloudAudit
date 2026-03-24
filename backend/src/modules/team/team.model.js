@@ -36,6 +36,46 @@ export const getTeamMemberById = async (teamId, userId) => {
   }
 };
 
+/** Active members with user profile — for roster UI (indexed lookup by team). */
+export const getActiveTeamMembersWithUsers = async (teamId) => {
+  const query = `
+    SELECT
+      tm.team_member_id,
+      tm.user_id,
+      tm.role,
+      tm.created_at AS joined_at,
+      u.email,
+      u.first_name,
+      u.last_name
+    FROM team_members tm
+    INNER JOIN users u ON u.user_id = tm.user_id
+    WHERE tm.team_id = $1
+      AND tm.is_active = TRUE
+    ORDER BY
+      CASE tm.role
+        WHEN 'owner' THEN 1
+        WHEN 'admin' THEN 2
+        ELSE 3
+      END,
+      u.first_name,
+      u.last_name;
+  `;
+  const { rows } = await pool.query(query, [teamId]);
+  return rows;
+};
+
+export const countActiveOwners = async (teamId) => {
+  const query = `
+    SELECT COUNT(*)::int AS c
+    FROM team_members
+    WHERE team_id = $1
+      AND is_active = TRUE
+      AND role = 'owner';
+  `;
+  const { rows } = await pool.query(query, [teamId]);
+  return rows[0]?.c ?? 0;
+};
+
 export const getTeamsByUserId = async (userId) => {
   const query = `
       SELECT * FROM team_dashboard_view

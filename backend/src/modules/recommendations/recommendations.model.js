@@ -132,16 +132,26 @@ export const updateRecommendationStatus = async (
 ) => {
   const { implementedBy, rollbackReason, metadata } = updates;
   const metadataUpdate = metadata ? `, metadata = $4` : ``;
+  // Without metadata, recommendation_id is $4; with metadata it is $5.
+  const idPlaceholder = metadata ? "$5" : "$4";
 
   const query = `
     UPDATE recommendations 
-    SET status = $1, 
-        implemented_at = CASE WHEN $1 = 'implemented' THEN NOW() ELSE implemented_at END,
+    SET status = $1::recommendation_status, 
+        implemented_at = CASE 
+          WHEN $1::recommendation_status = 'implemented'::recommendation_status 
+          THEN CURRENT_TIMESTAMP 
+          ELSE implemented_at 
+        END,
         implemented_by = COALESCE($2, implemented_by),
-        rolled_back_at = CASE WHEN $1 = 'rolled_back' THEN NOW() ELSE rolled_back_at END,
+        rolled_back_at = CASE 
+          WHEN $1::recommendation_status = 'rolled_back'::recommendation_status 
+          THEN CURRENT_TIMESTAMP 
+          ELSE rolled_back_at 
+        END,
         rollback_reason = COALESCE($3, rollback_reason)
         ${metadataUpdate}
-    WHERE recommendation_id = $5
+    WHERE recommendation_id = ${idPlaceholder}
     RETURNING *;
   `;
 

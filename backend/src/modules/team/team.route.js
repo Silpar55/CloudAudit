@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { verifyPermissions, verifyTeamId } from "#middleware";
+import {
+  verifyPermissions,
+  verifyTeamId,
+  verifyTeamMembership,
+} from "#middleware";
 import {
   createTeam,
   getTeamsByUserId,
@@ -7,6 +11,7 @@ import {
   updateTeam,
   deleteTeam,
   getTeamMemberById,
+  listTeamMembers,
   addTeamMember,
   deactivateTeamMember,
   changeMemberRole,
@@ -22,7 +27,13 @@ router.get("/:teamId", verifyTeamId, getTeamById);
 router.patch("/:teamId", verifyPermissions, verifyTeamId, updateTeam);
 router.delete("/:teamId", verifyPermissions, verifyTeamId, deleteTeam);
 
-// Member sub-resource
+// Member sub-resource (list must be registered before /:teamId/members)
+router.get(
+  "/:teamId/members/list",
+  verifyTeamId,
+  verifyTeamMembership,
+  listTeamMembers,
+);
 router.get("/:teamId/members", verifyTeamId, getTeamMemberById);
 router.post("/:teamId/members", verifyPermissions, verifyTeamId, addTeamMember);
 router.delete(

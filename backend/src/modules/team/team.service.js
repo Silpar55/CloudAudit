@@ -37,6 +37,10 @@ export const getTeamMemberById = async (teamId, userId) => {
   return teamMember;
 };
 
+export const listTeamMembers = async (teamId) => {
+  return teamModel.getActiveTeamMembersWithUsers(teamId);
+};
+
 export const createTeam = async (name, userId, description) => {
   if (!name) throw new AppError("Please enter a name", 400);
 
@@ -81,37 +85,108 @@ export const addTeamMember = async (email, teamId) => {
   throw new AppError("User is already in the team", 400);
 };
 
-export const deactivateTeamMember = async (teamId, userId) => {
-  // Check if target user is in the team
-  const member = await teamModel.getTeamMemberById(teamId, userId);
+export const deactivateTeamMember = async (teamId, targetUserId, actorUserId) => {
+  const actor = await teamModel.getTeamMemberById(teamId, actorUserId);
+  if (!actor?.is_active)
+    throw new AppError("You are not a member of this team", 403);
 
-  if (!member) throw new AppError("User is not in the team", 404);
+  const member = await teamModel.getTeamMemberById(teamId, targetUserId);
+  if (!member?.is_active) throw new AppError("User is not in the team", 404);
 
-  const { team_member_id } = await teamModel.deactivateTeamMember(
-    member.team_member_id,
-  );
+  if (actor.role === "admin") {
+    if (actor.user_id === targetUserId) {
+      throw new AppError("Admins cannot remove themselves from the team", 403);
+    }
+    if (member.role !== "member") {
+      throw new AppError(
+        "Only an owner can remove administrators or owners",
+        403,
+      );
+    }
+  }
 
-  return team_member_id;
+  if (member.role === "owner") {
+    if (actor.role !== "owner") {
+      throw new AppError("Only an owner can remove another owner", 403);
+    }
+    const ownerCount = await teamModel.countActiveOwners(teamId);
+    if (ownerCount <= 1) {
+      throw new AppError("Cannot remove the only owner of the workspace", 400);
+    }
+  }
+
+  const row = await teamModel.deactivateTeamMember(member.team_member_id);
+  if (!row) throw new AppError("Failed to remove member", 500);
+
+  return row.team_member_id;
 };
 
-export const changeMemberRole = async (teamId, userId, newRole) => {
-  newRole = newRole.toUpperCase();
+export const changeMemberRole = async (teamId, userId, newRole, actorUserId) => {
+  const normalized = String(newRole || "")
+    .trim()
+    .toLowerCase();
 
-  // Confirm is a valid role
-  if (!TEAM_ROLES[newRole]) throw new AppError("This role does not exist", 404);
+  if (!["member", "admin", "owner"].includes(normalized)) {
+    throw new AppError("This role does not exist", 400);
+  }
 
-  // Check if target user is in the team
+  const actor = await teamModel.getTeamMemberById(teamId, actorUserId);
+  if (!actor?.is_active)
+    throw new AppError("You are not a member of this team", 403);
+
   const member = await teamModel.getTeamMemberById(teamId, userId);
-  if (!member) throw new AppError("User is not in the team", 404);
+  if (!member?.is_active) throw new AppError("User is not in the team", 404);
 
-  const { team_member_id } = await teamModel.changeMemberRole(
+  if (actor.role === "admin") {
+    if (actor.user_id === userId) {
+      throw new AppError("Admins cannot change their own role", 403);
+    }
+    if (member.role !== "member") {
+      throw new AppError(
+        "Admins can only change roles for regular members",
+        403,
+      );
+    }
+    if (normalized === "owner") {
+      throw new AppError(
+        "Only the workspace owner can assign the owner role",
+        403,
+      );
+    }
+  }
+
+  if (normalized === "owner" && actor.role !== "owner") {
+    throw new AppError(
+      "Only the workspace owner can assign the owner role",
+      403,
+    );
+  }
+
+  if (member.role === "owner" && normalized !== "owner") {
+    const ownerCount = await teamModel.countActiveOwners(teamId);
+    if (ownerCount <= 1) {
+      throw new AppError(
+        "Cannot change role: team must have at least one owner",
+        400,
+      );
+    }
+    if (actor.role !== "owner") {
+      throw new AppError(
+        "Only an owner can change another owner's role",
+        403,
+      );
+    }
+  }
+
+  const row = await teamModel.changeMemberRole(
     member.team_member_id,
-    TEAM_ROLES[newRole],
+    normalized,
   );
+  if (!row) throw new AppError("Failed to update role", 500);
 
   return {
-    team_member_id,
+    team_member_id: row.team_member_id,
     prevRole: member.role,
-    role: newRole.toLowerCase(),
+    role: normalized,
   };
 };

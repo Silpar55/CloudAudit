@@ -82,24 +82,43 @@ describe("Team Service", () => {
   });
 
   describe("changeMemberRole", () => {
-    it("Should throw 404 if role is invalid", async () => {
+    it("Should throw 400 if role is invalid", async () => {
       await expect(
-        teamService.changeMemberRole("team-123", "user-123", "SUPERADMIN"),
-      ).rejects.toThrow(new AppError("This role does not exist", 404));
+        teamService.changeMemberRole(
+          "team-123",
+          "user-123",
+          "SUPERADMIN",
+          "actor-1",
+        ),
+      ).rejects.toThrow(new AppError("This role does not exist", 400));
     });
 
-    it("Should throw 404 if user is not in the team", async () => {
-      teamModel.getTeamMemberById.mockResolvedValue(null);
+    it("Should throw 404 if target user is not in the team", async () => {
+      teamModel.getTeamMemberById.mockImplementation((_tid, uid) => {
+        if (uid === "actor-1")
+          return { role: "owner", is_active: true };
+        return null;
+      });
 
       await expect(
-        teamService.changeMemberRole("team-123", "user-123", "ADMIN"),
+        teamService.changeMemberRole(
+          "team-123",
+          "user-123",
+          "admin",
+          "actor-1",
+        ),
       ).rejects.toThrow(new AppError("User is not in the team", 404));
     });
 
     it("Should successfully change the role", async () => {
-      teamModel.getTeamMemberById.mockResolvedValue({
-        team_member_id: "tm-123",
-        role: "member",
+      teamModel.getTeamMemberById.mockImplementation((_tid, uid) => {
+        if (uid === "actor-1")
+          return { role: "owner", is_active: true };
+        return {
+          team_member_id: "tm-123",
+          role: "member",
+          is_active: true,
+        };
       });
       teamModel.changeMemberRole.mockResolvedValue({
         team_member_id: "tm-123",
@@ -109,6 +128,7 @@ describe("Team Service", () => {
         "team-123",
         "user-123",
         "ADMIN",
+        "actor-1",
       );
 
       expect(teamModel.changeMemberRole).toHaveBeenCalledWith(

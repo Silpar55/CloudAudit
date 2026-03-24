@@ -8,8 +8,12 @@ jest.mock("#middleware", () => {
   return {
     ...actual,
     verifyPermissions: jest.fn((req, res, next) => next()),
-    verifyToken: jest.fn((req, res, next) => next()),
+    verifyToken: jest.fn((req, res, next) => {
+      req.userId = "actor-user-id";
+      next();
+    }),
     verifyTeamId: jest.fn((req, res, next) => next()),
+    verifyTeamMembership: jest.fn((req, res, next) => next()),
   };
 });
 
@@ -21,6 +25,8 @@ import {
   getTeamMemberById,
   deactivateTeamMember,
   changeMemberRole,
+  getActiveTeamMembersWithUsers,
+  countActiveOwners,
 } from "#modules/team/team.model.js";
 import { findUser } from "#modules/auth/auth.model.js";
 import app from "#app";
@@ -41,8 +47,14 @@ beforeEach(() => {
     }
   });
 
-  // FIXED: Renamed from getTeamMember to getTeamMemberById
   getTeamMemberById.mockImplementation((_, userId) => {
+    if (userId === "actor-user-id") {
+      return {
+        team_member_id: "actor-tm-id",
+        is_active: true,
+        role: "owner",
+      };
+    }
     switch (userId) {
       case "active-user-id":
         return {
@@ -54,8 +66,14 @@ beforeEach(() => {
         return { team_member_id: "team-member-id", is_active: false };
       case "valid-user-id":
         return null;
+      default:
+        return null;
     }
   });
+
+  countActiveOwners.mockResolvedValue(2);
+
+  getActiveTeamMembersWithUsers.mockResolvedValue([]);
 
   deactivateTeamMember.mockImplementation((memberId) => {
     return memberId === "team-member-id" ? { memberId } : null;
@@ -163,7 +181,16 @@ describe("/team", () => {
     const teamId = "team-id";
 
     it("Should throw error when user is not a member of that team", async () => {
-      getTeamMemberById.mockResolvedValueOnce(null);
+      getTeamMemberById.mockImplementation((_, userId) => {
+        if (userId === "actor-user-id") {
+          return {
+            team_member_id: "actor-tm-id",
+            is_active: true,
+            role: "owner",
+          };
+        }
+        return null;
+      });
       const response = await request(app).delete(
         `${url}/${teamId}/members/no-user-id`,
       );
@@ -171,12 +198,12 @@ describe("/team", () => {
       expect(response.body.message).toBe("User is not in the team");
     });
 
-    it("Should remove the member even if is already unactive", async () => {
+    it("Should return 404 when target member is already inactive", async () => {
       const response = await request(app).delete(
         `${url}/${teamId}/members/unactive-user-id`,
       );
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe("Member removed from the team");
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("User is not in the team");
     });
 
     it("Should remove the member correctly", async () => {
@@ -192,16 +219,25 @@ describe("/team", () => {
     const url = `${endpoint}`;
     const teamId = "team-id";
 
-    it("Should throw 404 when role is not a valid role", async () => {
+    it("Should throw 400 when role is not a valid role", async () => {
       const response = await request(app)
         .patch(`${url}/${teamId}/members/user-id`)
         .send({ newRole: "NO VALID ROLE" });
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(400);
       expect(response.body.message).toBe("This role does not exist");
     });
 
     it("Should throw error when user is not in the team", async () => {
-      getTeamMemberById.mockResolvedValueOnce(null);
+      getTeamMemberById.mockImplementation((_, userId) => {
+        if (userId === "actor-user-id") {
+          return {
+            team_member_id: "actor-tm-id",
+            is_active: true,
+            role: "owner",
+          };
+        }
+        return null;
+      });
       const response = await request(app)
         .patch(`${url}/${teamId}/members/valid-user-id`)
         .send({ newRole: "admin" });

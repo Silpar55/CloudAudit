@@ -137,6 +137,11 @@ describe("Team Controller", () => {
       req.params = { teamId: "team-123", userId: "user-456" };
       teamService.deactivateTeamMember.mockResolvedValue("tm-123");
       await deactivateTeamMember(req, res, next);
+      expect(teamService.deactivateTeamMember).toHaveBeenCalledWith(
+        "team-123",
+        "user-456",
+        "user-123",
+      );
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
@@ -151,6 +156,12 @@ describe("Team Controller", () => {
         role: "admin",
       });
       await changeMemberRole(req, res, next);
+      expect(teamService.changeMemberRole).toHaveBeenCalledWith(
+        "team-123",
+        "user-456",
+        "admin",
+        "user-123",
+      );
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });

@@ -1,5 +1,15 @@
 import * as teamService from "./team.service.js";
 
+export const listTeamMembers = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+    const members = await teamService.listTeamMembers(teamId);
+    return res.status(200).send({ members });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getTeamsByUserId = async (req, res, next) => {
   try {
     const teams = await teamService.getTeamsByUserId(req.userId);
@@ -89,7 +99,11 @@ export const addTeamMember = async (req, res, next) => {
 export const deactivateTeamMember = async (req, res, next) => {
   try {
     const { teamId, userId } = req.params;
-    const teamMemberId = await teamService.deactivateTeamMember(teamId, userId);
+    const teamMemberId = await teamService.deactivateTeamMember(
+      teamId,
+      userId,
+      req.userId,
+    );
 
     return res
       .status(200)
@@ -107,6 +121,7 @@ export const changeMemberRole = async (req, res, next) => {
       teamId,
       userId,
       newRole,
+      req.userId,
     );
 
     return res.status(200).send({
