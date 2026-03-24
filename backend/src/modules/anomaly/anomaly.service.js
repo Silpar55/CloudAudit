@@ -38,3 +38,47 @@ export const triggerAnalysis = async (account) => {
     throw new AppError("AI Analysis is currently unavailable.", 503);
   }
 };
+
+export const dismissAnomaly = async (account, anomalyId, statusNote) => {
+  const anomaly = await anomalyModel.getAnomalyById(anomalyId, account.id);
+  if (!anomaly) throw new AppError("Anomaly not found", 404);
+
+  let updated;
+  try {
+    updated = await anomalyModel.updateAnomalyStatus(
+      anomalyId,
+      account.id,
+      "dismissed",
+      statusNote,
+    );
+  } catch (err) {
+    throw new AppError(
+      "Anomaly status lifecycle is not initialized. Please run DB migration 004.",
+      409,
+    );
+  }
+  if (!updated) throw new AppError("Failed to dismiss anomaly", 500);
+  return updated;
+};
+
+export const resolveAnomaly = async (account, anomalyId, statusNote) => {
+  const anomaly = await anomalyModel.getAnomalyById(anomalyId, account.id);
+  if (!anomaly) throw new AppError("Anomaly not found", 404);
+
+  let updated;
+  try {
+    updated = await anomalyModel.updateAnomalyStatus(
+      anomalyId,
+      account.id,
+      "resolved",
+      statusNote,
+    );
+  } catch (err) {
+    throw new AppError(
+      "Anomaly status lifecycle is not initialized. Please run DB migration 004.",
+      409,
+    );
+  }
+  if (!updated) throw new AppError("Failed to resolve anomaly", 500);
+  return updated;
+};

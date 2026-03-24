@@ -16,4 +16,30 @@ export const anomalyService = {
     console.log(response.data);
     return response.data;
   },
+
+  dismissAnomaly: async (
+    teamId: string,
+    accId: string,
+    anomalyId: string,
+    note?: string,
+  ) => {
+    const response = await apiClient.patch(
+      `/teams/${teamId}/aws-accounts/${accId}/anomalies/${anomalyId}/dismiss`,
+      { note },
+    );
+    return response.data;
+  },
+
+  resolveAnomaly: async (
+    teamId: string,
+    accId: string,
+    anomalyId: string,
+    note?: string,
+  ) => {
+    const response = await apiClient.patch(
+      `/teams/${teamId}/aws-accounts/${accId}/anomalies/${anomalyId}/resolve`,
+      { note },
+    );
+    return response.data;
+  },
 };

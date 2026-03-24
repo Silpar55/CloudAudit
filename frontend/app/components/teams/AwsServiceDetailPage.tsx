@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { Link, useParams } from "react-router";
 import {
   Area,
@@ -18,10 +24,7 @@ import {
   Sparkles,
   AlertTriangle,
 } from "lucide-react";
-import {
-  useGetCachedCostData,
-  useSyncCostAndUsage,
-} from "~/hooks/useAws";
+import { useGetCachedCostData, useSyncCostAndUsage } from "~/hooks/useAws";
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useRecommendations } from "~/hooks/useRecommendations";
 import { useGetAnomalies } from "~/hooks/useAnomaly";
@@ -93,8 +96,12 @@ const AwsServiceDetailPage = () => {
     [serviceRows],
   );
 
-  const { recommendations, loading: recLoading, implement, dismiss } =
-    useRecommendations(teamId, accId);
+  const {
+    recommendations,
+    loading: recLoading,
+    implement,
+    dismiss,
+  } = useRecommendations(teamId, accId);
 
   const { data: anomalies = [] } = useGetAnomalies(teamId, accId);
 
@@ -116,8 +123,7 @@ const AwsServiceDetailPage = () => {
   );
 
   const totalCost = useMemo(
-    () =>
-      serviceRows.reduce((s, r) => s + Number(r.unblended_cost ?? 0), 0),
+    () => serviceRows.reduce((s, r) => s + Number(r.unblended_cost ?? 0), 0),
     [serviceRows],
   );
 
@@ -208,7 +214,11 @@ const AwsServiceDetailPage = () => {
             size="sm"
             onClick={handleRefresh}
             disabled={isSyncing || isFetching}
-            icon={<RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />}
+            icon={
+              <RefreshCw
+                className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
+              />
+            }
           >
             Refresh costs
           </Button>
@@ -216,7 +226,10 @@ const AwsServiceDetailPage = () => {
       </div>
 
       {serviceRows.length === 0 && !isFetching ? (
-        <Card padding="lg" className="border-dashed border-gray-300 dark:border-slate-600">
+        <Card
+          padding="lg"
+          className="border-dashed border-gray-300 dark:border-slate-600"
+        >
           <div className="flex flex-col sm:flex-row items-start gap-4">
             <Boxes className="w-10 h-10 text-gray-400 shrink-0" />
             <div>
@@ -224,9 +237,9 @@ const AwsServiceDetailPage = () => {
                 No cost recorded for {meta.label}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                In this date range there is no cached usage for this service. Try
-                extending the range on the Cost Explorer page or run a sync from
-                Overview.
+                In this date range there is no cached usage for this service.
+                Try extending the range on the Cost Explorer page or run a sync
+                from Overview.
               </p>
               <Link
                 to={`/teams/${teamId}/cost-explorer`}
@@ -269,18 +282,28 @@ const AwsServiceDetailPage = () => {
           {dailyTrend.length === 0 ? (
             <p className="text-sm text-gray-500">No series data.</p>
           ) : (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 min-w-0">
+              <ResponsiveContainer width="100%" height={256} minWidth={0}>
                 <AreaChart data={dailyTrend}>
                   <defs>
                     <linearGradient id="svcCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.35} />
+                      <stop
+                        offset="5%"
+                        stopColor="#f97316"
+                        stopOpacity={0.35}
+                      />
                       <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-slate-700" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-gray-200 dark:stroke-slate-700"
+                  />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtShort(v)} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => fmtShort(v)}
+                  />
                   <Tooltip content={<ChartTooltip />} />
                   <Area
                     type="monotone"
@@ -303,12 +326,24 @@ const AwsServiceDetailPage = () => {
           {byRegion.length === 0 ? (
             <p className="text-sm text-gray-500">No regional breakdown.</p>
           ) : (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byRegion} layout="vertical" margin={{ left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-slate-700" />
+            <div className="h-64  min-w-0 min-h-0">
+              <ResponsiveContainer width="100%" height={256} minWidth={0}>
+                <BarChart
+                  data={byRegion}
+                  layout="vertical"
+                  margin={{ left: 8 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-gray-200 dark:stroke-slate-700"
+                  />
                   <XAxis type="number" tickFormatter={(v) => fmtShort(v)} />
-                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={100}
+                    tick={{ fontSize: 11 }}
+                  />
                   <Tooltip
                     formatter={(value: number | undefined) =>
                       value != null ? [fmt(value), "Cost"] : ["—", "Cost"]
@@ -339,10 +374,16 @@ const AwsServiceDetailPage = () => {
           </div>
           {recLoading ? (
             <div className="flex justify-center py-12">
-              <Spinner size={32} className="border-indigo-500 border-t-transparent" />
+              <Spinner
+                size={32}
+                className="border-indigo-500 border-t-transparent"
+              />
             </div>
           ) : filteredRecs.length === 0 ? (
-            <Card padding="lg" className="text-sm text-gray-500 dark:text-gray-400">
+            <Card
+              padding="lg"
+              className="text-sm text-gray-500 dark:text-gray-400"
+            >
               No pending recommendations tagged for {meta.label}.
             </Card>
           ) : (
@@ -375,14 +416,20 @@ const AwsServiceDetailPage = () => {
             </Link>
           </div>
           {filteredAnomalies.length === 0 ? (
-            <Card padding="lg" className="text-sm text-gray-500 dark:text-gray-400">
+            <Card
+              padding="lg"
+              className="text-sm text-gray-500 dark:text-gray-400"
+            >
               No anomalies linked to this service in the current model output.
             </Card>
           ) : (
             <ul className="space-y-3">
               {filteredAnomalies.slice(0, 5).map((a: any) => (
                 <li key={a.anomaly_id}>
-                  <Card padding="md" className="border border-gray-200 dark:border-slate-700">
+                  <Card
+                    padding="md"
+                    className="border border-gray-200 dark:border-slate-700"
+                  >
                     <p className="text-sm font-medium text-gray-900 dark:text-white font-mono truncate">
                       {a.resource_id || "—"}
                     </p>

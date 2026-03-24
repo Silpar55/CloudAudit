@@ -15,11 +15,13 @@ describe("Anomaly Model", () => {
   describe("getAnomaliesByInternalId", () => {
     it("Should return rows on success", async () => {
       const mockRows = [{ anomaly_id: "123", severity: 90 }];
-      pool.query.mockResolvedValue({ rows: mockRows });
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ c: 4 }] })
+        .mockResolvedValueOnce({ rows: mockRows });
 
       const result = await getAnomaliesByInternalId("acc-123");
 
-      expect(pool.query).toHaveBeenCalledTimes(1);
+      expect(pool.query).toHaveBeenCalledTimes(2);
       expect(result).toEqual(mockRows);
     });
 

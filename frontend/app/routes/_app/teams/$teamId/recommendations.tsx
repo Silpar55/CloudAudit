@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useRecommendations } from "../../../../hooks/useRecommendations";
 import { useAwsAccount } from "../../../../context/AwsAccountContext";
 import { useParams } from "react-router";
-import { Button, SectionLoader, Card } from "~/components/ui";
+import { Button, SectionLoader, Card, Input } from "~/components/ui";
 import { RecommendationCard, MetricTile } from "~/components/dashboard";
 import { Zap, TrendingUp, CheckCircle, Target } from "lucide-react";
 
@@ -12,13 +12,15 @@ export default function RecommendationsPage() {
   const { recommendations, loading, implement, dismiss, generate } =
     useRecommendations(teamId, account?.id);
 
-  const [filter, setFilter] = useState<"All" | "EC2" | "RDS" | "Dismissed">(
+  const [filter, setFilter] = useState<"All" | "Dismissed" | "Resolved">(
     "All",
   );
+  const [query, setQuery] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Derived state for the summary bar
   const pendingRecs = recommendations.filter((r) => r.status === "pending");
+  const resolvedRecs = recommendations.filter((r) => r.status === "implemented");
   const automatedCount = pendingRecs.filter(
     (r) => r.resolution_type === "automated",
   ).length;
@@ -29,19 +31,31 @@ export default function RecommendationsPage() {
     0,
   );
 
-  // Tab Filtering Logic
+  // Tab + search filtering
   const filteredRecs = useMemo(() => {
+    let filtered = recommendations;
     if (filter === "Dismissed") {
-      return recommendations.filter((r) => r.status === "dismissed");
+      filtered = filtered.filter((r) => r.status === "dismissed");
+    } else if (filter === "Resolved") {
+      filtered = filtered.filter((r) => r.status === "implemented");
     }
 
-    let filtered = pendingRecs;
-    if (filter === "EC2")
-      filtered = filtered.filter((r) => r.resource_type === "ec2_instance");
-    if (filter === "RDS")
-      filtered = filtered.filter((r) => r.resource_type === "rds_instance");
-    return filtered;
-  }, [recommendations, filter, pendingRecs]);
+    const q = query.trim().toLowerCase();
+    if (!q) return filtered;
+
+    return filtered.filter((r) => {
+      const haystack = [
+        r.recommendation_type,
+        r.description,
+        r.resource_id,
+        r.resource_type_display || r.resource_type,
+        r.status,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [recommendations, filter, query]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -90,26 +104,42 @@ export default function RecommendationsPage() {
         />
       </div>
 
-      {/* ── Filter Tabs ──────────────────────────────────────────────────── */}
-      <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8">
-        {["All", "EC2", "RDS", "Dismissed"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab as any)}
-            className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
-              filter === tab
-                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-            }`}
-          >
-            {tab}
-            {tab === "All" && (
-              <span className="ml-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-0.5 px-2 rounded-full text-xs">
-                {pendingRecs.length}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
+        {/* ── Filter Tabs ──────────────────────────────────────────────────── */}
+        <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8">
+          {["All", "Dismissed", "Resolved"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab as any)}
+              className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+                filter === tab
+                  ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
+              }`}
+            >
+              {tab}
+              {tab === "All" && (
+                <span className="ml-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-0.5 px-2 rounded-full text-xs">
+                  {recommendations.length}
+                </span>
+              )}
+              {tab === "Resolved" && (
+                <span className="ml-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-0.5 px-2 rounded-full text-xs">
+                  {resolvedRecs.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="w-full md:w-96">
+          <Input
+            placeholder="Search recommendation, resource, status..."
+            value={query}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setQuery(e.target.value)
+            }
+          />
+        </div>
       </div>
 
       {/* ── Content Area ─────────────────────────────────────────────────── */}

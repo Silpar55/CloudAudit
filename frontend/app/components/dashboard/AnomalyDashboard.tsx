@@ -1,8 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { useAwsAccount } from "~/context/AwsAccountContext";
-import { useGetAnomalies } from "~/hooks/useAnomaly";
-import { Badge, Spinner, Alert } from "~/components/ui";
+import {
+  useGetAnomalies,
+  useDismissAnomaly,
+  useResolveAnomaly,
+} from "~/hooks/useAnomaly";
+import { Badge, Spinner, Alert, Button, Input } from "~/components/ui";
 import { InsightCard } from "~/components/ui";
 import {
   AlertTriangle,
@@ -26,7 +30,10 @@ const AnomalyDashboard = () => {
     isError,
   } = useGetAnomalies(teamId, awsAccountInternalId);
 
-  console.log(anomalies);
+  const dismissAnomaly = useDismissAnomaly();
+  const resolveAnomaly = useResolveAnomaly();
+  const [filter, setFilter] = useState<"All" | "Dismissed" | "Resolved">("All");
+  const [query, setQuery] = useState("");
 
   const kpis = useMemo(() => {
     const total = anomalies.length;
@@ -38,6 +45,30 @@ const AnomalyDashboard = () => {
     }, 0);
     return { total, critical, totalImpact };
   }, [anomalies]);
+
+  const filteredAnomalies = useMemo(() => {
+    let rows = anomalies as any[];
+    if (filter === "Dismissed") {
+      rows = rows.filter((a) => a.status === "dismissed");
+    } else if (filter === "Resolved") {
+      rows = rows.filter((a) => a.status === "resolved");
+    }
+
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+
+    return rows.filter((a) => {
+      const haystack = [
+        a.resource_id,
+        a.status,
+        a.model_version,
+        JSON.stringify(a.root_cause_details ?? {}),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [anomalies, filter, query]);
 
   const getSeverityProps = (severity: number) => {
     if (severity >= 80)
@@ -123,7 +154,39 @@ const AnomalyDashboard = () => {
         />
       </div>
 
-      {anomalies.length === 0 ? (
+      <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
+        <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8">
+          {["All", "Dismissed", "Resolved"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab as any)}
+              className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+                filter === tab
+                  ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
+              }`}
+            >
+              {tab}
+              {tab === "All" && (
+                <span className="ml-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-0.5 px-2 rounded-full text-xs">
+                  {anomalies.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="w-full md:w-96">
+          <Input
+            placeholder="Search resource, reason, status..."
+            value={query}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setQuery(e.target.value)
+            }
+          />
+        </div>
+      </div>
+
+      {filteredAnomalies.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700">
           <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-500" />
@@ -142,7 +205,7 @@ const AnomalyDashboard = () => {
             Detection Feed
           </h3>
 
-          {anomalies.map((anomaly: any) => {
+          {filteredAnomalies.map((anomaly: any) => {
             const { variant, label, color, accent } = getSeverityProps(
               anomaly.severity,
             );
@@ -160,9 +223,20 @@ const AnomalyDashboard = () => {
                     : anomaly.resource_id
                 }
                 badge={
-                  <Badge variant={variant as any}>
-                    {label} (Score: {anomaly.severity})
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={variant as any}>
+                      {label} (Score: {anomaly.severity})
+                    </Badge>
+                    {anomaly.status && anomaly.status !== "open" && (
+                      <Badge
+                        variant={
+                          anomaly.status === "resolved" ? "success" : "default"
+                        }
+                      >
+                        {anomaly.status.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
                 }
                 timestamp={new Date(anomaly?.detected_at).toLocaleString(
                   "en-CA",
@@ -193,6 +267,41 @@ const AnomalyDashboard = () => {
                       </div>
                     </div>
                   </>
+                }
+                footerContent={
+                  anomaly.status === "open" && teamId && awsAccountInternalId ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          dismissAnomaly.mutate({
+                            teamId,
+                            accId: awsAccountInternalId,
+                            anomalyId: anomaly.anomaly_id,
+                          })
+                        }
+                        disabled={
+                          dismissAnomaly.isPending || resolveAnomaly.isPending
+                        }
+                      >
+                        Dismiss
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          resolveAnomaly.mutate({
+                            teamId,
+                            accId: awsAccountInternalId,
+                            anomalyId: anomaly.anomaly_id,
+                          })
+                        }
+                        disabled={
+                          dismissAnomaly.isPending || resolveAnomaly.isPending
+                        }
+                      >
+                        Mark as Resolved
+                      </Button>
+                    </div>
+                  ) : null
                 }
               />
             );

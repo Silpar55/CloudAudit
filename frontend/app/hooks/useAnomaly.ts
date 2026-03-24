@@ -23,3 +23,47 @@ export const useTriggerAnalysis = () => {
     },
   });
 };
+
+export const useDismissAnomaly = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      teamId,
+      accId,
+      anomalyId,
+      note,
+    }: {
+      teamId: string;
+      accId: string;
+      anomalyId: string;
+      note?: string;
+    }) => anomalyService.dismissAnomaly(teamId, accId, anomalyId, note),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["anomalies", variables.teamId, variables.accId],
+      });
+    },
+  });
+};
+
+export const useResolveAnomaly = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      teamId,
+      accId,
+      anomalyId,
+      note,
+    }: {
+      teamId: string;
+      accId: string;
+      anomalyId: string;
+      note?: string;
+    }) => anomalyService.resolveAnomaly(teamId, accId, anomalyId, note),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["anomalies", variables.teamId, variables.accId],
+      });
+    },
+  });
+};

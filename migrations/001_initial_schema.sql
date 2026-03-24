@@ -203,6 +203,10 @@ CREATE TABLE cost_anomalies (
 	severity INT NOT NULL, 
 	model_version TEXT NOT NULL,
 	root_cause_details JSONB,
+	status VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'dismissed', 'resolved')),
+	dismissed_at TIMESTAMP WITH TIME ZONE,
+	resolved_at TIMESTAMP WITH TIME ZONE,
+	status_note TEXT,
 	UNIQUE (daily_cost_id, model_version)
 );
 

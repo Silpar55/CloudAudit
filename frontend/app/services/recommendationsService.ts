@@ -28,6 +28,7 @@ export interface Recommendation {
   metadata: RecommendationMetadata | string;
   resolution_type: "automated" | "manual";
   action_steps?: string[];
+  resource_type_display?: string;
   created_at: string;
 }
 

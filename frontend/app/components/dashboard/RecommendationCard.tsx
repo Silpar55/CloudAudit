@@ -115,7 +115,9 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                     : "default"
                 }
               >
-                {recommendation.status.toUpperCase()}
+                {recommendation.status === "implemented"
+                  ? "RESOLVED"
+                  : recommendation.status.toUpperCase()}
               </Badge>
             )}
           </div>
@@ -155,8 +157,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                     disabled={loadingAction !== null}
                   >
                     {loadingAction === "implement"
-                      ? "Applying..."
-                      : "1-Click Implement"}
+                      ? "Resolving..."
+                      : "Mark as Resolved"}
                   </Button>
                 ) : (
                   <Button

@@ -259,6 +259,15 @@ export const implementRecommendation = async (
     { implementedBy: userId, metadata },
   );
 
+  if (rec.anomaly_id) {
+    await anomalyModel.updateAnomalyStatus(
+      rec.anomaly_id,
+      account.id,
+      "resolved",
+      "Resolved via linked recommendation",
+    );
+  }
+
   // Audit Log
   await recommendationsModel.logAuditAction(
     account.team_id,
@@ -345,6 +354,14 @@ export const dismissRecommendation = async (account, recommendationId) => {
     recommendationId,
     "dismissed",
   );
+  if (rec.anomaly_id) {
+    await anomalyModel.updateAnomalyStatus(
+      rec.anomaly_id,
+      account.id,
+      "dismissed",
+      "Dismissed via linked recommendation",
+    );
+  }
   return { message: "Recommendation dismissed", recommendation: updatedRec };
 };
 
