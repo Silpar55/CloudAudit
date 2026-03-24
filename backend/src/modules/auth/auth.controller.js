@@ -1,5 +1,13 @@
+import jwt from "jsonwebtoken";
 import * as authService from "./auth.service.js";
 import * as jwtHelper from "#utils/helper/jwt-helper.js";
+
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
 
 export const registerUser = async (req, res, next) => {
   try {
@@ -20,15 +28,8 @@ export const loginUser = async (req, res, next) => {
     const accessToken = jwtHelper.generateToken(user.user_id);
     const refreshToken = jwtHelper.generateRefreshToken(user.user_id);
 
-    // Set the refresh token as a secure, HTTP-Only cookie
-    res.cookie("jwt_refresh", refreshToken, {
-      httpOnly: true, // Javascript cannot read this (Secure against XSS)
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie("jwt_refresh", refreshToken, REFRESH_COOKIE_OPTIONS);
 
-    console.log(accessToken);
     return res.status(200).send({
       message: "User logged successfully",
       token: accessToken,
@@ -51,7 +52,11 @@ export const refreshAccessToken = async (req, res, next) => {
           .status(403)
           .json({ message: "Invalid or expired refresh token" });
 
-      const newAccessToken = jwtHelper.generateToken(decoded.id);
+      const userId = decoded.userId ?? decoded.id;
+      if (!userId) {
+        return res.status(403).json({ message: "Invalid refresh token payload" });
+      }
+      const newAccessToken = jwtHelper.generateToken(userId);
       return res.status(200).json({ token: newAccessToken });
     });
   } catch (err) {
@@ -86,13 +91,18 @@ export const verifyEmail = async (req, res, next) => {
         .status(400)
         .json({ message: "Verification token is required" });
 
-    // The service now returns the updated user AND a fresh JWT
-    const { user, accessToken } = await authService.verifyEmailToken(token);
+    console.log("[auth] POST /verify-email — verifying token");
+    const { user, accessToken, refreshToken } =
+      await authService.verifyEmailToken(token);
+
+    if (refreshToken) {
+      res.cookie("jwt_refresh", refreshToken, REFRESH_COOKIE_OPTIONS);
+    }
 
     return res.status(200).json({
       message: "Email address verified successfully.",
       user,
-      token: accessToken, // Send the token so frontend can seamlessly log them in!
+      token: accessToken,
     });
   } catch (err) {
     console.log(err);

@@ -10,6 +10,7 @@ import { useAuth } from "~/context/AuthContext";
 import { PageLoader } from "~/components/ui";
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { AwsAccountProvider } from "~/context/AwsAccountContext";
+import { getServiceMetaForSlug } from "~/utils/awsServiceCatalog";
 
 /**
  * TeamLayout Component
@@ -61,10 +62,10 @@ const resolveRoute = (pathname: string): { path: string; title: string } => {
     if (pathname.includes(meta.match)) {
       if (meta.title === "__resource__") {
         const slug = pathname.split("/resources/")[1]?.split("/")[0] ?? "";
-        const label = slug.toUpperCase();
+        const label = getServiceMetaForSlug(slug).label;
         return {
           path: `/resources/${slug}`,
-          title: `${label} Resources`,
+          title: `${label} — cost & insights`,
         };
       }
       return { path: meta.path, title: meta.title };

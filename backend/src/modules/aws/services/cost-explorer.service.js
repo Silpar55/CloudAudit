@@ -128,10 +128,10 @@ const handleCostExplorerError = (error) => {
     console.error(`Cost Explorer access denied: ${error.message}`);
     throw new AppError(
       "Permission denied. The user likely hasn't granted Cost Explorer permissions.",
-      401,
+      403,
     );
   } else if (error.name === "ValidationError") {
-    throw new AppError("Invalid Cost Explorer request format", 401);
+    throw new AppError("Invalid Cost Explorer request format", 400);
   } else {
     console.error(`Cost Explorer error: ${error.message}`);
     throw new AppError("Failed to retrieve cost data", 500);

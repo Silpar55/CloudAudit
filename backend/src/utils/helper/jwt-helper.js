@@ -5,8 +5,8 @@ export const verifyJwtHelper = (token) => {
 };
 
 export const generateToken = (id) => {
-  // Short-lived Access Token (15 minutes)
-  return jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  // Short-lived access token (refresh via /auth/refresh + httpOnly cookie)
+  return jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: "15m" });
 };
 
 export const generateRefreshToken = (id) => {

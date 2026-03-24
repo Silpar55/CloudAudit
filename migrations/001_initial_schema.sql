@@ -250,24 +250,29 @@ CREATE TABLE audit_logs (
 -- 5. VIEWS, FUNCTIONS & TRIGGERS (Automated Data Warehousing)
 -- ==============================================================================
 
--- TEAM DASHBOARD VIEW
+-- TEAM DASHBOARD VIEW (member_count via subquery — avoids inflation from cost row joins)
 CREATE VIEW team_dashboard_view AS
-SELECT 
+SELECT
     t.team_id,
     t.name,
     t.description,
     t.status,
-    COUNT(tm.user_id) FILTER (WHERE tm.is_active = TRUE) AS member_count,
+    (
+        SELECT COUNT(*)::int
+        FROM team_members tm2
+        WHERE tm2.team_id = t.team_id
+          AND tm2.is_active = TRUE
+    ) AS member_count,
     a.aws_account_id,
     a.status AS aws_status,
-    SUM(dcs.total_cost) AS monthly_cost
+    COALESCE(SUM(dcs.total_cost), 0) AS monthly_cost
 FROM teams t
-LEFT JOIN team_members tm ON tm.team_id = t.team_id
 LEFT JOIN aws_accounts a ON a.team_id = t.team_id
 LEFT JOIN daily_cost_summaries dcs
     ON dcs.aws_account_id = a.id
-    AND date_trunc('month', dcs.time_period_start) = date_trunc('month', NOW())
-GROUP BY t.team_id, a.aws_account_id, a.status;
+    AND date_trunc('month', dcs.time_period_start) = date_trunc('month', NOW()::timestamp)
+GROUP BY t.team_id, t.name, t.description, t.status, a.aws_account_id, a.status;
+
 
 -- AGGREGATION FUNCTION: Listens to cost_data inserts and UPSERTs into daily_cost_summaries
 CREATE OR REPLACE FUNCTION update_daily_cost_summaries()

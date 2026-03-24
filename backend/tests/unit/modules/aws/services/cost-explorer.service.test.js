@@ -68,6 +68,22 @@ describe("Cost Explorer Service", () => {
     expect(result[0].Keys).toEqual(["AmazonEC2", "us-east-1"]);
   });
 
+  it("Should map AccessDenied to 403 AppError", async () => {
+    getTemporaryCredentials.mockResolvedValue({});
+    const err = new Error("Denied");
+    err.name = "AccessDenied";
+    createCostExplorerClient.mockReturnValue({
+      send: jest.fn().mockRejectedValue(err),
+    });
+
+    await expect(
+      getCostAndUsage({ aws_account_id: "1" }, "2023-01-01", "2023-01-31"),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      message: expect.stringContaining("Permission denied"),
+    });
+  });
+
   it("Should throw AppError if AWS call fails", async () => {
     getTemporaryCredentials.mockResolvedValue({});
     createCostExplorerClient.mockReturnValue({

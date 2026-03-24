@@ -16,6 +16,7 @@ export const useLogin = () => {
 export const useVerifyEmail = () => {
   return useMutation({
     mutationFn: authService.verifyEmail,
+    retry: false,
   });
 };
 

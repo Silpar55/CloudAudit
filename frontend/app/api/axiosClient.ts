@@ -26,6 +26,14 @@ axiosClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    const reqUrl = String(originalRequest?.url ?? "");
+    if (
+      reqUrl.includes("/auth/verify-email") &&
+      error.response?.status === 401
+    ) {
+      return Promise.reject(error);
+    }
+
     // If the error is 401 (Unauthorized) and we haven't already retried this request
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

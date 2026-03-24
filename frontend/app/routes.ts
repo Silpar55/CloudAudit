@@ -38,6 +38,11 @@ export default [
       route("aws", "routes/_app/teams/$teamId/aws/index.tsx"),
       route("aws/link", "routes/_app/teams/$teamId/aws/link.tsx"),
       route("settings", "routes/_app/teams/$teamId/settings.tsx"),
+      route("cost-explorer", "routes/_app/teams/$teamId/cost-explorer.tsx"),
+      route(
+        "resources/:slug",
+        "routes/_app/teams/$teamId/resources/$slug.tsx",
+      ),
     ]),
   ]),
 ] satisfies RouteConfig;

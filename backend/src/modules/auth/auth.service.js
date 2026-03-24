@@ -136,8 +136,8 @@ export const verifyEmailToken = async (token) => {
 
   if (user.verification_used_at) {
     const accessToken = jwtHelper.generateToken(user.user_id);
-
-    return { user, accessToken };
+    const refreshToken = jwtHelper.generateRefreshToken(user.user_id);
+    return { user, accessToken, refreshToken };
   }
 
   // Expiration check
@@ -155,9 +155,10 @@ export const verifyEmailToken = async (token) => {
     emailToSet,
   );
 
+  const accessToken = jwtHelper.generateToken(user.user_id);
   const refreshToken = jwtHelper.generateRefreshToken(user.user_id);
 
-  return { user: updatedUser, accessToken };
+  return { user: updatedUser, accessToken, refreshToken };
 };
 
 export const deleteAccount = async (userId) => {

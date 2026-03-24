@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -37,8 +38,11 @@ export const links: Route.LinksFunction = () => [
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isChecking, isLoading } = useAuth();
+  const location = useLocation();
+  // Let users complete email verification even if /auth/me is slow or stuck (stale token).
+  const skipAuthGate = location.pathname === "/verify-email";
 
-  if (isChecking || isLoading) return <PageLoader />;
+  if (!skipAuthGate && (isChecking || isLoading)) return <PageLoader />;
 
   return <div className="auth-ready">{children}</div>;
 }

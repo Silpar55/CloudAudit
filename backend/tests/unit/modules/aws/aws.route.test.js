@@ -105,7 +105,7 @@ describe("AWS Utilities", () => {
       consoleLogSpy.mockRestore();
     });
 
-    it("Should throw AppError with 401 if AccessDenied error occurs", async () => {
+    it("Should throw AppError with 403 if AccessDenied error occurs", async () => {
       const customer = {
         iam_role_arn: "arn:aws:iam::123456789012:role/TestRole",
         external_id: "ext-123",
@@ -124,10 +124,11 @@ describe("AWS Utilities", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      await expect(validateSTSConnection(customer)).rejects.toThrow(AppError);
-      await expect(validateSTSConnection(customer)).rejects.toThrow(
-        "Permission denied. The user likely hasn't updated their Trust Policy.",
-      );
+      await expect(validateSTSConnection(customer)).rejects.toMatchObject({
+        statusCode: 403,
+        message:
+          "Permission denied. The user likely hasn't updated their Trust Policy.",
+      });
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("Unexpected error:"),
@@ -137,7 +138,7 @@ describe("AWS Utilities", () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it("Should throw AppError with 401 if ValidationError occurs", async () => {
+    it("Should throw AppError with 400 if ValidationError occurs", async () => {
       const customer = {
         iam_role_arn: "invalid-arn",
         external_id: "ext-123",
@@ -153,10 +154,10 @@ describe("AWS Utilities", () => {
         .spyOn(console, "log")
         .mockImplementation(() => {});
 
-      await expect(validateSTSConnection(customer)).rejects.toThrow(AppError);
-      await expect(validateSTSConnection(customer)).rejects.toThrow(
-        "Invalid ARN format",
-      );
+      await expect(validateSTSConnection(customer)).rejects.toMatchObject({
+        statusCode: 400,
+        message: "Invalid ARN format",
+      });
 
       consoleLogSpy.mockRestore();
     });

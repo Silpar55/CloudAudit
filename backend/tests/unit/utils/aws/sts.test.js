@@ -78,7 +78,7 @@ describe("STS Operations", () => {
       consoleLogSpy.mockRestore();
     });
 
-    it("Should throw 401 AppError on AccessDenied", async () => {
+    it("Should throw 403 AppError on AccessDenied", async () => {
       const consoleLogSpy = jest
         .spyOn(console, "log")
         .mockImplementation(() => {});
@@ -90,13 +90,15 @@ describe("STS Operations", () => {
       error.name = "AccessDenied";
       assumeRole.mockRejectedValue(error);
 
-      await expect(validateSTSConnection(customer)).rejects.toThrow(AppError);
+      await expect(validateSTSConnection(customer)).rejects.toMatchObject({
+        statusCode: 403,
+      });
 
       consoleLogSpy.mockRestore();
       consoleErrorSpy.mockRestore();
     });
 
-    it("Should throw 401 AppError on ValidationError", async () => {
+    it("Should throw 400 AppError on ValidationError", async () => {
       const consoleLogSpy = jest
         .spyOn(console, "log")
         .mockImplementation(() => {});
@@ -105,7 +107,9 @@ describe("STS Operations", () => {
       error.name = "ValidationError";
       assumeRole.mockRejectedValue(error);
 
-      await expect(validateSTSConnection(customer)).rejects.toThrow(AppError);
+      await expect(validateSTSConnection(customer)).rejects.toMatchObject({
+        statusCode: 400,
+      });
 
       consoleLogSpy.mockRestore();
     });

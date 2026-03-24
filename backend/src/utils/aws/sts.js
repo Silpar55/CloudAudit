@@ -51,11 +51,11 @@ export const validateSTSConnection = async (account) => {
       console.error(`Unexpected error: ${error.message}`);
       throw new AppError(
         "Permission denied. The user likely hasn't updated their Trust Policy.",
-        401,
+        403,
       );
     } else if (error.name === "ValidationError") {
       console.log(error);
-      throw new AppError("Invalid ARN format", 401);
+      throw new AppError("Invalid ARN format", 400);
     } else {
       console.error(`Unexpected error: ${error.message}`);
     }

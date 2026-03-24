@@ -8,146 +8,21 @@ import {
   TrendingDown,
   Boxes,
   ChevronRight,
-  Server,
-  HardDrive,
-  Database,
-  Activity,
   Users,
   FileBarChart,
   Settings,
   ChevronUp,
-  Globe,
-  Cpu,
-  Layers,
-  Network,
-  Shield,
-  BarChart2,
-  Box,
-  Zap,
 } from "lucide-react";
 import { getAvatarColor, getInitials } from "~/utils/format";
 import { Link, useNavigate } from "react-router";
 import { useGetTeamsByUserId } from "~/hooks/useTeam";
 import { useGetCachedCostData } from "~/hooks/useAws";
+import type { ServiceMeta } from "~/utils/awsServiceCatalog";
+import { resolveService } from "~/utils/awsServiceCatalog";
 
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useGetAnomalies } from "~/hooks/useAnomaly";
 import { useRecommendations } from "~/hooks/useRecommendations";
-import { useParams } from "react-router";
-
-// ─── Service name → { label, Icon } map ──────────────────────────────────────
-// Keys are substrings of the full AWS Cost Explorer display names.
-// Matched in order — first hit wins.
-
-interface ServiceMeta {
-  label: string;
-  Icon: React.ElementType;
-  slug: string;
-}
-
-const SERVICE_MAP: Array<{ match: string; meta: ServiceMeta }> = [
-  {
-    match: "Elastic Compute Cloud",
-    meta: { label: "EC2", Icon: Server, slug: "ec2" },
-  },
-  {
-    match: "Relational Database Service",
-    meta: { label: "RDS", Icon: HardDrive, slug: "rds" },
-  },
-  {
-    match: "Simple Storage Service",
-    meta: { label: "S3", Icon: Database, slug: "s3" },
-  },
-  {
-    match: "Lambda",
-    meta: { label: "Lambda", Icon: Zap, slug: "lambda" },
-  },
-  {
-    match: "CloudFront",
-    meta: { label: "CloudFront", Icon: Globe, slug: "cloudfront" },
-  },
-  {
-    match: "DynamoDB",
-    meta: { label: "DynamoDB", Icon: Layers, slug: "dynamodb" },
-  },
-  {
-    match: "Elastic Container",
-    meta: { label: "ECS/EKS", Icon: Box, slug: "ecs" },
-  },
-  {
-    match: "Elastic Kubernetes",
-    meta: { label: "EKS", Icon: Box, slug: "eks" },
-  },
-  {
-    match: "ElastiCache",
-    meta: { label: "ElastiCache", Icon: Cpu, slug: "elasticache" },
-  },
-  {
-    match: "Virtual Private Cloud",
-    meta: { label: "VPC", Icon: Network, slug: "vpc" },
-  },
-  {
-    match: "Route 53",
-    meta: { label: "Route 53", Icon: Globe, slug: "route53" },
-  },
-  {
-    match: "CloudWatch",
-    meta: { label: "CloudWatch", Icon: Activity, slug: "cloudwatch" },
-  },
-  {
-    match: "Key Management",
-    meta: { label: "KMS", Icon: Shield, slug: "kms" },
-  },
-  {
-    match: "Simple Notification",
-    meta: { label: "SNS", Icon: BarChart2, slug: "sns" },
-  },
-  {
-    match: "Simple Queue",
-    meta: { label: "SQS", Icon: BarChart2, slug: "sqs" },
-  },
-  {
-    match: "Elastic Load Balancing",
-    meta: { label: "ELB", Icon: Network, slug: "elb" },
-  },
-  {
-    match: "API Gateway",
-    meta: { label: "API Gateway", Icon: Network, slug: "apigateway" },
-  },
-  {
-    match: "Redshift",
-    meta: { label: "Redshift", Icon: Database, slug: "redshift" },
-  },
-  {
-    match: "Glue",
-    meta: { label: "Glue", Icon: Layers, slug: "glue" },
-  },
-  {
-    match: "Athena",
-    meta: { label: "Athena", Icon: BarChart2, slug: "athena" },
-  },
-];
-
-const resolveService = (fullName: string): ServiceMeta => {
-  const hit = SERVICE_MAP.find((s) =>
-    fullName.toLowerCase().includes(s.match.toLowerCase()),
-  );
-  if (hit) return hit.meta;
-  // Fallback: abbreviate to first letters of each word, max 4 chars
-  const abbr = fullName
-    .replace(/^Amazon\s+/i, "")
-    .replace(/^AWS\s+/i, "")
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 4);
-  return {
-    label: abbr || fullName.slice(0, 8),
-    Icon: Boxes,
-    slug: abbr.toLowerCase(),
-  };
-};
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -178,10 +53,11 @@ const Sidebar = ({
 
   const handleNavigation = (path: string) => {
     if (onNavigate) return onNavigate(path);
+    return path;
   };
 
   const handleTeamSwitch = (teamId: string) => {
-    navigate(`teams/${teamId}`);
+    navigate(`/teams/${teamId}`);
   };
 
   const userAvatarColor = getAvatarColor(user.first_name);
@@ -245,17 +121,17 @@ const Sidebar = ({
     return () => clearInterval(interval);
   }, [currentTeam?.status, awsAccountInternalId, costRows.length, refetch]);
 
-  // Deduplicate services and resolve to { label, Icon, slug }
+  // Deduplicate by logical slug (CE can return Aurora + RDS as separate lines)
   const resourceServices = useMemo(() => {
     const seen = new Set<string>();
     const result: ServiceMeta[] = [];
     for (const row of costRows) {
-      if (!seen.has(row.service)) {
-        seen.add(row.service);
-        result.push(resolveService(row.service));
+      const meta = resolveService(row.service);
+      if (!seen.has(meta.slug)) {
+        seen.add(meta.slug);
+        result.push(meta);
       }
     }
-    // Sort alphabetically by label
     return result.sort((a, b) => a.label.localeCompare(b.label));
   }, [costRows]);
 
@@ -302,7 +178,7 @@ const Sidebar = ({
     const isActive = activeRoute === href;
     return (
       <Link
-        to={href}
+        to={handleNavigation(href)}
         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all group ${
           isActive
             ? "bg-aws-orange/10 text-aws-orange font-semibold"
