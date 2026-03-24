@@ -10,7 +10,10 @@ jest.mock("#middleware", () => {
   const actual = jest.requireActual("#middleware");
   return {
     ...actual,
-    verifyPermissions: jest.fn((req, res, next) => next()),
+    verifyPermissions: jest.fn((req, res, next) => {
+      req.teamMember = { role: "owner" };
+      next();
+    }),
     verifyToken: jest.fn((req, res, next) => {
       req.userId = "actor-user-id";
       next();

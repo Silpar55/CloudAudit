@@ -66,6 +66,12 @@ export const updateTeam = async (req, res, next) => {
 
 export const deleteTeam = async (req, res, next) => {
   try {
+    if (req.teamMember?.role !== "owner") {
+      return res.status(403).json({
+        message: "Only a workspace owner can delete this workspace",
+      });
+    }
+
     const { teamId } = req.params;
     const deletedTeamId = await teamService.deleteTeam(teamId);
 

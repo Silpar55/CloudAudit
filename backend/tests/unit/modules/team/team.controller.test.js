@@ -170,11 +170,20 @@ describe("Team Controller", () => {
   });
 
   describe("deleteTeam", () => {
-    it("Should delete team and return 200", async () => {
+    it("Should delete team and return 200 when caller is owner", async () => {
       req.params = { teamId: "team-123" };
+      req.teamMember = { role: "owner" };
       teamService.deleteTeam.mockResolvedValue("team-123");
       await deleteTeam(req, res, next);
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("Should return 403 when caller is not owner", async () => {
+      req.params = { teamId: "team-123" };
+      req.teamMember = { role: "admin" };
+      await deleteTeam(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(teamService.deleteTeam).not.toHaveBeenCalled();
     });
   });
 });

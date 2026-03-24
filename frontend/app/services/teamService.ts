@@ -14,4 +14,17 @@ export const teamService = {
     const response = await apiClient.get(`/teams/${teamId}`);
     return response.data?.team ?? null;
   },
+
+  updateTeam: async (
+    teamId: string,
+    payload: { name?: string; description?: string | null },
+  ) => {
+    const { data } = await apiClient.patch(`/teams/${teamId}`, payload);
+    return data;
+  },
+
+  deleteTeam: async (teamId: string) => {
+    const { data } = await apiClient.delete(`/teams/${teamId}`);
+    return data;
+  },
 };

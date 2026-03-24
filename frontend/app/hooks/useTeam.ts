@@ -49,3 +49,27 @@ export const useGetTeamById = (teamId?: string, options = {}) => {
     ...options,
   });
 };
+
+export const useUpdateTeam = (teamId: string | undefined) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name?: string; description?: string | null }) =>
+      teamService.updateTeam(teamId!, payload),
+    onSuccess: () => {
+      if (!teamId) return;
+      queryClient.invalidateQueries({ queryKey: ["workspace-team-data", teamId] });
+      queryClient.invalidateQueries({ queryKey: ["team", teamId] });
+      queryClient.invalidateQueries({ queryKey: ["userTeams"] });
+    },
+  });
+};
+
+export const useDeleteTeam = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (teamId: string) => teamService.deleteTeam(teamId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userTeams"] });
+    },
+  });
+};
