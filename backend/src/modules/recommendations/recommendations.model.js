@@ -1,4 +1,5 @@
 import { pool } from "#config";
+import { insertAuditLog } from "#modules/audit/audit.model.js";
 
 export const getRecommendationsByInternalId = async (internalAccountId) => {
   const query = `
@@ -164,8 +165,7 @@ export const updateRecommendationStatus = async (
 };
 
 export const logAuditAction = async (teamId, userId, action, details) => {
-  const query = `INSERT INTO audit_logs (team_id, user_id, action, details) VALUES ($1, $2, $3, $4);`;
-  await pool.query(query, [teamId, userId, action, JSON.stringify(details)]);
+  await insertAuditLog(teamId, userId, action, details);
 };
 
 export const getOrphanedAnomalies = async (internalAccountId) => {

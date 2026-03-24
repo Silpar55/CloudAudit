@@ -4,6 +4,7 @@ import {
   verifyTeamId,
   verifyTeamMembership,
 } from "#middleware";
+import { listAuditLogs } from "#modules/audit/audit.controller.js";
 import {
   createTeam,
   getTeamsByUserId,
@@ -23,6 +24,12 @@ const router = Router();
 // Teams resource
 router.get("/", getTeamsByUserId);
 router.post("/", createTeam);
+router.get(
+  "/:teamId/audit-logs",
+  verifyTeamId,
+  verifyPermissions,
+  listAuditLogs,
+);
 router.get("/:teamId", verifyTeamId, getTeamById);
 router.patch("/:teamId", verifyPermissions, verifyTeamId, updateTeam);
 router.delete("/:teamId", verifyPermissions, verifyTeamId, deleteTeam);

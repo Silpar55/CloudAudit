@@ -1,4 +1,5 @@
 import * as teamService from "./team.service.js";
+import { insertAuditLog } from "#modules/audit/audit.model.js";
 
 export const listTeamMembers = async (req, res, next) => {
   try {
@@ -52,6 +53,11 @@ export const updateTeam = async (req, res, next) => {
       description,
     });
 
+    await insertAuditLog(teamId, req.userId, "TEAM_UPDATED", {
+      name,
+      description,
+    });
+
     return res.status(200).send({ message: "Team updated successfully", team });
   } catch (err) {
     next(err);
@@ -88,6 +94,11 @@ export const addTeamMember = async (req, res, next) => {
     const { teamId } = req.params;
     const teamMemberId = await teamService.addTeamMember(email, teamId);
 
+    await insertAuditLog(teamId, req.userId, "TEAM_MEMBER_INVITED", {
+      email,
+      teamMemberId,
+    });
+
     return res
       .status(201)
       .send({ message: "Member added into the team", teamMemberId });
@@ -104,6 +115,11 @@ export const deactivateTeamMember = async (req, res, next) => {
       userId,
       req.userId,
     );
+
+    await insertAuditLog(teamId, req.userId, "TEAM_MEMBER_REMOVED", {
+      targetUserId: userId,
+      teamMemberId,
+    });
 
     return res
       .status(200)
@@ -123,6 +139,13 @@ export const changeMemberRole = async (req, res, next) => {
       newRole,
       req.userId,
     );
+
+    await insertAuditLog(teamId, req.userId, "TEAM_MEMBER_ROLE_CHANGED", {
+      targetUserId: userId,
+      teamMemberId,
+      prevRole,
+      role,
+    });
 
     return res.status(200).send({
       message: `Member changed from ${prevRole} to ${role}`,

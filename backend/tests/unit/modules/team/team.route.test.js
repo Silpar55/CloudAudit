@@ -3,6 +3,9 @@ import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 jest.mock("#modules/auth/auth.model.js");
 jest.mock("#modules/team/team.model.js");
+jest.mock("#modules/audit/audit.model.js", () => ({
+  insertAuditLog: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock("#middleware", () => {
   const actual = jest.requireActual("#middleware");
   return {

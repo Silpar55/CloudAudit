@@ -467,11 +467,13 @@ const Sidebar = ({
             {/* Management */}
             <SectionLabel className="mt-6">Management</SectionLabel>
             <NavLink href="/members" icon={Users} label="Team Members" />
-            <NavLink
-              href="/audit-logs"
-              icon={FileBarChart}
-              label="Audit Logs"
-            />
+            {(role === "admin" || role === "owner") && (
+              <NavLink
+                href="/audit-logs"
+                icon={FileBarChart}
+                label="Audit Logs"
+              />
+            )}
             <NavLink href="/settings" icon={Settings} label="Settings" />
           </div>
         ) : (

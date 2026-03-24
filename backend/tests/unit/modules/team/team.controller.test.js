@@ -1,5 +1,8 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
+jest.mock("#modules/audit/audit.model.js", () => ({
+  insertAuditLog: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock("#modules/team/team.service.js");
 import * as teamService from "#modules/team/team.service.js";
 import {
