@@ -94,6 +94,34 @@ export const getTeamsByUserId = async (userId) => {
   }
 };
 
+export const getTeamNotificationCounts = async (userId) => {
+  const query = `
+    SELECT
+      tm.team_id,
+      COUNT(
+        CASE
+          WHEN nr.dismissed_at IS NULL AND nr.read_at IS NULL
+          THEN al.audit_log_id
+          ELSE NULL
+        END
+      )::int AS unread_count
+    FROM team_members tm
+    LEFT JOIN audit_logs al
+      ON al.team_id = tm.team_id
+     AND al.action = 'ML_ANALYSIS_RAN'
+    LEFT JOIN notification_receipts nr
+      ON nr.audit_log_id = al.audit_log_id
+     AND nr.user_id = $1
+    WHERE tm.user_id = $1
+      AND tm.is_active = TRUE
+    GROUP BY tm.team_id
+    ORDER BY unread_count DESC;
+  `;
+
+  const { rows } = await pool.query(query, [userId]);
+  return rows;
+};
+
 // POST FUNCTIONS
 
 export const createTeam = async (name, description = null) => {

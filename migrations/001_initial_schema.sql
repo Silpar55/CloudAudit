@@ -253,6 +253,26 @@ CREATE TABLE audit_logs (
 );
 
 
+-- NOTIFICATION RECEIPTS TABLE
+-- Per-user notification state for workspace events (stored in audit_logs)
+-- Allows marking notifications as read or dismissed independently for each user.
+CREATE TABLE IF NOT EXISTS notification_receipts (
+  receipt_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  audit_log_id UUID NOT NULL REFERENCES audit_logs (audit_log_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+  read_at TIMESTAMP WITH TIME ZONE,
+  dismissed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (audit_log_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_receipts_user_id
+  ON notification_receipts (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_notification_receipts_audit_log_id
+  ON notification_receipts (audit_log_id);
+
+
 -- ==============================================================================
 -- 5. VIEWS, FUNCTIONS & TRIGGERS (Automated Data Warehousing)
 -- ==============================================================================

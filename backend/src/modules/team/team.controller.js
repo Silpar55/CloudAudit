@@ -20,6 +20,19 @@ export const getTeamsByUserId = async (req, res, next) => {
   }
 };
 
+export const getTeamNotificationCounts = async (req, res, next) => {
+  try {
+    const counts = await teamService.getTeamNotificationCounts(req.userId);
+    const map = (counts ?? []).reduce((acc, row) => {
+      acc[row.team_id] = row.unread_count;
+      return acc;
+    }, {});
+    return res.status(200).send({ counts: map });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getTeamById = async (req, res, next) => {
   try {
     // PERFORMANCE FIX: req.team is populated by verifyTeamId middleware.

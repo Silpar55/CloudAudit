@@ -122,7 +122,7 @@ export const getUser = async (token) => {
 
     return user;
   } catch (_e) {
-    throw new AppError("Invalid or expire token", 404);
+    throw new AppError("Invalid or expire token", 401);
   }
 };
 

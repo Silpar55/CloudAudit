@@ -4,11 +4,17 @@ import {
   verifyTeamId,
   verifyTeamMembership,
 } from "#middleware";
-import { listAuditLogs } from "#modules/audit/audit.controller.js";
+import {
+  listAuditLogs,
+  listNotifications,
+  markNotificationRead,
+  dismissNotification,
+} from "#modules/audit/audit.controller.js";
 import {
   createTeam,
   getTeamsByUserId,
   getTeamById,
+  getTeamNotificationCounts,
   updateTeam,
   deleteTeam,
   getTeamMemberById,
@@ -29,6 +35,31 @@ router.get(
   verifyTeamId,
   verifyPermissions,
   listAuditLogs,
+);
+
+router.get(
+  "/:teamId/notifications",
+  verifyTeamId,
+  verifyTeamMembership,
+  listNotifications,
+);
+
+// Counts (used in the teams dashboard to show unread badges)
+router.get("/notifications/counts", getTeamNotificationCounts);
+
+// Per-user notification actions
+router.patch(
+  "/:teamId/notifications/:notificationId/read",
+  verifyTeamId,
+  verifyTeamMembership,
+  markNotificationRead,
+);
+
+router.patch(
+  "/:teamId/notifications/:notificationId/dismiss",
+  verifyTeamId,
+  verifyTeamMembership,
+  dismissNotification,
 );
 router.get("/:teamId", verifyTeamId, getTeamById);
 router.patch("/:teamId", verifyPermissions, verifyTeamId, updateTeam);

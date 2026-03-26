@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CreateTeamForm, TeamCard } from "~/components/dashboard";
 import { Button, Modal } from "~/components/ui";
 import { useGetTeamsByUserId } from "~/hooks/useTeam";
+import { useTeamNotificationCounts } from "~/hooks/useTeamNotificationCounts";
 
 function formatMonthlyCost(cost: unknown): string {
   if (cost == null || cost === "") return "";
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data } = useGetTeamsByUserId();
+  const { data: countsData } = useTeamNotificationCounts();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-8">
@@ -39,6 +41,7 @@ export default function DashboardPage() {
                 status={team.status}
                 awsAccountId={team.aws_account_id}
                 monthlyCost={formatMonthlyCost(team.monthly_cost)}
+                notificationCount={countsData?.counts?.[team.team_id] ?? 0}
                 onClick={() => navigate(`/teams/${team.team_id}`)}
               />
             ))}

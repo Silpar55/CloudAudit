@@ -1,6 +1,12 @@
 import * as anomalyModel from "./anomaly.model.js";
 import * as recommendationsService from "../recommendations/recommendations.service.js";
+import * as recommendationsModel from "../recommendations/recommendations.model.js";
 import { AppError } from "#utils/helper/AppError.js";
+import { insertAuditLog } from "#modules/audit/audit.model.js";
+import {
+  sendAnomalyAlertSlackMessage,
+  sendMlAnalysisPassedSlackMessage,
+} from "#utils/notifications/slack.js";
 
 export const getAnomalies = async (account) => {
   const anomalies = await anomalyModel.getAnomaliesByInternalId(account.id);
@@ -10,7 +16,11 @@ export const getAnomalies = async (account) => {
   return anomalies;
 };
 
-export const triggerAnalysis = async (account) => {
+export const triggerAnalysis = async (
+  account,
+  userId,
+  actorName = "User",
+) => {
   await anomalyModel.ensureFallbackResourceExists();
 
   const mlServiceUrl =
@@ -29,10 +39,74 @@ export const triggerAnalysis = async (account) => {
 
     const recResult = await recommendationsService.runDetectionCycle(account);
 
+    // Slack notifications should reflect what the UI sees (DB truth),
+    // not just the ML service "anomalies_detected" count.
+    const dbAnomalies =
+      (await anomalyModel.getAnomaliesByInternalId(account.id).catch(() => [])) ??
+      [];
+    const openAnomalies = dbAnomalies.filter(
+      (a) => (a.status ?? "open") === "open",
+    );
+
+    const anomaliesDetected = openAnomalies.length;
+    // Recommendations should match the UI (DB truth), not just the AI engine output.
+    const dbRecommendations =
+      (await recommendationsModel
+        .getRecommendationsByInternalId(account.id)
+        .catch(() => [])) ?? [];
+    const recommendationsGenerated = dbRecommendations.length;
+
+    // For operator-facing notifications, prefer the real AWS account number.
+    const awsAccountNumber = account.aws_account_id || account.external_id || account.id;
+
+    // Store a team-scoped event so every workspace member can see it in the UI.
+    // Notification visibility is handled via a separate endpoint that uses
+    // verifyTeamMembership (not verifyPermissions).
+    try {
+      await insertAuditLog(account.team_id, userId, "ML_ANALYSIS_RAN", {
+        awsAccountNumber,
+        anomaliesDetected,
+        recommendationsGenerated,
+        mlStatus: anomaliesDetected > 0 ? "anomalies_detected" : "no_anomalies",
+      });
+    } catch (auditError) {
+      console.error("Failed to insert ML analysis audit log:", auditError);
+    }
+
+    if (anomaliesDetected > 0) {
+      try {
+        await sendAnomalyAlertSlackMessage({
+          actorName,
+          awsAccountNumber,
+          anomaliesDetected,
+          recommendationsGenerated,
+        });
+      } catch (slackError) {
+        console.error(
+          `Failed to send anomaly Slack alert for account ${awsAccountNumber}:`,
+          slackError,
+        );
+      }
+    } else {
+      // Explicit success message so users know the ML run completed.
+      try {
+        await sendMlAnalysisPassedSlackMessage({
+          actorName,
+          awsAccountNumber,
+          recommendationsGenerated,
+        });
+      } catch (slackError) {
+        console.error(
+          `Failed to send ML success Slack message for account ${awsAccountNumber}:`,
+          slackError,
+        );
+      }
+    }
+
     return {
       message: "Analysis complete",
-      anomalies_detected: mlData.anomalies_detected || 0,
-      recommendations_generated: recResult.new_recommendations || 0,
+      anomalies_detected: anomaliesDetected,
+      recommendations_generated: recommendationsGenerated,
     };
   } catch (error) {
     throw new AppError("AI Analysis is currently unavailable.", 503);

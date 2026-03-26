@@ -1,7 +1,9 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 jest.mock("#modules/anomaly/anomaly.service.js");
+jest.mock("#modules/auth/auth.model.js");
 import * as anomalyService from "#modules/anomaly/anomaly.service.js";
+import * as authModel from "#modules/auth/auth.model.js";
 import {
   getAnomalies,
   triggerAnalysis,
@@ -14,6 +16,7 @@ describe("Anomaly Controller", () => {
     jest.clearAllMocks();
     req = {
       awsAccount: { id: "acc-123" }, // Injected by AWS Middleware
+      userId: "user-1",
     };
     res = {
       status: jest.fn().mockReturnThis(),
@@ -49,12 +52,19 @@ describe("Anomaly Controller", () => {
     it("Should return 200 and analysis result", async () => {
       const mockResult = { status: "success" };
       anomalyService.triggerAnalysis.mockResolvedValue(mockResult);
+      authModel.findUserById.mockResolvedValue({
+        first_name: "User",
+        last_name: "1",
+        email: "user1@test.com",
+      });
 
       await triggerAnalysis(req, res, next);
 
-      expect(anomalyService.triggerAnalysis).toHaveBeenCalledWith({
-        id: "acc-123",
-      });
+      expect(anomalyService.triggerAnalysis).toHaveBeenCalledWith(
+        { id: "acc-123" },
+        "user-1",
+        "User 1",
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith(mockResult);
     });

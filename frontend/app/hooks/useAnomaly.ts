@@ -20,6 +20,11 @@ export const useTriggerAnalysis = () => {
       queryClient.invalidateQueries({
         queryKey: ["anomalies", variables.teamId, variables.accId],
       });
+
+      // Also refresh the team notifications dropdown (ML analysis events)
+      queryClient.invalidateQueries({
+        queryKey: ["teamNotifications", variables.teamId],
+      });
     },
   });
 };

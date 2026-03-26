@@ -26,6 +26,7 @@ const TeamCard = ({
   awsAccountId = "",
   monthlyCost = "",
   status = "active",
+  notificationCount = 0,
   onClick,
   className = "",
   ...props
@@ -61,11 +62,22 @@ const TeamCard = ({
         >
           {getInitials(name)}
         </div>
-        <span
-          className={`px-3 py-1 ${config.badge} text-xs font-bold rounded-full`}
-        >
-          {config.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-3 py-1 ${config.badge} text-xs font-bold rounded-full`}
+          >
+            {config.label}
+          </span>
+
+          {notificationCount > 0 && (
+            <span className="px-2 py-0.5 bg-aws-orange/10 text-aws-orange border border-aws-orange/20 text-[10px] font-bold rounded-full">
+              {notificationCount > 99
+                ? "99+"
+                : notificationCount}{" "}
+              alerts
+            </span>
+          )}
+        </div>
       </div>
 
       <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white mb-1 group-hover:text-aws-orange transition-colors">

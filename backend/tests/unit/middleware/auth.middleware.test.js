@@ -36,7 +36,7 @@ describe("verifyToken Middleware", () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it("Should return 500 when verifyJwtHelper throws an error", () => {
+  it("Should return 401 when verifyJwtHelper throws an error", () => {
     req.headers.authorization = "Bearer bad-token";
 
     verifyJwtHelper.mockImplementation(() => {
@@ -45,7 +45,7 @@ describe("verifyToken Middleware", () => {
 
     verifyToken(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.status).toHaveBeenCalledWith(401);
     expect(res.send).toHaveBeenCalledWith(
       expect.objectContaining({ message: "Invalid or expire token" }),
     );

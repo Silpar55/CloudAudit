@@ -29,6 +29,10 @@ export const getTeamsByUserId = async (userId) => {
   return teams;
 };
 
+export const getTeamNotificationCounts = async (userId) => {
+  return teamModel.getTeamNotificationCounts(userId);
+};
+
 // PERFORMANCE FIX: getTeamById was removed from the service
 // because it is now handled directly by the middleware and controller.
 

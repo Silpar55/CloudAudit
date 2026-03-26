@@ -17,7 +17,7 @@ export const verifyToken = (req, res, next) => {
     req.userId = decoded.userId;
     next();
   } catch (_e) {
-    return res.status(500).send({
+    return res.status(401).send({
       message: "Invalid or expire token",
       token: "invalid",
     });

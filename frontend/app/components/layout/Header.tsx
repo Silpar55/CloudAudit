@@ -1,4 +1,7 @@
+import { useParams } from "react-router";
 import { useAwsAccount } from "~/context/AwsAccountContext";
+import { useTeamNotifications } from "~/hooks/useTeamNotifications";
+import NotificationsMenu from "./NotificationsMenu";
 
 /**
  * Header Component
@@ -22,9 +25,14 @@ const Header = ({
   className?: string;
   [key: string]: any;
 }) => {
+  const { teamId } = useParams<{ teamId: string }>();
+
   // Pull the real AWS account ID from context.
   // account is null while loading or when the team has no connected account yet.
   const { account, isLoading: isAccountLoading } = useAwsAccount();
+
+  const { data, isLoading: isNotificationsLoading } =
+    useTeamNotifications(teamId, { enabled: true, limit: 20 });
 
   const awsAccountId = account?.aws_account_id;
 
@@ -67,6 +75,14 @@ const Header = ({
               {subtitle}
             </p>
           )}
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <NotificationsMenu
+            teamId={teamId ?? ""}
+            teamNotifications={data?.logs}
+            isLoading={isNotificationsLoading}
+          />
         </div>
       </div>
     </header>

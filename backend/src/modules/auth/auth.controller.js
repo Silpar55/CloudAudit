@@ -5,8 +5,11 @@ import * as jwtHelper from "#utils/helper/jwt-helper.js";
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  // Allow refresh token cookies to be sent reliably from a SPA.
+  // In dev (usually sameSite/lax), in prod enable cross-site cookies via None+Secure.
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/",
 };
 
 export const registerUser = async (req, res, next) => {

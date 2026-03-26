@@ -1,4 +1,5 @@
 import * as anomalyService from "./anomaly.service.js";
+import * as authModel from "#modules/auth/auth.model.js";
 
 export const getAnomalies = async (req, res, next) => {
   try {
@@ -11,7 +12,17 @@ export const getAnomalies = async (req, res, next) => {
 
 export const triggerAnalysis = async (req, res, next) => {
   try {
-    const result = await anomalyService.triggerAnalysis(req.awsAccount);
+    const actor = await authModel.findUserById(req.userId);
+    const actorName =
+      [actor?.first_name, actor?.last_name].filter(Boolean).join(" ") ||
+      actor?.email ||
+      "User";
+
+    const result = await anomalyService.triggerAnalysis(
+      req.awsAccount,
+      req.userId,
+      actorName,
+    );
     return res.status(200).send(result);
   } catch (err) {
     next(err);
