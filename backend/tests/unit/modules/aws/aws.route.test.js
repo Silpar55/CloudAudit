@@ -1,4 +1,4 @@
-import { describe, expect, it, jest, beforeEach } from "@jest/globals";
+import { describe, expect, it, jest, beforeEach, afterEach } from "@jest/globals";
 
 jest.mock("#utils/aws/client-factory.js");
 
@@ -16,8 +16,21 @@ import {
   getCallerIdentity,
 } from "#utils/aws/client-factory.js";
 
+const TEST_PLATFORM_ROLE_ARN =
+  "arn:aws:iam::111122223333:role/CloudAuditPlatformRole";
+
 beforeEach(() => {
   jest.clearAllMocks();
+  process.env.CLOUDAUDIT_PLATFORM_ROLE_ARN = TEST_PLATFORM_ROLE_ARN;
+});
+
+afterEach(() => {
+  delete process.env.CLOUDAUDIT_PLATFORM_ROLE_ARN;
+  delete process.env.CLOUDAUDIT_PLATFORM_ROLE_ARN_PRODUCTION;
+  delete process.env.CLOUDAUDIT_PLATFORM_ROLE_ARN_DEVELOPMENT;
+  delete process.env.CLOUDAUDIT_PLATFORM_AWS_ACCOUNT_ID;
+  delete process.env.CLOUDAUDIT_PLATFORM_ROLE_NAME;
+  delete process.env.CLOUDAUDIT_PLATFORM_MODE;
 });
 
 describe("AWS Utilities", () => {
@@ -275,6 +288,9 @@ describe("AWS Utilities", () => {
       expect(trustPolicy.Statement).toHaveLength(1);
       expect(trustPolicy.Statement[0].Effect).toBe("Allow");
       expect(trustPolicy.Statement[0].Action).toBe("sts:AssumeRole");
+      expect(trustPolicy.Statement[0].Principal.AWS).toBe(
+        TEST_PLATFORM_ROLE_ARN,
+      );
       expect(
         trustPolicy.Statement[0].Condition.StringEquals["sts:ExternalId"],
       ).toBe("test-ext-id");

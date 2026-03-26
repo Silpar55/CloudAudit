@@ -2,6 +2,11 @@ import { pool } from "#config";
 
 let anomalyStatusColumnsAvailable = null;
 
+/** Clears cached schema detection (used by unit tests). */
+export const resetAnomalyStatusColumnCache = () => {
+  anomalyStatusColumnsAvailable = null;
+};
+
 const hasAnomalyStatusColumns = async () => {
   if (anomalyStatusColumnsAvailable !== null) return anomalyStatusColumnsAvailable;
   const query = `
@@ -101,7 +106,7 @@ export const updateAnomalyStatus = async (
   const hasStatus = await hasAnomalyStatusColumns();
   if (!hasStatus) {
     throw new Error(
-      "Anomaly status columns are missing. Run migration 004_anomaly_status_lifecycle.sql.",
+      "Anomaly status columns are missing. Recreate the DB from migrations/001_initial_schema.sql (or add the cost_anomalies status columns manually).",
     );
   }
   const query = `

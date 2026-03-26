@@ -14,11 +14,19 @@ import {
   getCallerIdentity,
   assumeRole,
 } from "./client-factory.js";
+import {
+  ensurePlatformCredentials,
+  getPlatformStsCredentials,
+} from "./platform-credentials.js";
+
+const REGION = process.env.AWS_REGION || "us-east-1";
 
 export const verifyAwsConnection = async () => {
-  const client = createSTSClient();
-
   try {
+    await ensurePlatformCredentials();
+    const creds = await getPlatformStsCredentials();
+    const client = createSTSClient(REGION, creds);
+
     const response = await getCallerIdentity(client);
 
     console.log("Success! I am connected as:");
@@ -27,11 +35,21 @@ export const verifyAwsConnection = async () => {
   } catch (err) {
     console.error("Connection failed:");
     console.error(err.message);
+    if (
+      err.name === "AccessDenied" ||
+      /AssumeRole|not authorized|is not authorized/i.test(String(err.message))
+    ) {
+      console.error(
+        "Hint: Your default AWS identity (e.g. SSO) must be allowed to sts:AssumeRole the platform role in CLOUDAUDIT_PLATFORM_MODE. Re-run create-cloudaudit-platform-roles.sh with DEV_ASSUMER_ARNS including your SSO role ARN.",
+      );
+    }
   }
 };
 
 export const validateSTSConnection = async (account) => {
-  const client = createSTSClient();
+  await ensurePlatformCredentials();
+  const creds = await getPlatformStsCredentials();
+  const client = createSTSClient(REGION, creds);
 
   console.log(account);
 
@@ -64,7 +82,9 @@ export const validateSTSConnection = async (account) => {
 };
 
 export const getTemporaryCredentials = async (account) => {
-  const sts = createSTSClient();
+  await ensurePlatformCredentials();
+  const creds = await getPlatformStsCredentials();
+  const sts = createSTSClient(REGION, creds);
 
   const params = {
     RoleArn: account.iam_role_arn,

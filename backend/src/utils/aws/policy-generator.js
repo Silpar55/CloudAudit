@@ -7,18 +7,25 @@
  * - Generate permission policies (what the role can do)
  * - Return formatted JSON strings for UI display and Bash script for CloudShell
  */
-/**
- * AWS IAM Policy Generator
- */
+
+import {
+  getPlatformRoleArn,
+  getPlatformRoleArnsForCustomerTrust,
+} from "./platform-role.js";
 
 export const generateScripts = (pendingAccount) => {
+  const platformRoleArn = getPlatformRoleArn();
+  const trustPrincipals = getPlatformRoleArnsForCustomerTrust();
+  const principalAws =
+    trustPrincipals.length === 1 ? trustPrincipals[0] : trustPrincipals;
+
   const trustPolicy = {
     Version: "2012-10-17",
     Statement: [
       {
         Effect: "Allow",
         Principal: {
-          AWS: "arn:aws:iam::906063354856:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_565401acba252927",
+          AWS: principalAws,
         },
         Action: "sts:AssumeRole",
         Condition: {
@@ -156,6 +163,8 @@ echo ""
 `;
 
   return {
+    platformRoleArn,
+    platformRoleArns: trustPrincipals,
     trustPolicyJson: JSON.stringify(trustPolicy, null, 2),
     permissionsPolicyJson: JSON.stringify(permissionsPolicy, null, 2),
     cloudShellScript,

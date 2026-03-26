@@ -222,6 +222,7 @@ export const deleteTeam = async (teamId) => {
     const { rows } = await pool.query(query, [teamId]);
     return rows[0];
   } catch (error) {
+    console.error("deleteTeam failed:", error);
     return null;
   }
 };

@@ -50,10 +50,10 @@ CREATE TYPE team_status AS ENUM (
 
 
 CREATE TYPE resource_type_enum AS ENUM (
-    'ec2_instance', 
-    'rds_instance', 
-    's3_bucket'
-	'other'
+    'ec2_instance',
+    'rds_instance',
+    's3_bucket',
+    'other'
 );
 
 CREATE TYPE recommendation_status AS ENUM (
@@ -128,7 +128,7 @@ CREATE TABLE aws_accounts (
 -- COST_DATA TABLE
 CREATE TABLE cost_data (
     cost_data_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
+    aws_account_id UUID REFERENCES aws_accounts(id) ON DELETE CASCADE NOT NULL,
     time_interval TIMESTAMP NOT NULL,
     product_code TEXT NOT NULL,
     usage_type TEXT NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE cost_data (
 -- DAILY_COST_SUMMARIES TABLE
 CREATE TABLE daily_cost_summaries (
     daily_cost_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
+    aws_account_id UUID REFERENCES aws_accounts(id) ON DELETE CASCADE NOT NULL,
     time_period_start TIMESTAMP NOT NULL,
     time_period_end TIMESTAMP NOT NULL,
     service TEXT NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE daily_cost_summaries (
 -- COST_EXPLORER_CACHE TABLE
 CREATE TABLE cost_explorer_cache (
     cache_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
+    aws_account_id UUID REFERENCES aws_accounts(id) ON DELETE CASCADE NOT NULL,
     time_period_start DATE NOT NULL,
     time_period_end DATE NOT NULL,
     service TEXT NOT NULL,
@@ -194,9 +194,9 @@ CREATE TABLE resources (
 -- COST_ANOMALIES TABLE
 CREATE TABLE cost_anomalies (
 	anomaly_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) NOT NULL,
-	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
-	resource_id TEXT REFERENCES resources (resource_id),
+	daily_cost_id UUID REFERENCES daily_cost_summaries (daily_cost_id) ON DELETE CASCADE NOT NULL,
+	aws_account_id UUID REFERENCES aws_accounts(id) ON DELETE CASCADE NOT NULL,
+	resource_id TEXT REFERENCES resources (resource_id) ON DELETE SET NULL,
 	detected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	expected_cost DECIMAL NOT NULL,
 	deviation_pct DECIMAL NOT NULL,
@@ -210,14 +210,17 @@ CREATE TABLE cost_anomalies (
 	UNIQUE (daily_cost_id, model_version)
 );
 
+CREATE INDEX IF NOT EXISTS idx_cost_anomalies_account_status
+	ON cost_anomalies (aws_account_id, status, detected_at DESC);
+
 
 -- RECOMMENDATIONS TABLE
 CREATE TABLE recommendations (
 	recommendation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	aws_account_id UUID REFERENCES aws_accounts(id) NOT NULL,
-	resource_id TEXT REFERENCES resources (resource_id),
+	aws_account_id UUID REFERENCES aws_accounts(id) ON DELETE CASCADE NOT NULL,
+	resource_id TEXT REFERENCES resources (resource_id) ON DELETE SET NULL,
 	resource_type resource_type_enum NOT NULL,
-	anomaly_id UUID REFERENCES cost_anomalies(anomaly_id), -- Nullable, as requested
+	anomaly_id UUID REFERENCES cost_anomalies(anomaly_id) ON DELETE SET NULL, -- Nullable, as requested
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
 	recommendation_type TEXT NOT NULL, 
 	description TEXT NOT NULL,
@@ -242,7 +245,7 @@ WHERE status = 'pending';
 -- AUDIT_LOGS TABLE
 CREATE TABLE audit_logs (
 	audit_log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	team_id  UUID REFERENCES teams (team_id) NOT NULL,
+	team_id  UUID REFERENCES teams (team_id) ON DELETE CASCADE NOT NULL,
 	user_id UUID REFERENCES users (user_id) NOT NULL,
 	action TEXT NOT NULL,
 	details JSONB NOT NULL,
