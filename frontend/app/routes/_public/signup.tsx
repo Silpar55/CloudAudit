@@ -112,7 +112,7 @@ export default function Signup() {
   if (isSuccess) {
     return (
       <section className="max-w-2xl mx-auto px-6 py-20 text-center">
-        <h1 className="text-6xl font-bold font-display text-gray-900 dark:text-white mb-6">
+        <h1 className="text-5xl font-bold font-display text-gray-900 dark:text-white mb-6">
           Check your inbox
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
@@ -128,92 +128,127 @@ export default function Signup() {
   }
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-20">
-      <div className="max-w-2xl mx-auto ">
-        <h1 className="text-6xl font-bold font-display text-gray-900 dark:text-white mb-6">
-          Get started!
-        </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-          Join to CloudAudit and monitor and reduce the cost of your aws project
-        </p>
-        {alert.visible && (
-          <Alert
-            dismissible={alert.dismissible}
-            onDismiss={handleOnDismiss}
-            title={alert.title}
-            variant={alert.variant}
-            className="mb-5"
-          >
-            {alert.message}
-          </Alert>
-        )}
+    <section className="mx-auto w-full max-w-7xl px-6 py-14">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm font-semibold uppercase tracking-wide text-aws-orange">
+            Start free
+          </p>
+          <h1 className="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
+            Create your CloudAudit account
+          </h1>
+          <p className="mt-4 text-base text-gray-600 dark:text-gray-300">
+            CloudAudit is built for teams that need clear AWS cost visibility
+            and practical optimization steps without enterprise-level overhead.
+          </p>
+
+          <div className="mt-8 space-y-4">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-900">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                After sign up, you can:
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <li>- Connect your AWS account securely with IAM roles</li>
+                <li>- View cost summaries by service and trend</li>
+                <li>- Detect anomalies and discover optimization opportunities</li>
+              </ul>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Already have an account?{" "}
+              <a
+                href="/login"
+                className="font-semibold text-aws-orange hover:text-aws-orange-dark"
+              >
+                Sign in
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Account details
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            Fill in your information to start your onboarding.
+          </p>
+          {alert.visible && (
+            <Alert
+              dismissible={alert.dismissible}
+              onDismiss={handleOnDismiss}
+              title={alert.title}
+              variant={alert.variant}
+              className="mb-5 mt-5"
+            >
+              {alert.message}
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
+            <Input
+              label="First Name"
+              placeholder="Enter your first name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={(e: any) => handleChange("firstName", e.target.value)}
+              onBlur={(e: any) => handleBlur("firstName", e.target.value)}
+              error={!!errors.firstName}
+              errorMessage={errors.firstName}
+              required
+            />
+            <Input
+              label="Last Name"
+              placeholder="Enter your last name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={(e: any) => handleChange("lastName", e.target.value)}
+              onBlur={(e: any) => handleBlur("lastName", e.target.value)}
+              error={!!errors.lastName}
+              errorMessage={errors.lastName}
+              required
+            />
+            <Input
+              label="Email"
+              placeholder="Enter your email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={(e: any) => handleChange("email", e.target.value)}
+              onBlur={(e: any) => handleBlur("email", e.target.value)}
+              error={!!errors.email}
+              errorMessage={errors.email}
+              required
+            />
+            <Input
+              label="Password"
+              placeholder="Enter your password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={(e: any) => handleChange("password", e.target.value)}
+              onBlur={(e: any) => handleBlur("password", e.target.value)}
+              error={!!errors.password}
+              errorMessage={errors.password}
+              required
+            />
+            <Input
+              label="Phone Number"
+              placeholder="Enter your phone number"
+              type="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={(value: string) => handleChange("phone", value || "")}
+              onBlur={() => handlePhoneBlur(formData.phone)}
+              error={!!errors.phone}
+              errorMessage={errors.phone}
+              required
+            />
+            <Button className="mt-5" type="submit" disabled={isDisabled}>
+              {isPending ? "Creating account..." : "Create my account"}
+            </Button>
+          </form>
+        </div>
       </div>
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto w-1/2 flex flex-col gap-3"
-      >
-        <Input
-          label="First Name"
-          placeholder="Enter your first name"
-          name="firstName"
-          value={formData.firstName}
-          onChange={(e: any) => handleChange("firstName", e.target.value)}
-          onBlur={(e: any) => handleBlur("firstName", e.target.value)}
-          error={!!errors.firstName}
-          errorMessage={errors.firstName}
-          required
-        />
-        <Input
-          label="Last Name"
-          placeholder="Enter your last name"
-          name="lastName"
-          value={formData.lastName}
-          onChange={(e: any) => handleChange("lastName", e.target.value)}
-          onBlur={(e: any) => handleBlur("lastName", e.target.value)}
-          error={!!errors.lastName}
-          errorMessage={errors.lastName}
-          required
-        />
-        <Input
-          label="Email"
-          placeholder="Enter your email"
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={(e: any) => handleChange("email", e.target.value)}
-          onBlur={(e: any) => handleBlur("email", e.target.value)}
-          error={!!errors.email}
-          errorMessage={errors.email}
-          required
-        />
-        <Input
-          label="Password"
-          placeholder="Enter your password"
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={(e: any) => handleChange("password", e.target.value)}
-          onBlur={(e: any) => handleBlur("password", e.target.value)}
-          error={!!errors.password}
-          errorMessage={errors.password}
-          required
-        />
-        <Input
-          label="Phone Number"
-          placeholder="Enter your phone number"
-          type="phone"
-          name="phone"
-          value={formData.phone}
-          onChange={(value: string) => handleChange("phone", value || "")}
-          onBlur={() => handlePhoneBlur(formData.phone)}
-          error={!!errors.phone}
-          errorMessage={errors.phone}
-          required
-        />
-        <Button className="mt-5" type="submit" disabled={isDisabled}>
-          {isPending ? "Creating account..." : "Get started!"}
-        </Button>
-      </form>
     </section>
   );
 }

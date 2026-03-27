@@ -1,4 +1,5 @@
 import { Input, Button, Alert } from "~/components/ui";
+import { Link } from "react-router";
 
 import { validEmail, validPassword } from "~/utils/validation";
 import React from "react";
@@ -99,66 +100,104 @@ export default function Login() {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-20">
-      <div className="max-w-2xl mx-auto ">
-        <h1 className="text-6xl font-bold font-display text-gray-900 dark:text-white mb-6">
-          Sign in
-        </h1>
-        {alert.visible && (
-          <Alert
-            dismissible={alert.dismissible}
-            onDismiss={handleOnDismiss}
-            title={alert.title}
-            variant={alert.variant}
-            className="mb-5"
-          >
-            {alert.message}
-          </Alert>
-        )}
-      </div>
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto w-1/2 flex flex-col gap-3"
-      >
-        <Input
-          label="Email"
-          placeholder="Enter your email"
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={(e: any) => handleChange("email", e.target.value)}
-          onBlur={(e: any) => handleBlur("email", e.target.value)}
-          error={!!errors.email}
-          errorMessage={errors.email}
-          required
-        />
-        <div>
-          <Input
-            label="Password"
-            placeholder="Enter your password"
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={(e: any) => handleChange("password", e.target.value)}
-            onBlur={(e: any) => handleBlur("password", e.target.value)}
-            error={!!errors.password}
-            errorMessage={errors.password}
-            required
-          />
-          <div className="flex justify-end mt-1">
-            <a
-              href="/forgot-password"
-              className="text-sm font-semibold text-aws-orange hover:text-aws-orange-dark transition-colors"
-            >
-              Forgot your password?
-            </a>
+    <section className="mx-auto w-full max-w-7xl px-6 py-14">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm font-semibold uppercase tracking-wide text-aws-orange">
+            Welcome back
+          </p>
+          <h1 className="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
+            Sign in to CloudAudit
+          </h1>
+          <p className="mt-4 text-base text-gray-600 dark:text-gray-300">
+            Continue monitoring your AWS spend, reviewing anomalies, and turning
+            recommendations into measurable savings.
+          </p>
+
+          <div className="mt-8 space-y-4">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-900">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                What you get after login
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <li>- Cost breakdown by service and time period</li>
+                <li>- AI-powered anomaly detection with explanation</li>
+                <li>- Optimization recommendations with estimated savings</li>
+              </ul>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              New to CloudAudit?{" "}
+              <Link
+                to="/signup"
+                className="font-semibold text-aws-orange hover:text-aws-orange-dark"
+              >
+                Create your free account
+              </Link>
+              .
+            </p>
           </div>
         </div>
 
-        <Button className="mt-5" disabled={isDisabled}>
-          {isPending ? "Signing in..." : "Sign in"}
-        </Button>
-      </form>
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Account login
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            Enter your account credentials to access your dashboard.
+          </p>
+          {alert.visible && (
+            <Alert
+              dismissible={alert.dismissible}
+              onDismiss={handleOnDismiss}
+              title={alert.title}
+              variant={alert.variant}
+              className="mb-5 mt-5"
+            >
+              {alert.message}
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
+            <Input
+              label="Email"
+              placeholder="Enter your email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={(e: any) => handleChange("email", e.target.value)}
+              onBlur={(e: any) => handleBlur("email", e.target.value)}
+              error={!!errors.email}
+              errorMessage={errors.email}
+              required
+            />
+            <div>
+              <Input
+                label="Password"
+                placeholder="Enter your password"
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={(e: any) => handleChange("password", e.target.value)}
+                onBlur={(e: any) => handleBlur("password", e.target.value)}
+                error={!!errors.password}
+                errorMessage={errors.password}
+                required
+              />
+              <div className="mt-1 flex justify-end">
+                <a
+                  href="/forgot-password"
+                  className="text-sm font-semibold text-aws-orange hover:text-aws-orange-dark transition-colors"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+            </div>
+
+            <Button className="mt-5" disabled={isDisabled}>
+              {isPending ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+        </div>
+      </div>
     </section>
   );
 }

@@ -1,5 +1,5 @@
-import { Navigate, Outlet, useNavigate } from "react-router";
-import { Navbar } from "~/components/layout";
+import { Navigate, Outlet } from "react-router";
+import { Navbar, PublicFooter } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";
 
 export default function publicAppLayout() {
@@ -10,7 +10,10 @@ export default function publicAppLayout() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <Navbar links={[]} showAuth={true} />
-      <Outlet />
+      <main>
+        <Outlet />
+      </main>
+      <PublicFooter />
     </div>
   );
 }
