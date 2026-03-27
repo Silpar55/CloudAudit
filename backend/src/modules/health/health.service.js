@@ -1,6 +1,11 @@
 import jwt from "jsonwebtoken";
 import { pool } from "#config";
 import { getMonitoringMetricsSnapshot } from "#utils/monitoring/metrics.store.js";
+import { createSTSClient, getCallerIdentity } from "#utils/aws/client-factory.js";
+import {
+  ensurePlatformCredentials,
+  getPlatformStsCredentials,
+} from "#utils/aws/platform-credentials.js";
 
 export const checkServerStatus = async () => {
   const healthcheck = {
@@ -99,15 +104,75 @@ export const checkMlServiceStatus = async () => {
   }
 };
 
+export const checkAwsCredentialsStatus = async () => {
+  const healthcheck = {
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    awsCredentials: "unhealthy",
+    awsAccount: null,
+    message: "AWS credentials unavailable",
+  };
+
+  try {
+    await ensurePlatformCredentials();
+    const creds = await getPlatformStsCredentials();
+    const sts = createSTSClient(process.env.AWS_REGION || "us-east-1", creds);
+    const identity = await getCallerIdentity(sts);
+
+    return {
+      ...healthcheck,
+      awsCredentials: "healthy",
+      awsAccount: identity?.Account || null,
+      message: "OK",
+    };
+  } catch (_error) {
+    return healthcheck;
+  }
+};
+
+export const getReadinessSnapshot = async () => {
+  const [serverStatus, dbStatus, awsStatus, mlStatus] = await Promise.all([
+    checkServerStatus(),
+    checkDatabaseStatus(),
+    checkAwsCredentialsStatus(),
+    checkMlServiceStatus(),
+  ]);
+
+  const healthy =
+    serverStatus.server === "up" &&
+    dbStatus.database === "healthy" &&
+    awsStatus.awsCredentials === "healthy" &&
+    mlStatus.mlService !== "unhealthy";
+
+  return {
+    status: healthy ? "healthy" : "degraded",
+    timestamp: Date.now(),
+    checks: {
+      server: serverStatus.server,
+      database: dbStatus.database,
+      awsCredentials: awsStatus.awsCredentials,
+      mlService: mlStatus.mlService,
+    },
+    details: {
+      awsAccount: awsStatus.awsAccount,
+      mlServiceUrl: mlStatus.mlServiceUrl,
+    },
+    uptimeSec: Number(process.uptime().toFixed(1)),
+  };
+};
+
 export const getMonitoringSnapshot = async () => {
-  const [dbStatus, mlStatus] = await Promise.all([
+  const [dbStatus, mlStatus, awsStatus] = await Promise.all([
     checkDatabaseStatus(),
     checkMlServiceStatus(),
+    checkAwsCredentialsStatus(),
   ]);
 
   const metrics = getMonitoringMetricsSnapshot();
   const apiStatus =
-    dbStatus.database === "healthy" && mlStatus.mlService !== "unhealthy"
+    dbStatus.database === "healthy" &&
+    mlStatus.mlService !== "unhealthy" &&
+    awsStatus.awsCredentials === "healthy"
       ? "healthy"
       : "degraded";
 
@@ -116,6 +181,7 @@ export const getMonitoringSnapshot = async () => {
     generatedAt: Date.now(),
     dependencies: {
       database: dbStatus.database,
+      awsCredentials: awsStatus.awsCredentials,
       mlService: mlStatus.mlService,
     },
     metrics,

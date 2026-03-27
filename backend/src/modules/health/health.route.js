@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getReadinessSnapshot,
   checkServerStatus,
   checkDatabaseStatus,
   checkAuthStatus,
@@ -8,6 +9,7 @@ import {
 
 const router = Router({});
 
+router.get("/", getReadinessSnapshot);
 router.get("/server", checkServerStatus);
 router.get("/database", checkDatabaseStatus);
 router.get("/auth", checkAuthStatus);

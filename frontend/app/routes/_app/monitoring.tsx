@@ -91,6 +91,10 @@ export default function MonitoringPage() {
             </h2>
             <div className="space-y-3">
               <DependencyRow label="Database" status={data.dependencies.database} />
+              <DependencyRow
+                label="AWS Credentials"
+                status={data.dependencies.awsCredentials}
+              />
               <DependencyRow label="ML Service" status={data.dependencies.mlService} />
             </div>
           </div>

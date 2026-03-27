@@ -5,6 +5,7 @@ export interface MonitoringSnapshot {
   generatedAt: number;
   dependencies: {
     database: string;
+    awsCredentials: string;
     mlService: string;
   };
   metrics: {

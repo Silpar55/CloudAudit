@@ -20,3 +20,9 @@ export const getMonitoringSnapshot = async (_req, res) => {
   const snapshot = await healthCheckService.getMonitoringSnapshot();
   return res.status(200).json(snapshot);
 };
+
+export const getReadinessSnapshot = async (_req, res) => {
+  const snapshot = await healthCheckService.getReadinessSnapshot();
+  const statusCode = snapshot.status === "healthy" ? 200 : 503;
+  return res.status(statusCode).json(snapshot);
+};
