@@ -1,22 +1,38 @@
 import { verifyJwtHelper } from "#utils/helper/jwt-helper.js";
+import { logger } from "#utils/logger.js";
 
 export const verifyToken = (req, res, next) => {
   // Confirm correct auth headers
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer "))
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    logger.warn("Auth failed: missing or invalid Authorization header", {
+      path: req.originalUrl || req.url,
+      method: req.method,
+    });
     return res.status(401).json({
       message: "Missing or invalid Authorization header",
       token: "invalid",
     });
+  }
 
   const token = authHeader.split(" ")[1];
-  if (!token) return res.status(401).send({ message: "Access denied" });
+  if (!token) {
+    logger.warn("Auth failed: bearer token missing after split", {
+      path: req.originalUrl || req.url,
+      method: req.method,
+    });
+    return res.status(401).send({ message: "Access denied" });
+  }
 
   try {
     const decoded = verifyJwtHelper(token);
     req.userId = decoded.userId;
     next();
   } catch (_e) {
+    logger.warn("Auth failed: JWT verification failed", {
+      path: req.originalUrl || req.url,
+      method: req.method,
+    });
     return res.status(401).send({
       message: "Invalid or expire token",
       token: "invalid",

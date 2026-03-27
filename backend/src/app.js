@@ -5,12 +5,18 @@ import cookieParser from "cookie-parser";
 
 import { errorHandler, verifyToken } from "#middleware";
 import { healthRoutes, authRoutes, teamRoutes, profileRoutes } from "#modules";
+import {
+  requestLoggerMiddleware,
+  requestMetricsMiddleware,
+} from "./middleware/monitoring.middleware.js";
 
 // App Setup
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
 config();
+app.use(requestMetricsMiddleware);
+app.use(requestLoggerMiddleware);
 
 // CORS
 var corsOptions = {

@@ -15,3 +15,8 @@ export const checkAuthStatus = async (req, res) => {
   const healthcheck = await healthCheckService.checkAuthStatus(authHeader);
   return res.status(200).json(healthcheck);
 };
+
+export const getMonitoringSnapshot = async (_req, res) => {
+  const snapshot = await healthCheckService.getMonitoringSnapshot();
+  return res.status(200).json(snapshot);
+};

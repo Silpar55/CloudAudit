@@ -24,6 +24,7 @@ export default [
   // Protected App Area
   layout("routes/_app/layout.tsx", [
     route("dashboard", "routes/_app/dashboard.tsx"),
+    route("monitoring", "routes/_app/monitoring.tsx"),
     route("profile", "routes/_app/profile.tsx"),
   ]),
 
