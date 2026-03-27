@@ -2,6 +2,7 @@ import cron from "node-cron";
 import * as awsModel from "#modules/aws/aws.model.js";
 import * as recommendationsService from "#modules/recommendations/recommendations.service.js";
 import { sendWeeklyReportSlackMessage } from "#utils/notifications/slack.js";
+import { sendWeeklyReportEmail } from "#utils/notifications/email.js";
 
 export const startWeeklyRecommendationsJob = () => {
   // Runs at 03:00 AM every Sunday
@@ -53,6 +54,12 @@ export const runWeeklyRecommendationsJob = async () => {
     } catch (slackError) {
       console.error("[CRON] Failed to send weekly Slack report:", slackError);
     }
+
+    try {
+      await sendWeeklyReportEmail(summary);
+    } catch (emailError) {
+      console.error("[CRON] Failed to send weekly email report:", emailError);
+    }
   } catch (error) {
     console.error(
       "[CRON] Fatal error in weekly recommendation job pipeline:",
@@ -73,6 +80,22 @@ export const runWeeklyRecommendationsJob = async () => {
       console.error(
         "[CRON] Failed to send weekly failure Slack report:",
         slackError,
+      );
+    }
+
+    try {
+      await sendWeeklyReportEmail({
+        totalAccounts: 0,
+        successCount: 0,
+        errorCount: 1,
+        durationSec,
+        failed: true,
+        errorMessage: error?.message || "Unknown weekly job failure",
+      });
+    } catch (emailError) {
+      console.error(
+        "[CRON] Failed to send weekly failure email report:",
+        emailError,
       );
     }
   }

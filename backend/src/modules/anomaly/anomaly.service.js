@@ -7,6 +7,10 @@ import {
   sendAnomalyAlertSlackMessage,
   sendMlAnalysisPassedSlackMessage,
 } from "#utils/notifications/slack.js";
+import {
+  sendAnomalyAlertEmail,
+  sendMlAnalysisPassedEmail,
+} from "#utils/notifications/email.js";
 
 export const getAnomalies = async (account) => {
   const anomalies = await anomalyModel.getAnomaliesByInternalId(account.id);
@@ -87,6 +91,20 @@ export const triggerAnalysis = async (
           slackError,
         );
       }
+
+      try {
+        await sendAnomalyAlertEmail({
+          actorName,
+          awsAccountNumber,
+          anomaliesDetected,
+          recommendationsGenerated,
+        });
+      } catch (emailError) {
+        console.error(
+          `Failed to send anomaly email alert for account ${awsAccountNumber}:`,
+          emailError,
+        );
+      }
     } else {
       // Explicit success message so users know the ML run completed.
       try {
@@ -99,6 +117,19 @@ export const triggerAnalysis = async (
         console.error(
           `Failed to send ML success Slack message for account ${awsAccountNumber}:`,
           slackError,
+        );
+      }
+
+      try {
+        await sendMlAnalysisPassedEmail({
+          actorName,
+          awsAccountNumber,
+          recommendationsGenerated,
+        });
+      } catch (emailError) {
+        console.error(
+          `Failed to send ML success email message for account ${awsAccountNumber}:`,
+          emailError,
         );
       }
     }

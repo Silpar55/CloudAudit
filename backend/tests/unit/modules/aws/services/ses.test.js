@@ -1,5 +1,5 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
-import { sendVerificationEmail } from "#utils/aws/ses.js";
+import { sendEmail, sendVerificationEmail } from "#utils/aws/ses.js";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 // Mock the AWS SDK
@@ -49,6 +49,53 @@ describe("SES Utility - sendVerificationEmail", () => {
 
     await expect(
       sendVerificationEmail("test@example.com", "token"),
+    ).rejects.toThrow("AWS SES Error");
+  });
+});
+
+describe("SES Utility - sendEmail", () => {
+  let mockSend;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSend = jest.fn().mockResolvedValue({ MessageId: "test-message-id" });
+    SESClient.prototype.send = mockSend;
+
+    process.env.SES_SENDER_EMAIL = "noreply@cloudaudit.com";
+  });
+
+  it("should send a generic notification email with HTML and text", async () => {
+    const toAddresses = ["ops@example.com", "team@example.com"];
+
+    const result = await sendEmail({
+      toAddresses,
+      subject: "Test Subject",
+      htmlBody: "<b>Hello</b>",
+      textBody: "Hello",
+    });
+
+    expect(SendEmailCommand).toHaveBeenCalled();
+    const commandArgs = SendEmailCommand.mock.calls[0][0];
+
+    expect(commandArgs.Source).toBe("noreply@cloudaudit.com");
+    expect(commandArgs.Destination.ToAddresses).toEqual(toAddresses);
+    expect(commandArgs.Message.Subject.Data).toBe("Test Subject");
+    expect(commandArgs.Message.Body.Html.Data).toContain("<b>Hello</b>");
+    expect(commandArgs.Message.Body.Text.Data).toContain("Hello");
+    expect(mockSend).toHaveBeenCalled();
+    expect(result.MessageId).toBe("test-message-id");
+  });
+
+  it("should throw if AWS SES fails", async () => {
+    mockSend.mockRejectedValue(new Error("AWS SES Error"));
+
+    await expect(
+      sendEmail({
+        toAddresses: ["test@example.com"],
+        subject: "Subject",
+        htmlBody: "<p>hi</p>",
+        textBody: "hi",
+      }),
     ).rejects.toThrow("AWS SES Error");
   });
 });

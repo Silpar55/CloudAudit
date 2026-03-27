@@ -87,3 +87,37 @@ export const sendPasswordResetEmail = async (toAddress, token) => {
   const command = new SendEmailCommand(params);
   return await sesClient.send(command);
 };
+
+export const sendEmail = async ({
+  toAddresses,
+  subject,
+  htmlBody,
+  textBody,
+}) => {
+  const senderEmail = process.env.SES_SENDER_EMAIL;
+  const params = {
+    Source: senderEmail,
+    Destination: {
+      ToAddresses: toAddresses,
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: "UTF-8",
+      },
+      Body: {
+        Html: {
+          Data: htmlBody,
+          Charset: "UTF-8",
+        },
+        Text: {
+          Data: textBody,
+          Charset: "UTF-8",
+        },
+      },
+    },
+  };
+
+  const command = new SendEmailCommand(params);
+  return await sesClient.send(command);
+};
