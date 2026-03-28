@@ -1,0 +1,72 @@
+# CloudAudit — production stack on a single host (e.g. EC2 + RDS).
+# Usage:
+#   export VITE_API_URL=http://YOUR_ELASTIC_IP:3000/api
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# RDS: set PGHOST, PGUSER, PGPASSWORD, PGDATABASE, PGPORT in .env.prod (no `db` service here).
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: cloudaudit-prod-backend:latest
+    container_name: cloudaudit-prod-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      ML_SERVICE_URL: http://ml:5000/api/ml/analyze?version=2
+    depends_on:
+      ml:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:3000/api}
+    image: cloudaudit-prod-frontend:latest
+    container_name: cloudaudit-prod-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      - backend
+
+  ml:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+      target: production
+    image: cloudaudit-prod-ml:latest
+    container_name: cloudaudit-prod-ml
+    restart: unless-stopped
+    env_file:
+      - ./ml-service/.env
+    expose:
+      - "5000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+networks:
+  default:
+    name: cloudaudit-prod-net

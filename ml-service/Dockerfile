@@ -35,12 +35,9 @@ RUN groupadd --gid 1001 mlservice && \
 
 WORKDIR /app
 
-# Minimal runtime system dep (libpq for psycopg2 at runtime)
+# Runtime: libpq only (no compilers — keeps image small)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    build-essential \
-    gcc \
-    g++ \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy the venv from builder — no gcc, no apt build tools in this image
@@ -59,4 +56,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "wsgi:app"]
+# Default 1 worker — override in compose for larger hosts if needed
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "wsgi:app"]

@@ -1,7 +1,10 @@
 import jwt from "jsonwebtoken";
 import { pool } from "#config";
 import { getMonitoringMetricsSnapshot } from "#utils/monitoring/metrics.store.js";
-import { createSTSClient, getCallerIdentity } from "#utils/aws/client-factory.js";
+import {
+  createSTSClient,
+  getCallerIdentity,
+} from "#utils/aws/client-factory.js";
 import {
   ensurePlatformCredentials,
   getPlatformStsCredentials,
@@ -51,7 +54,7 @@ export const checkAuthStatus = async (authHeader) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    jwt.verify(token, process.env.SECRETKEY);
+    jwt.verify(token, process.env.JWT_SECRET);
     return {
       ...healthcheck,
       message: "OK",
