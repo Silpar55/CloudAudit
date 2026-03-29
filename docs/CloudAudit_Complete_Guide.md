@@ -307,8 +307,8 @@ git commit -m "Initial project setup: AWS infrastructure, GitHub repo, database 
 
 **Task 2.5: Environment Setup & Docker (2 hours)**
 - Create `Dockerfile` for backend (node:18-alpine)
-- Create `docker-compose.yml` (PostgreSQL + backend services)
-- Test: `docker-compose up` starts everything
+- Use repo root `docker-compose.prod.yml` (or local Postgres + `npm run dev`) for full stack
+- Test: `docker compose -f docker-compose.prod.yml up` (with RDS / env files on EC2)
 - Success: All services running, backend accessible at localhost:5000
 
 **Commits**:
@@ -440,7 +440,7 @@ git commit -m "feat: React frontend - authentication, cost dashboard, AWS connec
 - Create ml-service/ folder
 - requirements.txt: pandas, scikit-learn, flask, numpy
 - Create Dockerfile for Python service
-- Update docker-compose.yml to include ML service
+- Include ML service in root `docker-compose.prod.yml` (or run ml-service locally)
 - Success: ML service starts in Docker
 
 **Task 5.2: Anomaly Detection Algorithm (3 hours)**
@@ -600,7 +600,7 @@ git commit -m "feat: Cost optimization recommendations - EC2, RDS detection with
 
 **Task 8.1: Docker & Registry Setup (2 hours)**
 - Create production Dockerfile (multi-stage)
-- Create production docker-compose.yml
+- Use root `docker-compose.prod.yml` for production-style local/EC2 runs
 - Push to Docker registry (optional, or use EC2 directly)
 - Success: Docker images production-ready
 
