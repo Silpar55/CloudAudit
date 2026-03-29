@@ -28,11 +28,14 @@ describe("Recommendations Model", () => {
 
   describe("upsertRecommendation", () => {
     it("Should UPDATE if a pending recommendation already exists", async () => {
-      // Mock the initial SELECT check returning an existing row
+      // cost_data meta for resource upsert, resource INSERT, pending check, UPDATE
+      pool.query.mockResolvedValueOnce({
+        rows: [{ product_code: "AmazonEC2", region: "us-east-1" }],
+      });
+      pool.query.mockResolvedValueOnce({ rowCount: 1 });
       pool.query.mockResolvedValueOnce({
         rows: [{ recommendation_id: "existing-id" }],
       });
-      // Mock the UPDATE
       pool.query.mockResolvedValueOnce({ rowCount: 1 });
 
       await recommendationsModel.upsertRecommendation({
@@ -42,16 +45,18 @@ describe("Recommendations Model", () => {
         description: "Test update",
       });
 
-      // 1st query is SELECT, 2nd is UPDATE
-      expect(pool.query).toHaveBeenCalledTimes(2);
-      expect(pool.query.mock.calls[1][0]).toContain("UPDATE recommendations");
-      expect(pool.query.mock.calls[1][1]).toContain("existing-id"); // ensure it targets the right ID
+      expect(pool.query).toHaveBeenCalledTimes(4);
+      expect(pool.query.mock.calls[2][0]).toContain(
+        "SELECT recommendation_id FROM recommendations",
+      );
+      expect(pool.query.mock.calls[3][0]).toContain("UPDATE recommendations");
+      expect(pool.query.mock.calls[3][1]).toContain("existing-id"); // ensure it targets the right ID
     });
 
     it("Should INSERT if no pending recommendation exists", async () => {
-      // Mock the initial SELECT returning empty
       pool.query.mockResolvedValueOnce({ rows: [] });
-      // Mock the INSERT
+      pool.query.mockResolvedValueOnce({ rowCount: 1 });
+      pool.query.mockResolvedValueOnce({ rows: [] });
       pool.query.mockResolvedValueOnce({ rowCount: 1 });
 
       await recommendationsModel.upsertRecommendation({
@@ -60,8 +65,8 @@ describe("Recommendations Model", () => {
         recommendation_type: "Rightsize",
       });
 
-      expect(pool.query).toHaveBeenCalledTimes(2);
-      expect(pool.query.mock.calls[1][0]).toContain(
+      expect(pool.query).toHaveBeenCalledTimes(4);
+      expect(pool.query.mock.calls[3][0]).toContain(
         "INSERT INTO recommendations",
       );
     });

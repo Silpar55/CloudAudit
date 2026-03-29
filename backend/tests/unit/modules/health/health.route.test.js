@@ -9,7 +9,9 @@ beforeEach(() => {
 
 import { pool } from "#config";
 import app from "#app";
-process.env.SECRETKEY = "test-secret";
+
+// Health /auth uses jwt.verify(..., process.env.JWT_SECRET), not SECRETKEY
+process.env.JWT_SECRET = "test-secret";
 
 describe("GET /health/", () => {
   const endpoint = "/api/health";
@@ -51,7 +53,7 @@ describe("GET /health/", () => {
   });
 
   it("Should show the token is valid", async () => {
-    const mockToken = jwt.sign({ mock: "Example" }, process.env.SECRETKEY, {
+    const mockToken = jwt.sign({ mock: "Example" }, process.env.JWT_SECRET, {
       expiresIn: "10s",
     });
 
