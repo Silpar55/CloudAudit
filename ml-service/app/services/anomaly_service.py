@@ -4,6 +4,7 @@ import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
 
+from ..db.resource_ensure import ensure_resource_row
 from ..models.explainer import ExplainerUtility
 from ..models.isolation_forest import CostAnomalyDetector
 
@@ -51,41 +52,61 @@ class AnomalyService:
 			expected = anomalies_df['total_cost'].median()
 			deviation = ((row['total_cost'] - expected) / expected) * 100 if expected > 0 else 0
 
-			root_cause = explainer.find_root_cause(
-				account_id=row['aws_account_id'],
-				service=row['service'],
-				region=row['region'],
-				target_date=row['time_period_start']
-			)
+			try:
+				root_cause = explainer.find_root_cause(
+					account_id=row['aws_account_id'],
+					service=row['service'],
+					region=row['region'],
+					target_date=row['time_period_start']
+				)
+			except Exception:
+				try:
+					conn.rollback()
+				except Exception:
+					pass
+				root_cause = None
 
-
-			resource_id = root_cause['resource_id'] if root_cause else None
+			resource_id = root_cause.get("resource_id") if root_cause else None
 			root_cause_json = json.dumps(root_cause) if root_cause else None
 
-			# Execute database save
-			cursor.execute(insert_query, (
-				str(row['daily_cost_id']),
-				str(row['aws_account_id']),
-				float(expected),
-				float(deviation),
-				int(row['severity']),
-				self.model_version,
-				resource_id,
-				root_cause_json
-			))
+			try:
+				if resource_id:
+					ensure_resource_row(
+						cursor,
+						str(row['aws_account_id']),
+						resource_id,
+						str(row['service']),
+						str(row['region']),
+					)
+				cursor.execute(insert_query, (
+					str(row['daily_cost_id']),
+					str(row['aws_account_id']),
+					float(expected),
+					float(deviation),
+					int(row['severity']),
+					self.model_version,
+					resource_id,
+					root_cause_json
+				))
+				conn.commit()
+			except Exception:
+				try:
+					conn.rollback()
+				except Exception:
+					pass
+				continue
 
 			# Build the dictionary for the API response
 			results_for_frontend.append({
 				"daily_cost_id": str(row['daily_cost_id']),
 				"service": row['service'],
 				"region": row['region'],
-				"date": row['time_period_start'].strftime("%Y-%m-%d"),
+				"date": row['time_period_start'].strftime('%Y-%m-%d'),
 				"severity": int(row['severity']),
 				"deviation_pct": round(float(deviation), 2),
 				"explanation": root_cause  # Include the parsed JSON object, not the string
 			})
 
-		conn.commit()
 		cursor.close()
 
 		return results_for_frontend

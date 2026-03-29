@@ -18,6 +18,7 @@ import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
 
+from ..db.resource_ensure import ensure_resource_row
 from ..models.explainer import ExplainerUtility
 from ..models.prophet_detector import ProphetCostDetector
 
@@ -128,6 +129,10 @@ class AnomalyServiceV2:
             except Exception as e:
                 logger.error("Root cause query failed: %s", str(e))
                 failure_reason = "query_error"
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
 
             # --- Build explainability block ---
             explainability, explanation = _build_explanation_block(root_cause, failure_reason)
@@ -144,6 +149,14 @@ class AnomalyServiceV2:
             root_cause_json = json.dumps(explanation) if explanation else None
 
             try:
+                if resource_id:
+                    ensure_resource_row(
+                        cursor,
+                        str(row["aws_account_id"]),
+                        resource_id,
+                        str(row["service"]),
+                        str(row["region"]),
+                    )
                 cursor.execute(insert_query, (
                     str(row["daily_cost_id"]),
                     str(row["aws_account_id"]),
@@ -154,11 +167,16 @@ class AnomalyServiceV2:
                     resource_id,
                     root_cause_json,
                 ))
+                conn.commit()
             except Exception as e:
                 logger.error(
                     "DB insert failed for daily_cost_id %s: %s",
                     row["daily_cost_id"], str(e)
                 )
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 continue
 
             # --- Build API response record ---
@@ -186,7 +204,6 @@ class AnomalyServiceV2:
 
             results.append(record)
 
-        conn.commit()
         cursor.close()
         return results
 

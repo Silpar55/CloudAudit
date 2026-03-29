@@ -47,6 +47,44 @@ export const upsertRecommendation = async (recData) => {
     : null;
 
   try {
+    // Ensure the referenced resource exists to satisfy FK constraints.
+    // In real AWS accounts, cost_data rows may include resource_id values that are not yet
+    // present in resources (e.g. first-time sync). We create a minimal placeholder row.
+    if (recData.resource_id && recData.resource_id !== "Unknown") {
+      try {
+        const metaQuery = `
+          SELECT product_code, region
+          FROM cost_data
+          WHERE aws_account_id = $1 AND resource_id = $2
+          ORDER BY time_interval DESC
+          LIMIT 1;
+        `;
+        const { rows: metaRows } = await pool.query(metaQuery, [
+          recData.aws_account_id,
+          recData.resource_id,
+        ]);
+        const productCode = metaRows?.[0]?.product_code || "UnknownService";
+        const region = metaRows?.[0]?.region || "UnknownRegion";
+
+        const resourceUpsert = `
+          INSERT INTO resources (resource_id, aws_account_id, service, instance_type, region, last_seen)
+          VALUES ($1, $2, $3, $4, $5, NOW())
+          ON CONFLICT (resource_id) DO UPDATE
+          SET last_seen = NOW();
+        `;
+        await pool.query(resourceUpsert, [
+          recData.resource_id,
+          recData.aws_account_id,
+          productCode,
+          "unknown",
+          region,
+        ]);
+      } catch (resourceErr) {
+        // If this fails, we'll still attempt the recommendation insert; the FK will surface clearly.
+        console.error("Error ensuring resource exists:", resourceErr);
+      }
+    }
+
     // 1. Check if a pending recommendation already exists for this exact resource and action
     const checkQuery = `
       SELECT recommendation_id FROM recommendations 

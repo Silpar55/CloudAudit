@@ -1,6 +1,6 @@
-from typing import Dict, Any
+from typing import Any
 
-import pandas as pd
+import psycopg2.extras
 
 
 class ExplainerUtility:
@@ -48,25 +48,24 @@ class ExplainerUtility:
             LIMIT 1;
         """
 
-		# Execute the drill-down query
-		df = pd.read_sql(query, self.conn, params={
+		params = {
 			"account_id": account_id,
 			"service": service,
 			"region": region,
-			"target_date": target_date
-		})
+			"target_date": target_date,
+		}
+		with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+			cur.execute(query, params)
+			top_cause = cur.fetchone()
 
-		if df.empty:
+		if not top_cause:
 			return None
 
-		# Extract the top contributor
-		top_cause = df.iloc[0]
-
 		return {
-			"resource_id": top_cause['resource_id'],
-			"operation": top_cause['operation'],
-			"usage_type": top_cause['usage_type'],
-			"spike_amount": float(top_cause['cost_increase']),
-			"previous_cost": float(top_cause['cost_yesterday']),
-			"current_cost": float(top_cause['cost_today'])
+			"resource_id": top_cause["resource_id"],
+			"operation": top_cause["operation"],
+			"usage_type": top_cause["usage_type"],
+			"spike_amount": float(top_cause["cost_increase"]),
+			"previous_cost": float(top_cause["cost_yesterday"]),
+			"current_cost": float(top_cause["cost_today"]),
 		}
