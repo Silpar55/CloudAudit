@@ -1,75 +1,78 @@
-import { useState, useCallback, useEffect } from "react";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   recommendationService,
-  type Recommendation,
 } from "../services/recommendationsService";
+
+/** Shared query key — invalidate from anomaly analysis + recommendation actions. */
+export const recommendationsQueryKey = (
+  teamId: string | undefined,
+  accountId: string | undefined,
+) => ["recommendations", teamId, accountId] as const;
 
 export const useRecommendations = (
   teamId: string | undefined,
   accountId: string | undefined,
 ) => {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchRecommendations = useCallback(async () => {
-    if (!teamId || !accountId) return;
-    try {
-      setLoading(true);
-      const data = await recommendationService.getRecommendations(
-        teamId,
-        accountId,
-      );
-      setRecommendations(data);
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Failed to fetch recommendations",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, accountId]);
+  const query = useQuery({
+    queryKey: recommendationsQueryKey(teamId, accountId),
+    queryFn: () =>
+      recommendationService.getRecommendations(teamId!, accountId!),
+    enabled: !!teamId && !!accountId,
+  });
 
-  useEffect(() => {
-    fetchRecommendations();
-  }, [fetchRecommendations]);
+  const invalidate = () =>
+    queryClient.invalidateQueries({
+      queryKey: recommendationsQueryKey(teamId, accountId),
+    });
 
-  const updateStatusLocally = (
-    id: string,
-    newStatus: Recommendation["status"],
-  ) => {
-    setRecommendations((prev) =>
-      prev.map((rec) =>
-        rec.recommendation_id === id ? { ...rec, status: newStatus } : rec,
-      ),
-    );
-  };
+  const generateMutation = useMutation({
+    mutationFn: () =>
+      recommendationService.generateRecommendations(teamId!, accountId!),
+    onSuccess: invalidate,
+  });
 
-  const implement = async (id: string) => {
-    if (!teamId || !accountId) return;
-    await recommendationService.implementRecommendation(teamId, accountId, id);
-    updateStatusLocally(id, "implemented");
-  };
+  const implementMutation = useMutation({
+    mutationFn: (id: string) =>
+      recommendationService.implementRecommendation(teamId!, accountId!, id),
+    onSuccess: invalidate,
+  });
 
-  const dismiss = async (id: string) => {
-    if (!teamId || !accountId) return;
-    await recommendationService.dismissRecommendation(teamId, accountId, id);
-    updateStatusLocally(id, "dismissed");
-  };
+  const resolveMutation = useMutation({
+    mutationFn: (id: string) =>
+      recommendationService.resolveRecommendation(teamId!, accountId!, id),
+    onSuccess: invalidate,
+  });
 
-  const generate = async () => {
-    if (!teamId || !accountId) return;
-    await recommendationService.generateRecommendations(teamId, accountId);
-    await fetchRecommendations(); // Refresh the list after generation
+  const dismissMutation = useMutation({
+    mutationFn: (id: string) =>
+      recommendationService.dismissRecommendation(teamId!, accountId!, id),
+    onSuccess: invalidate,
+  });
+
+  const axiosMessage = (err: unknown) => {
+    const e = err as { response?: { data?: { message?: string } } };
+    return e?.response?.data?.message ?? "Something went wrong.";
   };
 
   return {
-    recommendations,
-    loading,
-    error,
-    fetchRecommendations,
-    implement,
-    dismiss,
-    generate,
+    recommendations: query.data ?? [],
+    loading: query.isLoading || query.isFetching,
+    error: query.isError ? axiosMessage(query.error) : null,
+    refetch: query.refetch,
+    generate: () => generateMutation.mutateAsync(),
+    implement: (id: string) => implementMutation.mutateAsync(id),
+    resolve: (id: string) => resolveMutation.mutateAsync(id),
+    dismiss: (id: string) => dismissMutation.mutateAsync(id),
+    isMutating:
+      generateMutation.isPending ||
+      implementMutation.isPending ||
+      resolveMutation.isPending ||
+      dismissMutation.isPending,
   };
 };

@@ -19,6 +19,8 @@ import {
 import { fmt } from "~/utils/format";
 import { MetricTile } from ".";
 
+type AnomalyFilter = "Open" | "Dismissed" | "Resolved";
+
 const AnomalyDashboard = () => {
   const { teamId } = useParams<{ teamId: string }>();
   const { account } = useAwsAccount();
@@ -32,23 +34,41 @@ const AnomalyDashboard = () => {
 
   const dismissAnomaly = useDismissAnomaly();
   const resolveAnomaly = useResolveAnomaly();
-  const [filter, setFilter] = useState<"All" | "Dismissed" | "Resolved">("All");
+  const [filter, setFilter] = useState<AnomalyFilter>("Open");
   const [query, setQuery] = useState("");
 
+  const openAnomalies = useMemo(() => {
+    return (anomalies as any[]).filter(
+      (a) => !a.status || a.status === "open",
+    );
+  }, [anomalies]);
+
+  const dismissedAnomalies = useMemo(() => {
+    return (anomalies as any[]).filter((a) => a.status === "dismissed");
+  }, [anomalies]);
+
+  const resolvedAnomalies = useMemo(() => {
+    return (anomalies as any[]).filter((a) => a.status === "resolved");
+  }, [anomalies]);
+
   const kpis = useMemo(() => {
-    const total = anomalies.length;
-    const critical = anomalies.filter((a: any) => a.severity >= 80).length;
-    // Expected cost and deviation are already formatted as numbers by our backend formatter!
-    const totalImpact = anomalies.reduce((sum: number, a: any) => {
+    const critical = openAnomalies.filter((a: any) => a.severity >= 80).length;
+    const totalImpact = openAnomalies.reduce((sum: number, a: any) => {
       const excess = a.expected_cost * (a.deviation_pct / 100);
       return sum + excess;
     }, 0);
-    return { total, critical, totalImpact };
-  }, [anomalies]);
+    return {
+      openCount: openAnomalies.length,
+      critical,
+      totalImpact,
+    };
+  }, [openAnomalies]);
 
   const filteredAnomalies = useMemo(() => {
     let rows = anomalies as any[];
-    if (filter === "Dismissed") {
+    if (filter === "Open") {
+      rows = rows.filter((a) => !a.status || a.status === "open");
+    } else if (filter === "Dismissed") {
       rows = rows.filter((a) => a.status === "dismissed");
     } else if (filter === "Resolved") {
       rows = rows.filter((a) => a.status === "resolved");
@@ -116,6 +136,13 @@ const AnomalyDashboard = () => {
     );
   }
 
+  const emptyCopy =
+    filter === "Open"
+      ? "No open anomalies. Check Dismissed or Resolved for history."
+      : filter === "Dismissed"
+        ? "Nothing dismissed yet."
+        : "Nothing resolved yet.";
+
   return (
     <div className="p-8 mx-auto w-full space-y-8 max-w-7xl">
       <div>
@@ -124,20 +151,20 @@ const AnomalyDashboard = () => {
           AI Intelligence: Anomalies
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Machine learning detections for unusual spending spikes and irregular
-          resource usage.
+          Open items need your review. Dismissed and Resolved are grouped
+          separately so the feed stays actionable.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricTile
-          label="Total Detections"
-          value={String(kpis.total)}
-          sub="All time"
+          label="Open detections"
+          value={String(kpis.openCount)}
+          sub="Needs review"
           icon={<Target className="w-4 h-4" />}
         />
         <MetricTile
-          label="Critical Alerts"
+          label="Critical (open)"
           value={String(kpis.critical)}
           sub="Severity 80+"
           icon={
@@ -147,7 +174,7 @@ const AnomalyDashboard = () => {
           }
         />
         <MetricTile
-          label="Est. Financial Impact"
+          label="Est. impact (open)"
           value={fmt(kpis.totalImpact)}
           sub="Unexpected overspend"
           icon={<TrendingUp className="w-4 h-4" />}
@@ -155,11 +182,11 @@ const AnomalyDashboard = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
-        <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8">
-          {["All", "Dismissed", "Resolved"].map((tab) => (
+        <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8 flex-wrap gap-y-2">
+          {(["Open", "Dismissed", "Resolved"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setFilter(tab as any)}
+              onClick={() => setFilter(tab)}
               className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
                 filter === tab
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
@@ -167,9 +194,19 @@ const AnomalyDashboard = () => {
               }`}
             >
               {tab}
-              {tab === "All" && (
+              {tab === "Open" && (
+                <span className="ml-2 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 py-0.5 px-2 rounded-full text-xs">
+                  {openAnomalies.length}
+                </span>
+              )}
+              {tab === "Dismissed" && (
                 <span className="ml-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-0.5 px-2 rounded-full text-xs">
-                  {anomalies.length}
+                  {dismissedAnomalies.length}
+                </span>
+              )}
+              {tab === "Resolved" && (
+                <span className="ml-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-0.5 px-2 rounded-full text-xs">
+                  {resolvedAnomalies.length}
                 </span>
               )}
             </button>
@@ -192,11 +229,10 @@ const AnomalyDashboard = () => {
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Your infrastructure is healthy
+            {filter === "Open" ? "Nothing to review" : "No items here"}
           </h2>
           <p className="text-sm text-gray-500 max-w-md mt-2 text-center">
-            The machine learning engine has not detected any irregular spending
-            patterns in your current billing data.
+            {emptyCopy}
           </p>
         </div>
       ) : (

@@ -47,6 +47,25 @@ export const implementRecommendation = async (req, res, next) => {
   }
 };
 
+export const resolveRecommendation = async (req, res, next) => {
+  try {
+    const { recommendationId } = req.params;
+    const result = await recommendationsService.resolveRecommendation(
+      req.awsAccount,
+      recommendationId,
+      req.userId,
+    );
+
+    if (result.recommendation) {
+      result.recommendation = formatRecommendationForUI(result.recommendation);
+    }
+
+    return res.status(200).send(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const rollbackRecommendation = async (req, res, next) => {
   try {
     const { recommendationId } = req.params;

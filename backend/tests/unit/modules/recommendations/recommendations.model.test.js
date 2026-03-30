@@ -57,6 +57,7 @@ describe("Recommendations Model", () => {
       pool.query.mockResolvedValueOnce({ rows: [] });
       pool.query.mockResolvedValueOnce({ rowCount: 1 });
       pool.query.mockResolvedValueOnce({ rows: [] });
+      pool.query.mockResolvedValueOnce({ rows: [] }); // no recent implemented (cooldown)
       pool.query.mockResolvedValueOnce({ rowCount: 1 });
 
       await recommendationsModel.upsertRecommendation({
@@ -65,8 +66,9 @@ describe("Recommendations Model", () => {
         recommendation_type: "Rightsize",
       });
 
-      expect(pool.query).toHaveBeenCalledTimes(4);
-      expect(pool.query.mock.calls[3][0]).toContain(
+      expect(pool.query).toHaveBeenCalledTimes(5);
+      expect(pool.query.mock.calls[3][0]).toContain("implemented_at");
+      expect(pool.query.mock.calls[4][0]).toContain(
         "INSERT INTO recommendations",
       );
     });

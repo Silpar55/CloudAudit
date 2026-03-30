@@ -4,23 +4,29 @@ import { useAwsAccount } from "../../../../context/AwsAccountContext";
 import { useParams } from "react-router";
 import { Button, SectionLoader, Card, Input } from "~/components/ui";
 import { RecommendationCard, MetricTile } from "~/components/dashboard";
+import ImplementationSuccessModal from "~/components/dashboard/ImplementationSuccessModal";
 import { Zap, TrendingUp, CheckCircle, Target } from "lucide-react";
+import type { ImplementationSummary } from "~/services/recommendationsService";
+
+type RecFilter = "Pending" | "Dismissed" | "Resolved";
 
 export default function RecommendationsPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const { account } = useAwsAccount();
-  const { recommendations, loading, implement, dismiss, generate } =
+  const { recommendations, loading, implement, resolve, dismiss, generate } =
     useRecommendations(teamId, account?.id);
 
-  const [filter, setFilter] = useState<"All" | "Dismissed" | "Resolved">(
-    "All",
-  );
+  const [filter, setFilter] = useState<RecFilter>("Pending");
   const [query, setQuery] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [implementFeedback, setImplementFeedback] =
+    useState<ImplementationSummary | null>(null);
+  const [implementModalOpen, setImplementModalOpen] = useState(false);
 
   // Derived state for the summary bar
   const pendingRecs = recommendations.filter((r) => r.status === "pending");
   const resolvedRecs = recommendations.filter((r) => r.status === "implemented");
+  const dismissedRecs = recommendations.filter((r) => r.status === "dismissed");
   const automatedCount = pendingRecs.filter(
     (r) => r.resolution_type === "automated",
   ).length;
@@ -31,10 +37,12 @@ export default function RecommendationsPage() {
     0,
   );
 
-  // Tab + search filtering
+  // Tab + search filtering — default tab shows only actionable (pending) items
   const filteredRecs = useMemo(() => {
     let filtered = recommendations;
-    if (filter === "Dismissed") {
+    if (filter === "Pending") {
+      filtered = filtered.filter((r) => r.status === "pending");
+    } else if (filter === "Dismissed") {
       filtered = filtered.filter((r) => r.status === "dismissed");
     } else if (filter === "Resolved") {
       filtered = filtered.filter((r) => r.status === "implemented");
@@ -63,8 +71,24 @@ export default function RecommendationsPage() {
     setIsGenerating(false);
   };
 
+  const emptyCopy =
+    filter === "Pending"
+      ? "No pending recommendations. Run a scan or check Resolved / Dismissed for history."
+      : filter === "Dismissed"
+        ? "Nothing dismissed yet."
+        : "Nothing resolved yet.";
+
   return (
     <div className="p-8 mx-auto w-full space-y-8 max-w-7xl">
+      <ImplementationSuccessModal
+        isOpen={implementModalOpen}
+        onClose={() => {
+          setImplementModalOpen(false);
+          setImplementFeedback(null);
+        }}
+        summary={implementFeedback}
+      />
+
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
@@ -73,8 +97,8 @@ export default function RecommendationsPage() {
             Optimization Recommendations
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Review and apply automated right-sizing and AI-driven cost-saving
-            actions.
+            Pending items need a decision. Resolved and Dismissed are kept
+            separate so your queue stays clear.
           </p>
         </div>
         <Button onClick={handleGenerate} disabled={isGenerating}>
@@ -106,11 +130,17 @@ export default function RecommendationsPage() {
 
       <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
         {/* ── Filter Tabs ──────────────────────────────────────────────────── */}
-        <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8">
-          {["All", "Dismissed", "Resolved"].map((tab) => (
+        <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-8 flex-wrap gap-y-2">
+          {(
+            [
+              "Pending",
+              "Dismissed",
+              "Resolved",
+            ] as const
+          ).map((tab) => (
             <button
               key={tab}
-              onClick={() => setFilter(tab as any)}
+              onClick={() => setFilter(tab)}
               className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
                 filter === tab
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
@@ -118,9 +148,14 @@ export default function RecommendationsPage() {
               }`}
             >
               {tab}
-              {tab === "All" && (
+              {tab === "Pending" && (
+                <span className="ml-2 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 py-0.5 px-2 rounded-full text-xs">
+                  {pendingRecs.length}
+                </span>
+              )}
+              {tab === "Dismissed" && (
                 <span className="ml-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-0.5 px-2 rounded-full text-xs">
-                  {recommendations.length}
+                  {dismissedRecs.length}
                 </span>
               )}
               {tab === "Resolved" && (
@@ -156,11 +191,12 @@ export default function RecommendationsPage() {
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Architecture Fully Optimized
+            {filter === "Pending"
+              ? "Nothing in your queue"
+              : "No items here"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mt-2">
-            There are currently no active recommendations matching your filter.
-            Great job keeping your cloud lean!
+            {emptyCopy}
           </p>
         </Card>
       ) : (
@@ -170,8 +206,13 @@ export default function RecommendationsPage() {
               key={rec.recommendation_id}
               recommendation={rec}
               onImplement={implement}
+              onResolve={resolve}
               onDismiss={dismiss}
               teamId={teamId || ""}
+              onImplementFeedback={(summary) => {
+                setImplementFeedback(summary);
+                setImplementModalOpen(true);
+              }}
             />
           ))}
         </div>

@@ -42,6 +42,8 @@ import {
   MetricTile,
   RecommendationCard,
 } from "~/components/dashboard";
+import ImplementationSuccessModal from "~/components/dashboard/ImplementationSuccessModal";
+import type { ImplementationSummary } from "~/services/recommendationsService";
 
 const AwsServiceDetailPage = () => {
   const { teamId, slug } = useParams<{ teamId: string; slug: string }>();
@@ -50,6 +52,9 @@ const AwsServiceDetailPage = () => {
 
   const [startDate, setStartDate] = useState(() => daysAgo(30));
   const [endDate, setEndDate] = useState(() => today());
+  const [implementFeedback, setImplementFeedback] =
+    useState<ImplementationSummary | null>(null);
+  const [implementModalOpen, setImplementModalOpen] = useState(false);
 
   const meta = useMemo(() => getServiceMetaForSlug(slug ?? ""), [slug]);
   const Icon = meta.Icon;
@@ -100,6 +105,7 @@ const AwsServiceDetailPage = () => {
     recommendations,
     loading: recLoading,
     implement,
+    resolve,
     dismiss,
   } = useRecommendations(teamId, accId);
 
@@ -116,9 +122,9 @@ const AwsServiceDetailPage = () => {
 
   const filteredAnomalies = useMemo(
     () =>
-      (anomalies as any[]).filter((a) =>
-        anomalyMatchesSlug(a, slug ?? "", rawCeNames),
-      ),
+      (anomalies as any[])
+        .filter((a) => !a.status || a.status === "open")
+        .filter((a) => anomalyMatchesSlug(a, slug ?? "", rawCeNames)),
     [anomalies, slug, rawCeNames],
   );
 
@@ -187,6 +193,14 @@ const AwsServiceDetailPage = () => {
 
   return (
     <div className="p-8 mx-auto w-full max-w-7xl space-y-8">
+      <ImplementationSuccessModal
+        isOpen={implementModalOpen}
+        onClose={() => {
+          setImplementModalOpen(false);
+          setImplementFeedback(null);
+        }}
+        summary={implementFeedback}
+      />
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex gap-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
@@ -393,8 +407,13 @@ const AwsServiceDetailPage = () => {
                   key={r.recommendation_id}
                   recommendation={r}
                   onImplement={implement}
+                  onResolve={resolve}
                   onDismiss={dismiss}
                   teamId={teamId}
+                  onImplementFeedback={(summary) => {
+                    setImplementFeedback(summary);
+                    setImplementModalOpen(true);
+                  }}
                 />
               ))}
             </div>

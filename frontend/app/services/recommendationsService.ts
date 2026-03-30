@@ -13,6 +13,16 @@ export interface RecommendationMetadata {
   cur_inferred?: boolean;
 }
 
+/** Returned from POST .../implement — use for success modal + console deep links */
+export interface ImplementationSummary {
+  kind: "ec2_stop" | "rds_modify" | "skipped_no_credentials";
+  headline: string;
+  detail: string;
+  consoleUrl: string | null;
+  region: string;
+  resourceId: string;
+}
+
 export interface Recommendation {
   recommendation_id: string;
   aws_account_id: string;
@@ -55,6 +65,16 @@ export const recommendationService = {
   ) => {
     const { data } = await apiClient.post(
       `/teams/${teamId}/aws-accounts/${accountId}/recommendations/${recId}/implement`,
+    );
+    return data;
+  },
+  resolveRecommendation: async (
+    teamId: string,
+    accountId: string,
+    recId: string,
+  ) => {
+    const { data } = await apiClient.patch(
+      `/teams/${teamId}/aws-accounts/${accountId}/recommendations/${recId}/resolve`,
     );
     return data;
   },

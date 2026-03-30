@@ -78,7 +78,9 @@ const Sidebar = ({
     account?.id,
   );
 
-  const anomalyCount = anomalies.length;
+  const anomalyCount = anomalies.filter(
+    (a: { status?: string }) => !a.status || a.status === "open",
+  ).length;
   const pendingCount = recommendations.filter(
     (r) => r.status === "pending",
   ).length;

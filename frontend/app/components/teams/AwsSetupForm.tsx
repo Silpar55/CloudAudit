@@ -6,8 +6,10 @@ import {
   Copy,
   Terminal,
   FileCode2,
+  Info,
 } from "lucide-react";
-import { Button, Input, Spinner } from "~/components/ui";
+import { Button, Input, Spinner, Modal } from "~/components/ui";
+import { isAxiosError } from "axios";
 
 interface AwsSetupFormProps {
   teamId: string;
@@ -37,6 +39,7 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
   const [setupMethod, setSetupMethod] = useState<"cloudshell" | "manual">(
     "cloudshell",
   );
+  const [accountConflictOpen, setAccountConflictOpen] = useState(false);
 
   const provisionMutation = useProvisionAwsAccount();
   const activateMutation = useActivateAwsAccount();
@@ -56,7 +59,16 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
 
   const handleActivate = () => {
     if (!roleArn.trim()) return;
-    activateMutation.mutate({ teamId, roleArn });
+    activateMutation.mutate(
+      { teamId, roleArn },
+      {
+        onError: (err) => {
+          if (isAxiosError(err) && err.response?.status === 409) {
+            setAccountConflictOpen(true);
+          }
+        },
+      },
+    );
   };
 
   const handleCopy = (text: string) => {
@@ -240,18 +252,59 @@ const AwsSetupForm: React.FC<AwsSetupFormProps> = ({ teamId }) => {
               placeholder="arn:aws:iam::123456789012:role/CloudAuditRole"
             />
 
-            {activateMutation.isError && (
-              <div className="p-4 bg-red-50 text-red-700 rounded-md flex items-start gap-3 mt-4">
-                <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium">Verification Failed</p>
-                  <p className="text-sm mt-1">
-                    We couldn't assume the role. Please ensure the policies are
-                    attached correctly and the external ID matches.
+            {activateMutation.isError &&
+              !(
+                isAxiosError(activateMutation.error) &&
+                activateMutation.error.response?.status === 409
+              ) && (
+                <div className="p-4 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 rounded-md flex items-start gap-3 mt-4 border border-red-100 dark:border-red-900/50">
+                  <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">Verification Failed</p>
+                    <p className="text-sm mt-1">
+                      We couldn&apos;t assume the role. Please ensure the policies
+                      are attached correctly and the external ID matches your
+                      CloudAudit workspace.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+            <Modal
+              isOpen={accountConflictOpen}
+              onClose={() => setAccountConflictOpen(false)}
+              maxWidth="max-w-lg"
+            >
+              <div className="flex gap-3">
+                <div className="shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 p-2 h-fit">
+                  <Info className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                </div>
+                <div className="text-left space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    AWS account already connected
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    This AWS account is already linked to another workspace in
+                    this CloudAudit environment. Each account can only be
+                    connected once here—you&apos;re not doing anything wrong, and
+                    this isn&apos;t a system outage.
                   </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Use the workspace that already has this account, or ask an
+                    owner to disconnect it there before connecting it again.
+                  </p>
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      onClick={() => setAccountConflictOpen(false)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Got it
+                    </Button>
+                  </div>
                 </div>
               </div>
-            )}
+            </Modal>
 
             <button
               onClick={handleActivate}

@@ -102,6 +102,7 @@ export const updateAnomalyStatus = async (
   internalAccountId,
   status,
   statusNote = null,
+  client = null,
 ) => {
   const hasStatus = await hasAnomalyStatusColumns();
   if (!hasStatus) {
@@ -112,21 +113,22 @@ export const updateAnomalyStatus = async (
   const query = `
     UPDATE cost_anomalies
     SET
-      status = $1,
+      status = $1::varchar(20),
       status_note = COALESCE($2, status_note),
       dismissed_at = CASE
-        WHEN $1 = 'dismissed' THEN NOW()
+        WHEN ($1::text) = 'dismissed' THEN NOW()
         ELSE dismissed_at
       END,
       resolved_at = CASE
-        WHEN $1 = 'resolved' THEN NOW()
+        WHEN ($1::text) = 'resolved' THEN NOW()
         ELSE resolved_at
       END
     WHERE anomaly_id = $3
       AND aws_account_id = $4
     RETURNING *;
   `;
-  const { rows } = await pool.query(query, [
+  const db = client || pool;
+  const { rows } = await db.query(query, [
     status,
     statusNote,
     anomalyId,

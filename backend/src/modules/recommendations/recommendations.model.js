@@ -125,6 +125,29 @@ export const upsertRecommendation = async (recData) => {
         existingRecId,
       ]);
     } else {
+      // Avoid creating a duplicate pending row right after the user implemented the same
+      // resource + recommendation type (scan runs again and still sees idle cost signals).
+      const recentImplemented = await pool.query(
+        `
+        SELECT 1 FROM recommendations
+        WHERE aws_account_id = $1
+          AND resource_id = $2
+          AND recommendation_type = $3
+          AND status = 'implemented'
+          AND implemented_at IS NOT NULL
+          AND implemented_at > NOW() - INTERVAL '14 days'
+        LIMIT 1;
+        `,
+        [
+          recData.aws_account_id,
+          recData.resource_id,
+          recData.recommendation_type,
+        ],
+      );
+      if (recentImplemented.rows.length > 0) {
+        return;
+      }
+
       const insertQuery = `
         INSERT INTO recommendations (
           aws_account_id, resource_id, resource_type, anomaly_id, 
@@ -168,6 +191,7 @@ export const updateRecommendationStatus = async (
   recommendationId,
   status,
   updates = {},
+  client = null,
 ) => {
   const { implementedBy, rollbackReason, metadata } = updates;
   const metadataUpdate = metadata ? `, metadata = $4` : ``;
@@ -198,7 +222,8 @@ export const updateRecommendationStatus = async (
   if (metadata) values.push(metadata);
   values.push(recommendationId);
 
-  const { rows } = await pool.query(query, values);
+  const db = client || pool;
+  const { rows } = await db.query(query, values);
   return rows[0];
 };
 

@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import type { Recommendation } from "~/services/recommendationsService";
+import type {
+  Recommendation,
+  ImplementationSummary,
+} from "~/services/recommendationsService";
 import { Alert, Badge, Button, Modal, InsightCard } from "../ui";
 import {
   Server,
@@ -13,31 +16,45 @@ import {
 
 interface RecommendationCardProps {
   recommendation: Recommendation;
-  onImplement: (id: string) => Promise<void>;
+  onImplement: (id: string) => Promise<unknown>;
+  onResolve: (id: string) => Promise<void>;
   onDismiss: (id: string) => Promise<void>;
   teamId: string;
+  /** Fires after successful one-click implement so the parent can show AWS feedback + console link */
+  onImplementFeedback?: (summary: ImplementationSummary) => void;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   recommendation,
   onImplement,
+  onResolve,
   onDismiss,
   teamId,
+  onImplementFeedback,
 }) => {
   const [loadingAction, setLoadingAction] = useState<
-    "implement" | "dismiss" | null
+    "implement" | "resolve" | "dismiss" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleAction = async (actionType: "implement" | "dismiss") => {
+  const handleAction = async (
+    actionType: "implement" | "resolve" | "dismiss",
+  ) => {
     setLoadingAction(actionType);
     setError(null);
     try {
-      if (actionType === "implement")
-        await onImplement(recommendation.recommendation_id);
-      if (actionType === "dismiss")
-        await onDismiss(recommendation.recommendation_id);
+      const id = recommendation.recommendation_id;
+      if (actionType === "implement") {
+        const result = (await onImplement(id)) as {
+          implementationSummary?: ImplementationSummary;
+        };
+        if (result?.implementationSummary && onImplementFeedback) {
+          onImplementFeedback(result.implementationSummary);
+        }
+      }
+      if (actionType === "resolve") await onResolve(id);
+      if (actionType === "dismiss") await onDismiss(id);
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -157,15 +174,17 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                     disabled={loadingAction !== null}
                   >
                     {loadingAction === "implement"
-                      ? "Resolving..."
-                      : "Mark as Resolved"}
+                      ? "Applying…"
+                      : "Apply recommended fix"}
                   </Button>
                 ) : (
                   <Button
-                    onClick={() => handleAction("dismiss")}
+                    onClick={() => handleAction("resolve")}
                     disabled={loadingAction !== null}
                   >
-                    Mark as Resolved
+                    {loadingAction === "resolve"
+                      ? "Saving…"
+                      : "Mark as resolved"}
                   </Button>
                 )}
                 <Button
@@ -173,7 +192,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   onClick={() => handleAction("dismiss")}
                   disabled={loadingAction !== null}
                 >
-                  Dismiss
+                  {loadingAction === "dismiss" ? "Dismissing…" : "Dismiss"}
                 </Button>
               </>
             )}
@@ -250,19 +269,34 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="mt-8 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-5">
+            <div className="mt-8 flex flex-wrap justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-5">
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                 Close Report
               </Button>
               {isPending && (
-                <Button
-                  onClick={() => {
-                    handleAction("dismiss");
-                    setIsModalOpen(false);
-                  }}
-                >
-                  Mark as Resolved
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      await handleAction("dismiss");
+                      setIsModalOpen(false);
+                    }}
+                    disabled={loadingAction !== null}
+                  >
+                    Dismiss (not applicable)
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      await handleAction("resolve");
+                      setIsModalOpen(false);
+                    }}
+                    disabled={loadingAction !== null}
+                  >
+                    {loadingAction === "resolve"
+                      ? "Saving…"
+                      : "Mark as resolved"}
+                  </Button>
+                </>
               )}
             </div>
           </div>

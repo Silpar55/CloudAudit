@@ -3,6 +3,7 @@ import {
   getRecommendations,
   generateRecommendations,
   implementRecommendation,
+  resolveRecommendation,
   rollbackRecommendation,
   dismissRecommendation,
 } from "./recommendations.controller.js";
@@ -17,6 +18,9 @@ router.post("/generate", generateRecommendations);
 
 // POST /teams/:teamId/aws-accounts/:internalAccountId/recommendations/:recommendationId/implement
 router.post("/:recommendationId/implement", implementRecommendation);
+
+// PATCH /teams/:teamId/aws-accounts/:internalAccountId/recommendations/:recommendationId/resolve
+router.patch("/:recommendationId/resolve", resolveRecommendation);
 
 // POST /teams/:teamId/aws-accounts/:internalAccountId/recommendations/:recommendationId/rollback
 router.post("/:recommendationId/rollback", rollbackRecommendation);

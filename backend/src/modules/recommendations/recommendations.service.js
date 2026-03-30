@@ -1,3 +1,4 @@
+import { pool } from "#config";
 import * as recommendationsModel from "./recommendations.model.js";
 import * as anomalyModel from "../anomaly/anomaly.model.js";
 import { getTemporaryCredentials } from "#utils/aws/sts.js";
@@ -5,6 +6,93 @@ import { AppError } from "#utils/helper/AppError.js";
 import * as cw from "#utils/aws/cloudwatch.js";
 import * as ec2 from "#utils/aws/ec2.js";
 import * as rds from "#utils/aws/rds.js";
+
+function normalizeAwsConsoleRegion(region) {
+  if (
+    !region ||
+    region === "UnknownRegion" ||
+    region === "Global" ||
+    region === "N/A"
+  ) {
+    return process.env.AWS_REGION || "us-east-1";
+  }
+  return region;
+}
+
+async function getResourceRegionForConsole(resourceId) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT region FROM resources WHERE resource_id = $1 LIMIT 1`,
+      [resourceId],
+    );
+    return normalizeAwsConsoleRegion(rows[0]?.region);
+  } catch {
+    return normalizeAwsConsoleRegion(null);
+  }
+}
+
+/**
+ * Human-readable feedback after one-click implement (for UI + audit trail).
+ */
+async function buildImplementationSummary({
+  rec,
+  hadCredentials,
+  didStopEc2,
+  didModifyRds,
+  newRdsClass,
+}) {
+  const region = await getResourceRegionForConsole(rec.resource_id);
+  const resourceId = rec.resource_id;
+
+  if (!hadCredentials) {
+    return {
+      kind: "skipped_no_credentials",
+      headline: "Recorded in CloudAudit only",
+      detail:
+        "No AWS API call was made (credentials unavailable). The recommendation is marked implemented; verify changes directly in AWS if needed.",
+      consoleUrl: null,
+      region,
+      resourceId,
+    };
+  }
+
+  if (didStopEc2 && rec.resource_type === "ec2_instance") {
+    const consoleUrl = `https://${region}.console.aws.amazon.com/ec2/home?region=${region}#InstanceDetails:instanceId=${encodeURIComponent(resourceId)}`;
+    return {
+      kind: "ec2_stop",
+      headline: "EC2 stop requested",
+      detail:
+        "AWS accepted a request to stop this instance. It can take a few minutes to show as Stopped in the console.",
+      consoleUrl,
+      region,
+      resourceId,
+    };
+  }
+
+  if (didModifyRds && rec.resource_type === "rds_instance") {
+    const consoleUrl = `https://${region}.console.aws.amazon.com/rds/home?region=${region}#database:id=${encodeURIComponent(resourceId)}`;
+    return {
+      kind: "rds_modify",
+      headline: "RDS modify requested",
+      detail: newRdsClass
+        ? `A smaller instance class (${newRdsClass}) was requested. RDS may schedule this for the next maintenance window.`
+        : "RDS accepted a modify request. Check the console for pending modifications.",
+      consoleUrl,
+      region,
+      resourceId,
+    };
+  }
+
+  return {
+    kind: "skipped_no_credentials",
+    headline: "Marked as implemented",
+    detail:
+      "No automated EC2/RDS action was run for this resource type. Status was updated in CloudAudit.",
+    consoleUrl: null,
+    region,
+    resourceId,
+  };
+}
 
 // Configurable Constants
 const LOOKBACK_DAYS = 14;
@@ -216,11 +304,23 @@ export const implementRecommendation = async (
       400,
     );
 
+  if (rec.resolution_type !== "automated") {
+    throw new AppError(
+      "This recommendation is not an automated fix. Use Mark as resolved after you complete the steps, or Dismiss if it does not apply.",
+      400,
+    );
+  }
+
   const credentials = await getTemporaryCredentials(account).catch(() => null);
+  const hadCredentials = Boolean(credentials);
   let metadata =
     typeof rec.metadata === "string"
       ? JSON.parse(rec.metadata)
       : rec.metadata || {};
+
+  let didStopEc2 = false;
+  let didModifyRds = false;
+  let newRdsClass = null;
 
   // Pre-flight & Implementation
   if (rec.resource_type === "ec2_instance") {
@@ -238,6 +338,7 @@ export const implementRecommendation = async (
         );
       }
       await ec2.stopEC2Instance(credentials, rec.resource_id);
+      didStopEc2 = true;
     }
   } else if (rec.resource_type === "rds_instance") {
     if (credentials) {
@@ -247,28 +348,43 @@ export const implementRecommendation = async (
       );
       metadata.previous_instance_class = dbDetails.DBInstanceClass;
       // Heuristic: move down one size (simplified for example, e.g., db.r5.xlarge -> db.r5.large)
-      const newClass = dbDetails.DBInstanceClass.replace("xlarge", "large");
-      await rds.modifyRDSInstanceClass(credentials, rec.resource_id, newClass);
+      newRdsClass = dbDetails.DBInstanceClass.replace("xlarge", "large");
+      await rds.modifyRDSInstanceClass(
+        credentials,
+        rec.resource_id,
+        newRdsClass,
+      );
+      didModifyRds = true;
     }
   }
 
-  // Update State
-  const updatedRec = await recommendationsModel.updateRecommendationStatus(
-    recommendationId,
-    "implemented",
-    { implementedBy: userId, metadata },
-  );
-
-  if (rec.anomaly_id) {
-    await anomalyModel.updateAnomalyStatus(
-      rec.anomaly_id,
-      account.id,
-      "resolved",
-      "Resolved via linked recommendation",
+  const client = await pool.connect();
+  let updatedRec;
+  try {
+    await client.query("BEGIN");
+    updatedRec = await recommendationsModel.updateRecommendationStatus(
+      recommendationId,
+      "implemented",
+      { implementedBy: userId, metadata },
+      client,
     );
+    if (rec.anomaly_id) {
+      await anomalyModel.updateAnomalyStatus(
+        rec.anomaly_id,
+        account.id,
+        "resolved",
+        "Resolved via linked recommendation",
+        client,
+      );
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
   }
 
-  // Audit Log
   await recommendationsModel.logAuditAction(
     account.team_id,
     userId,
@@ -280,8 +396,84 @@ export const implementRecommendation = async (
     },
   );
 
+  const implementationSummary = await buildImplementationSummary({
+    rec,
+    hadCredentials,
+    didStopEc2,
+    didModifyRds,
+    newRdsClass,
+  });
+
   return {
     message: "Recommendation implemented successfully",
+    recommendation: updatedRec,
+    implementationSummary,
+  };
+};
+
+export const resolveRecommendation = async (
+  account,
+  recommendationId,
+  userId,
+) => {
+  const rec = await recommendationsModel.getRecommendationById(
+    recommendationId,
+    account.id,
+  );
+  if (!rec) throw new AppError("Recommendation not found", 404);
+  if (rec.status !== "pending") {
+    throw new AppError(
+      `Cannot mark as resolved. Current status is ${rec.status}`,
+      400,
+    );
+  }
+  if (rec.resolution_type !== "manual") {
+    throw new AppError(
+      "Use Implement to apply automated fixes, or Dismiss if the recommendation does not apply.",
+      400,
+    );
+  }
+
+  const client = await pool.connect();
+  let updatedRec;
+  try {
+    await client.query("BEGIN");
+    updatedRec = await recommendationsModel.updateRecommendationStatus(
+      recommendationId,
+      "implemented",
+      { implementedBy: userId },
+      client,
+    );
+    if (rec.anomaly_id) {
+      await anomalyModel.updateAnomalyStatus(
+        rec.anomaly_id,
+        account.id,
+        "resolved",
+        "Marked resolved from dashboard (manual / AI guidance)",
+        client,
+      );
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  await recommendationsModel.logAuditAction(
+    account.team_id,
+    userId,
+    "RESOLVE_RECOMMENDATION",
+    {
+      recommendation_id: recommendationId,
+      resource_id: rec.resource_id,
+      action: rec.recommendation_type,
+    },
+  );
+
+  return {
+    message: "Recommendation marked as resolved",
     recommendation: updatedRec,
   };
 };
@@ -350,17 +542,31 @@ export const dismissRecommendation = async (account, recommendationId) => {
   if (!rec || rec.status !== "pending")
     throw new AppError("Recommendation cannot be dismissed", 400);
 
-  const updatedRec = await recommendationsModel.updateRecommendationStatus(
-    recommendationId,
-    "dismissed",
-  );
-  if (rec.anomaly_id) {
-    await anomalyModel.updateAnomalyStatus(
-      rec.anomaly_id,
-      account.id,
+  const client = await pool.connect();
+  let updatedRec;
+  try {
+    await client.query("BEGIN");
+    if (rec.anomaly_id) {
+      await anomalyModel.updateAnomalyStatus(
+        rec.anomaly_id,
+        account.id,
+        "dismissed",
+        "Dismissed via linked recommendation",
+        client,
+      );
+    }
+    updatedRec = await recommendationsModel.updateRecommendationStatus(
+      recommendationId,
       "dismissed",
-      "Dismissed via linked recommendation",
+      {},
+      client,
     );
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
   }
   return { message: "Recommendation dismissed", recommendation: updatedRec };
 };

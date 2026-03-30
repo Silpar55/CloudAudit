@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { anomalyService } from "~/services/anomalyService";
+import { recommendationsQueryKey } from "~/hooks/useRecommendations";
 
 export const useGetAnomalies = (teamId?: string, accId?: string) => {
   return useQuery({
@@ -19,6 +20,11 @@ export const useTriggerAnalysis = () => {
       // Instantly refresh the anomalies list anywhere in the app when ML finishes
       queryClient.invalidateQueries({
         queryKey: ["anomalies", variables.teamId, variables.accId],
+      });
+
+      // Sidebar + recommendations page: new recs may be created by the same pipeline
+      queryClient.invalidateQueries({
+        queryKey: recommendationsQueryKey(variables.teamId, variables.accId),
       });
 
       // Also refresh the team notifications dropdown (ML analysis events)
