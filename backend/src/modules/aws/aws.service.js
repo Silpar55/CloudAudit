@@ -59,13 +59,25 @@ export const activateAwsAccount = async (teamId, roleArn) => {
       400,
     );
 
-  // 2. Activate the account in DB and set aws status as active in the team
+  // 2. Activate the account in DB and ONLY THEN mark team active.
+  // This prevents "zombie" workspaces when activation fails (e.g. unique constraint conflict).
   const account = await awsModel.activateAwsAccount(
     pendingAccount.id,
     realAwsAccountNumber,
     roleArn,
   );
-  await teamModel.updateTeamStatus(teamId, "active");
+  if (!account) {
+    throw new AppError("Failed to activate AWS account.", 500);
+  }
+
+  const updatedTeam = await teamModel.updateTeamStatus(teamId, "active");
+  if (!updatedTeam) {
+    // Activation succeeded but team status update failed; surface explicitly.
+    throw new AppError(
+      "AWS account activated but failed to update workspace status.",
+      500,
+    );
+  }
 
   // 3. THE AUTOMATION: Trigger CUR Setup asynchronously (Don't await it!)
   curSetupService
@@ -74,7 +86,14 @@ export const activateAwsAccount = async (teamId, roleArn) => {
       console.log("CUR automation completed.");
     })
     .catch(async (err) => {
-      await awsModel.updateCurStatus(account.id, "failed");
+      // Defensive: never crash the server from async automation failures.
+      try {
+        if (account?.id) {
+          await awsModel.updateCurStatus(account.id, "failed");
+        }
+      } catch (_e) {
+        // ignore
+      }
     });
 
   return true;

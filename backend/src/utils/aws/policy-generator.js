@@ -114,7 +114,10 @@ export const generateScripts = (pendingAccount) => {
   const roleName = "CloudAuditRole";
   const policyName = "CloudAuditAccessPolicy";
 
-  // Dynamically inject the exact JSON into the bash script
+  // Dynamically inject the exact JSON into the bash script.
+  // Important: customers may connect the same AWS account from multiple CloudAudit workspaces
+  // (e.g. production + development) which generates different ExternalIds. To avoid breaking
+  // existing connections, the CloudShell script merges ExternalIds into the existing trust policy.
   const cloudShellScript = `#!/usr/bin/env bash
 # ==============================================================================
 # CloudAudit IAM Role Setup Script
@@ -125,6 +128,7 @@ export const generateScripts = (pendingAccount) => {
 # - ExternalId is unique per CloudAudit connection (security boundary).
 # - If a multi-principal trust policy includes an invalid principal (e.g. a platform
 #   dev role that doesn't exist), the script automatically falls back to prod-only.
+# - If the role already exists, we MERGE ExternalIds so we don't break existing workspaces.
 # ==============================================================================
 
 set -euo pipefail
@@ -147,6 +151,61 @@ echo "Creating Trust Policy..."
 cat << 'EOF' > trust-policy.json
 ${JSON.stringify(trustPolicy, null, 2)}
 EOF
+
+merge_external_ids_into_trust_policy() {
+  local base_policy_file="$1"
+  local out_file="$2"
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "WARN: jq not found; falling back to overwrite trust policy." >&2
+    cp "$base_policy_file" "$out_file"
+    return 0
+  fi
+
+  if ! aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
+    cp "$base_policy_file" "$out_file"
+    return 0
+  fi
+
+  # Fetch the current trust policy document.
+  # NOTE: AWS CLI returns this as JSON when using --output json.
+  aws iam get-role --role-name "$ROLE_NAME" \
+    --query 'Role.AssumeRolePolicyDocument' --output json > current-trust.json
+
+  # Merge ExternalIds:
+  # - support existing StringEquals sts:ExternalId as string or array
+  # - union with the new EXTERNAL_ID
+  jq --arg newExt "$EXTERNAL_ID" '
+    def to_array(x):
+      if x == null then []
+      elif (x|type) == "array" then x
+      else [x]
+      end;
+
+    .Statement |= (map(
+      if (.Action == "sts:AssumeRole" and (.Condition.StringEquals["sts:ExternalId"]? != null)) then
+        .Condition.StringEquals["sts:ExternalId"] =
+          ((to_array(.Condition.StringEquals["sts:ExternalId"]) + [$newExt]) | unique)
+      else
+        .
+      end
+    ))
+  ' current-trust.json > merged-current-trust.json
+
+  # Finally, overwrite principal(s) to the ones CloudAudit expects (prod/dev) and apply merged external IDs.
+  # This ensures new dev/prod platform roles are added without removing old ExternalIds.
+  jq --slurpfile desired "$base_policy_file" '
+    # Use desired.Principal AWS values but keep merged ExternalIds.
+    ($desired[0].Statement[0].Principal) as $p |
+    .Statement |= map(
+      if .Action == "sts:AssumeRole" then
+        .Principal = $p
+      else
+        .
+      end
+    )
+  ' merged-current-trust.json > "$out_file"
+}
 
 echo "Creating Access Policy..."
 cat << 'EOF' > access-policy.json
@@ -197,7 +256,9 @@ upsert_policy_and_attach() {
 
 echo "Creating/Updating IAM Role ($ROLE_NAME)..."
 set +e
-create_or_update_role "trust-policy.json"
+# If the role already exists, merge ExternalIds to avoid breaking other workspaces.
+merge_external_ids_into_trust_policy "trust-policy.json" "trust-policy.merged.json"
+create_or_update_role "trust-policy.merged.json"
 rc=$?
 set -e
 
@@ -218,14 +279,15 @@ if [[ $rc -ne 0 ]]; then
   ]
 }
 EOF
-  create_or_update_role "trust-policy-prod-only.json"
+  merge_external_ids_into_trust_policy "trust-policy-prod-only.json" "trust-policy-prod-only.merged.json"
+  create_or_update_role "trust-policy-prod-only.merged.json"
 fi
 
 echo "Creating/Updating IAM Policy ($POLICY_NAME) and attaching to role..."
 upsert_policy_and_attach
 
 # Clean up
-rm -f trust-policy.json access-policy.json trust-policy-prod-only.json
+rm -f trust-policy.json trust-policy.merged.json access-policy.json trust-policy-prod-only.json trust-policy-prod-only.merged.json current-trust.json merged-current-trust.json
 
 # Output the final ARN required for the CloudAudit dashboard
 echo ""

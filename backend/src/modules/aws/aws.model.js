@@ -1,4 +1,5 @@
 import { pool } from "#config";
+import { AppError } from "#utils/helper/AppError.js";
 
 export const initializePendingAccount = async ({
   awsAccountNumber,
@@ -50,10 +51,19 @@ export const activateAwsAccount = async (
       awsAccountNumber,
       roleArn,
     ]);
-    return rows[0];
+    return rows[0] ?? null;
   } catch (error) {
-    console.log(error);
-    return null;
+    // Postgres unique violation
+    if (error?.code === "23505") {
+      // aws_accounts_aws_account_id_key means this AWS account is already connected
+      // elsewhere in THIS environment DB. Don't create zombie workspaces.
+      throw new AppError(
+        "This AWS account is already connected to another workspace in this environment. Disconnect it first or use a different AWS account.",
+        409,
+      );
+    }
+    console.error("activateAwsAccount failed:", error);
+    throw new AppError("Failed to activate AWS account.", 500);
   }
 };
 

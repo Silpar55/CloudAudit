@@ -17,8 +17,14 @@ import { createCostExplorerClient } from "#utils/aws/client-factory.js";
 
 export const getCostAndUsage = async (account, startDate, endDate) => {
   try {
-    // Get temporary credentials for this account
-    const credentials = await getTemporaryCredentials(account);
+    // Get temporary credentials for this account (STS AssumeRole into customer role).
+    // Important: STS failures (trust/externalId mismatch) must not be reported as Cost Explorer permission issues.
+    let credentials;
+    try {
+      credentials = await getTemporaryCredentials(account);
+    } catch (error) {
+      handleStsAssumeRoleError(error);
+    }
 
     // Create Cost Explorer client with assumed role credentials
     const ceClient = createCostExplorerClient("us-east-1", credentials);
@@ -124,7 +130,8 @@ export const getCostForecast = async (account) => {
  * @throws {AppError} - Formatted application error
  */
 const handleCostExplorerError = (error) => {
-  if (error.name === "AccessDenied") {
+  // SDK may surface AccessDenied as "AccessDenied" (mocked/tests) or "AccessDeniedException" (AWS)
+  if (error?.name === "AccessDenied" || error?.name === "AccessDeniedException") {
     console.error(`Cost Explorer access denied: ${error.message}`);
     throw new AppError(
       "Permission denied. The user likely hasn't granted Cost Explorer permissions.",
@@ -136,4 +143,22 @@ const handleCostExplorerError = (error) => {
     console.error(`Cost Explorer error: ${error.message}`);
     throw new AppError("Failed to retrieve cost data", 500);
   }
+};
+
+const handleStsAssumeRoleError = (error) => {
+  const msg = String(error?.message || "");
+  const isAccessDenied =
+    error?.name === "AccessDenied" ||
+    error?.name === "AccessDeniedException" ||
+    /not authorized|access denied|is not authorized/i.test(msg);
+
+  if (isAccessDenied && (/AssumeRole/i.test(msg) || error?.$metadata?.httpStatusCode === 403)) {
+    console.error(`STS AssumeRole access denied: ${msg}`);
+    throw new AppError(
+      "Permission denied. The user likely hasn't updated their Trust Policy (principal ARN or ExternalId mismatch).",
+      403,
+    );
+  }
+
+  throw error;
 };
