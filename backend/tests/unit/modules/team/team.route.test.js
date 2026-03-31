@@ -1,11 +1,10 @@
 import request from "supertest";
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
-jest.mock("#modules/auth/auth.model.js");
-jest.mock("#modules/team/team.model.js");
 jest.mock("#modules/audit/audit.model.js", () => ({
   insertAuditLog: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock("#modules/team/team.service.js");
 jest.mock("#middleware", () => {
   const actual = jest.requireActual("#middleware");
   return {
@@ -23,76 +22,12 @@ jest.mock("#middleware", () => {
   };
 });
 
-import {
-  createTeam,
-  deleteTeam,
-  addTeamMember,
-  activateTeamMember,
-  getTeamMemberById,
-  deactivateTeamMember,
-  changeMemberRole,
-  getActiveTeamMembersWithUsers,
-  countActiveOwners,
-} from "#modules/team/team.model.js";
-import { findUser } from "#modules/auth/auth.model.js";
+import * as teamService from "#modules/team/team.service.js";
 import app from "#app";
+import { AppError } from "#utils/helper/AppError.js";
 
 beforeEach(() => {
   jest.clearAllMocks();
-
-  findUser.mockImplementation((email) => {
-    switch (email) {
-      case "activeUser@example.com":
-        return { user_id: "active-user-id" };
-      case "unactiveUser@example.com":
-        return { user_id: "unactive-user-id" };
-      case "validUser@example.com":
-        return { user_id: "valid-user-id" };
-      default:
-        return null;
-    }
-  });
-
-  getTeamMemberById.mockImplementation((_, userId) => {
-    if (userId === "actor-user-id") {
-      return {
-        team_member_id: "actor-tm-id",
-        is_active: true,
-        role: "owner",
-      };
-    }
-    switch (userId) {
-      case "active-user-id":
-        return {
-          team_member_id: "team-member-id",
-          is_active: true,
-          role: "member",
-        };
-      case "unactive-user-id":
-        return { team_member_id: "team-member-id", is_active: false };
-      case "valid-user-id":
-        return null;
-      default:
-        return null;
-    }
-  });
-
-  countActiveOwners.mockResolvedValue(2);
-
-  getActiveTeamMembersWithUsers.mockResolvedValue([]);
-
-  deactivateTeamMember.mockImplementation((memberId) => {
-    return memberId === "team-member-id" ? { memberId } : null;
-  });
-
-  changeMemberRole.mockImplementation((memberId, _role) => {
-    return memberId === "team-member-id" ? { memberId } : null;
-  });
-
-  addTeamMember.mockResolvedValue({ team_member_id: "add-team-member-id" });
-  activateTeamMember.mockResolvedValue({
-    team_member_id: "activate-team-member-id",
-  });
 });
 
 describe("/team", () => {
@@ -103,16 +38,15 @@ describe("/team", () => {
     const body = { name: "New Team" };
 
     it("Should handle invalid inputs", async () => {
+      teamService.createTeam.mockRejectedValueOnce(
+        new AppError("Please enter a name", 400),
+      );
       const response = await request(app).post(url).send({ name: "" });
       expect(response.status).toBe(400);
     });
 
     it("Should create a new team", async () => {
-      createTeam.mockResolvedValueOnce({
-        team_id: "123",
-        user_id: "123",
-        name: "New Team",
-      });
+      teamService.createTeam.mockResolvedValueOnce("123");
 
       const response = await request(app).post(url).send(body);
       expect(response.status).toBe(201);
@@ -124,7 +58,9 @@ describe("/team", () => {
     const url = `${endpoint}`;
 
     it("Should throw error when teamId does not exist in the DB", async () => {
-      deleteTeam.mockResolvedValue(null);
+      teamService.deleteTeam.mockRejectedValueOnce(
+        new AppError("Team does not exist", 404),
+      );
       const teamId = "non-existence-id";
       const response = await request(app).delete(`${url}/${teamId}`);
       expect(response.status).toBe(404);
@@ -132,7 +68,7 @@ describe("/team", () => {
 
     it("Should delete the team", async () => {
       const teamId = "123";
-      deleteTeam.mockResolvedValueOnce({ team_id: teamId });
+      teamService.deleteTeam.mockResolvedValueOnce(teamId);
       const response = await request(app).delete(`${url}/${teamId}`);
       expect(response.status).toBe(200);
       expect(response.body.deletedTeamId).toBe(teamId);
@@ -144,6 +80,9 @@ describe("/team", () => {
     const teamId = "team-id";
 
     it("Should throw error when user does not exist in the database", async () => {
+      teamService.inviteTeamMember.mockRejectedValueOnce(
+        new AppError("User does not exist", 404),
+      );
       const response = await request(app)
         .post(`${url}/${teamId}/members`)
         .send({ email: "unexistentUser@test.com" });
@@ -153,6 +92,9 @@ describe("/team", () => {
     });
 
     it("Should throw error when user is already in the team and is active", async () => {
+      teamService.inviteTeamMember.mockRejectedValueOnce(
+        new AppError("User is already in the team", 400),
+      );
       const response = await request(app)
         .post(`${url}/${teamId}/members`)
         .send({ email: "activeUser@example.com" });
@@ -161,24 +103,32 @@ describe("/team", () => {
       expect(response.body.message).toBe("User is already in the team");
     });
 
-    it("Should reactivate member when user is unactive in the team", async () => {
+    it("Should create an invitation when user was previously removed", async () => {
+      teamService.inviteTeamMember.mockResolvedValueOnce({
+        invitationId: "inv-123",
+        invitedUserId: "user-123",
+        invitedEmail: "unactiveUser@example.com",
+      });
       const response = await request(app)
         .post(`${url}/${teamId}/members`)
         .send({ email: "unactiveUser@example.com" });
 
       expect(response.status).toBe(201);
-      expect(addTeamMember).toHaveBeenCalledTimes(0);
-      expect(activateTeamMember).toHaveBeenCalledTimes(1);
+      expect(response.body.invitationId).toBe("inv-123");
     });
 
-    it("Should add a new member when user was never in the team", async () => {
+    it("Should create an invitation when user was never in the team", async () => {
+      teamService.inviteTeamMember.mockResolvedValueOnce({
+        invitationId: "inv-999",
+        invitedUserId: "user-999",
+        invitedEmail: "validUser@example.com",
+      });
       const response = await request(app)
         .post(`${url}/${teamId}/members`)
         .send({ email: "validUser@example.com" });
 
       expect(response.status).toBe(201);
-      expect(addTeamMember).toHaveBeenCalledTimes(1);
-      expect(activateTeamMember).toHaveBeenCalledTimes(0);
+      expect(response.body.invitationId).toBe("inv-999");
     });
   });
 
@@ -187,16 +137,9 @@ describe("/team", () => {
     const teamId = "team-id";
 
     it("Should throw error when user is not a member of that team", async () => {
-      getTeamMemberById.mockImplementation((_, userId) => {
-        if (userId === "actor-user-id") {
-          return {
-            team_member_id: "actor-tm-id",
-            is_active: true,
-            role: "owner",
-          };
-        }
-        return null;
-      });
+      teamService.deactivateTeamMember.mockRejectedValueOnce(
+        new AppError("User is not in the team", 404),
+      );
       const response = await request(app).delete(
         `${url}/${teamId}/members/no-user-id`,
       );
@@ -205,6 +148,9 @@ describe("/team", () => {
     });
 
     it("Should return 404 when target member is already inactive", async () => {
+      teamService.deactivateTeamMember.mockRejectedValueOnce(
+        new AppError("User is not in the team", 404),
+      );
       const response = await request(app).delete(
         `${url}/${teamId}/members/unactive-user-id`,
       );
@@ -213,6 +159,7 @@ describe("/team", () => {
     });
 
     it("Should remove the member correctly", async () => {
+      teamService.deactivateTeamMember.mockResolvedValueOnce("tm-removed");
       const response = await request(app).delete(
         `${url}/${teamId}/members/active-user-id`,
       );
@@ -226,6 +173,9 @@ describe("/team", () => {
     const teamId = "team-id";
 
     it("Should throw 400 when role is not a valid role", async () => {
+      teamService.changeMemberRole.mockRejectedValueOnce(
+        new AppError("This role does not exist", 400),
+      );
       const response = await request(app)
         .patch(`${url}/${teamId}/members/user-id`)
         .send({ newRole: "NO VALID ROLE" });
@@ -234,16 +184,9 @@ describe("/team", () => {
     });
 
     it("Should throw error when user is not in the team", async () => {
-      getTeamMemberById.mockImplementation((_, userId) => {
-        if (userId === "actor-user-id") {
-          return {
-            team_member_id: "actor-tm-id",
-            is_active: true,
-            role: "owner",
-          };
-        }
-        return null;
-      });
+      teamService.changeMemberRole.mockRejectedValueOnce(
+        new AppError("User is not in the team", 404),
+      );
       const response = await request(app)
         .patch(`${url}/${teamId}/members/valid-user-id`)
         .send({ newRole: "admin" });
@@ -252,6 +195,11 @@ describe("/team", () => {
     });
 
     it("Should change role successfully", async () => {
+      teamService.changeMemberRole.mockResolvedValueOnce({
+        teamMemberId: "tm-123",
+        prevRole: "member",
+        role: "admin",
+      });
       const response = await request(app)
         .patch(`${url}/${teamId}/members/active-user-id`)
         .send({ newRole: "admin" });

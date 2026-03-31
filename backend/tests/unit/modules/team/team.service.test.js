@@ -67,7 +67,7 @@ describe("Team Service", () => {
         is_active: false,
         team_member_id: "tm-123",
       });
-      teamModel.activateTeamMember.mockResolvedValue({
+      teamModel.reactivateTeamMemberAsMember.mockResolvedValue({
         team_member_id: "tm-123",
       });
 
@@ -76,7 +76,7 @@ describe("Team Service", () => {
         "team-123",
       );
 
-      expect(teamModel.activateTeamMember).toHaveBeenCalledWith("tm-123");
+      expect(teamModel.reactivateTeamMemberAsMember).toHaveBeenCalledWith("tm-123");
       expect(result).toBe("tm-123");
     });
   });
