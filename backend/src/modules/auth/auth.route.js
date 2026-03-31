@@ -9,6 +9,7 @@ import {
   resetPassword,
   verifyEmail,
   refreshAccessToken,
+  resendVerificationEmail,
 } from "./auth.controller.js";
 import { verifyToken } from "#middleware";
 
@@ -19,6 +20,7 @@ router.post("/login", loginUser);
 router.get("/me", getUser);
 router.post("/refresh", refreshAccessToken);
 router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
 
 router.delete("/account", verifyToken, deleteAccount);
 router.patch("/password", verifyToken, changePassword);

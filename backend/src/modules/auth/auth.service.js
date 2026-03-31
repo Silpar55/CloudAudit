@@ -18,6 +18,25 @@ import { AppError } from "#utils/helper/AppError.js";
 import * as authModel from "#modules/auth/auth.model.js";
 import * as jwtHelper from "#utils/helper/jwt-helper.js";
 
+const buildEmailServiceErrorMessage = (err) => {
+  const msg = err?.message || "";
+  const name = err?.name || "";
+  const code = err?.code || err?.Code || "";
+  const httpStatus = err?.$metadata?.httpStatusCode;
+
+  // Keep user-facing messaging clear without leaking sensitive internals.
+  if (httpStatus === 429 || code === "Throttling" || name.includes("Throttl")) {
+    return "Our email service is temporarily rate-limited. Please try again in a few minutes.";
+  }
+  if (httpStatus >= 500) {
+    return "Our email service is temporarily unavailable. Please try again shortly.";
+  }
+  if (/configuration|credential|AccessDenied/i.test(msg + name + code)) {
+    return "Email delivery is currently unavailable due to a server configuration issue. Please contact support.";
+  }
+  return "We couldn't send the verification email right now. Please try again shortly.";
+};
+
 export const registerUser = async ({
   firstName,
   lastName,
@@ -70,13 +89,62 @@ export const registerUser = async ({
 
   if (!result) throw new AppError("Unable to create a user", 422);
 
-  await sendVerificationEmail(result.email, verificationToken);
-
   return {
     result,
-    message:
-      "Signup successful. Please check your email to verify your account.",
+    ...(await (async () => {
+      try {
+        await sendVerificationEmail(result.email, verificationToken);
+        return {
+          verificationEmailSent: true,
+          message:
+            "Signup successful. Please check your email to verify your account.",
+        };
+      } catch (err) {
+        return {
+          verificationEmailSent: false,
+          emailServiceMessage: buildEmailServiceErrorMessage(err),
+          message:
+            "Signup successful, but we couldn't send your verification email right now.",
+        };
+      }
+    })()),
   };
+};
+
+export const resendVerificationEmail = async (email) => {
+  if (!validEmail(email)) throw new AppError("Email is invalid", 400);
+
+  const user = await authModel.findUser(email);
+
+  // Avoid account enumeration: return a generic message for unknown/inactive/verified users.
+  if (!user || user.is_active === false || user.email_verified) {
+    return {
+      message:
+        "If your account exists and is not verified, we will send you a verification email.",
+      verificationEmailSent: true,
+      skipped: true,
+    };
+  }
+
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const updated = await authModel.setEmailVerificationToken(
+    user.user_id,
+    verificationToken,
+    verificationExpiresAt,
+  );
+  if (!updated) throw new AppError("Unable to generate verification token", 500);
+
+  try {
+    await sendVerificationEmail(user.email, verificationToken);
+    return {
+      message: "Verification email sent. Please check your inbox.",
+      verificationEmailSent: true,
+    };
+  } catch (err) {
+    throw new AppError(buildEmailServiceErrorMessage(err), 503);
+  }
 };
 
 export const loginUser = async ({ email, password }) => {
@@ -99,8 +167,24 @@ export const loginUser = async ({ email, password }) => {
   }
 
   if (!user.email_verified) {
+    // Best-effort resend on login so users aren't locked out if SES failed during signup.
+    let resendStatus = "not_attempted";
+    try {
+      await resendVerificationEmail(user.email);
+      resendStatus = "sent";
+    } catch (_e) {
+      resendStatus = "failed";
+    }
+
+    const suffix =
+      resendStatus === "sent"
+        ? " We've sent you a new verification email."
+        : resendStatus === "failed"
+          ? " We couldn't resend the email right now. Please try again shortly."
+          : "";
+
     throw new AppError(
-      "Please verify your email address before logging in.",
+      `Please verify your email address before logging in.${suffix}`,
       403,
     );
   }

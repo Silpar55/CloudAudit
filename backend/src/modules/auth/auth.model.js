@@ -173,6 +173,23 @@ export const setPasswordResetToken = async (userId, token, expiresAt) => {
   }
 };
 
+export const setEmailVerificationToken = async (userId, token, expiresAt) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET verification_token      = $1,
+           verification_expires_at = $2,
+           verification_used_at    = NULL
+       WHERE user_id = $3
+       RETURNING user_id, email, email_verified`,
+      [token, expiresAt, userId],
+    );
+    return rows[0];
+  } catch {
+    return null;
+  }
+};
+
 export const resetPasswordAndClearToken = async (userId, hashedPassword) => {
   try {
     const { rows } = await pool.query(

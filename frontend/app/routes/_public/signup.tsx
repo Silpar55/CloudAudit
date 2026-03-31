@@ -4,7 +4,7 @@ import { Input, Button, Alert } from "~/components/ui";
 import { validEmail, validName, validPassword } from "~/utils/validation";
 import React from "react";
 import { parsePhoneNumber } from "react-phone-number-input";
-import { useSignUp } from "~/hooks/useAuth";
+import { useResendVerificationEmail, useSignUp } from "~/hooks/useAuth";
 
 const validateField = (name: string, value: string) => {
   switch (name) {
@@ -28,6 +28,8 @@ const validateField = (name: string, value: string) => {
 
 export default function Signup() {
   const { mutateAsync, isSuccess, isPending } = useSignUp();
+  const { mutateAsync: resendAsync, isPending: isResending } =
+    useResendVerificationEmail();
   const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     firstName: "",
@@ -47,6 +49,8 @@ export default function Signup() {
     visible: false,
     variant: "info",
   });
+
+  const [signupResult, setSignupResult] = React.useState<any>(null);
 
   const isFormValid =
     validName(formData.firstName) &&
@@ -94,10 +98,11 @@ export default function Signup() {
     if (hasErrors) return;
 
     try {
-      await mutateAsync({
+      const data = await mutateAsync({
         ...formData,
         phone: formData.nationalNumber,
       });
+      setSignupResult(data);
     } catch (error: any) {
       setAlert({
         visible: true,
@@ -110,19 +115,75 @@ export default function Signup() {
   };
 
   if (isSuccess) {
+    const sent = Boolean(signupResult?.verificationEmailSent ?? true);
+    const emailServiceMessage =
+      signupResult?.emailServiceMessage || signupResult?.message;
+
     return (
       <section className="max-w-2xl mx-auto px-6 py-20 text-center">
         <h1 className="text-5xl font-bold font-display text-gray-900 dark:text-white mb-6">
-          Check your inbox
+          {sent ? "Check your inbox" : "One more step"}
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-          We've sent a verification link to{" "}
+          {sent ? "We've sent a verification link to " : "We couldn't send a verification email to "}
           <span className="font-semibold text-aws-orange">
             {formData.email}
           </span>
           .
         </p>
-        <Button onClick={() => navigate("/login")}>Go to Login</Button>
+
+        {alert.visible && (
+          <Alert
+            dismissible={alert.dismissible}
+            onDismiss={handleOnDismiss}
+            title={alert.title}
+            variant={alert.variant}
+            className="mb-5"
+          >
+            {alert.message}
+          </Alert>
+        )}
+
+        {!sent && (
+          <div className="mb-8 text-left">
+            <Alert title="Email delivery issue" variant="warning">
+              {emailServiceMessage ||
+                "Our email service is temporarily unavailable. Please retry in a moment."}
+            </Alert>
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="outline"
+                disabled={isResending}
+                onClick={async () => {
+                  try {
+                    const r = await resendAsync(formData.email);
+                    setSignupResult((prev: any) => ({
+                      ...(prev || {}),
+                      verificationEmailSent: true,
+                      resendResult: r,
+                    }));
+                  } catch (error: any) {
+                    setAlert({
+                      visible: true,
+                      title: "Couldn't resend email",
+                      message:
+                        error.response?.data?.message || "Something went wrong",
+                      variant: "danger",
+                      dismissible: true,
+                    });
+                  }
+                }}
+              >
+                {isResending ? "Resending..." : "Resend verification email"}
+              </Button>
+              <Button variant="secondary" onClick={() => navigate("/login")}>
+                Go to Login
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {sent && <Button onClick={() => navigate("/login")}>Go to Login</Button>}
       </section>
     );
   }

@@ -14,11 +14,18 @@ const REFRESH_COOKIE_OPTIONS = {
 
 export const registerUser = async (req, res, next) => {
   try {
-    const { result, message } = await authService.registerUser(req.body);
+    const {
+      result,
+      message,
+      verificationEmailSent,
+      emailServiceMessage,
+    } = await authService.registerUser(req.body);
 
     return res.status(201).json({
-      message: message,
+      message,
       userId: result.user_id,
+      verificationEmailSent: Boolean(verificationEmailSent),
+      ...(emailServiceMessage ? { emailServiceMessage } : {}),
     });
   } catch (err) {
     next(err);
@@ -109,6 +116,20 @@ export const verifyEmail = async (req, res, next) => {
     });
   } catch (err) {
     console.log(err);
+    next(err);
+  }
+};
+
+export const resendVerificationEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const result = await authService.resendVerificationEmail(email);
+    return res.status(200).json(result);
+  } catch (err) {
     next(err);
   }
 };

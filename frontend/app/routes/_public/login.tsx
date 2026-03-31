@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import { validEmail, validPassword } from "~/utils/validation";
 import React from "react";
-import { useLogin } from "~/hooks/useAuth";
+import { useLogin, useResendVerificationEmail } from "~/hooks/useAuth";
 import { useAuth } from "~/context/AuthContext";
 
 const validateField = (name: string, value: string) => {
@@ -22,6 +22,8 @@ const validateField = (name: string, value: string) => {
 
 export default function Login() {
   const { mutateAsync, isPending } = useLogin();
+  const { mutateAsync: resendAsync, isPending: isResending } =
+    useResendVerificationEmail();
   const { login } = useAuth();
 
   const [formData, setFormData] = React.useState({
@@ -37,6 +39,8 @@ export default function Login() {
     visible: false,
     variant: "info",
   });
+
+  const [showResend, setShowResend] = React.useState(false);
 
   const isFormValid =
     validEmail(formData.email) && validPassword(formData.password).length === 0;
@@ -88,11 +92,18 @@ export default function Login() {
         variant: "success",
       });
 
+      setShowResend(false);
       login(data.token);
     } catch (error: any) {
+      const msg = error.response?.data?.message || "Something went wrong";
+      const status = error.response?.status;
+      const unverified =
+        status === 403 && /verify your email/i.test(String(msg));
+
+      setShowResend(unverified);
       setAlert({
         title: "Error",
-        message: error.response?.data?.message || "Something went wrong",
+        message: msg,
         visible: true,
         variant: "danger",
       });
@@ -155,6 +166,43 @@ export default function Login() {
             >
               {alert.message}
             </Alert>
+          )}
+          {showResend && (
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                fullWidth
+                disabled={isResending || !validEmail(formData.email)}
+                onClick={async () => {
+                  try {
+                    const r = await resendAsync(formData.email);
+                    setAlert({
+                      title: "Verification email sent",
+                      message: r?.message || "Please check your inbox.",
+                      visible: true,
+                      variant: "success",
+                      dismissible: true,
+                    });
+                    setShowResend(false);
+                  } catch (error: any) {
+                    setAlert({
+                      title: "Couldn't resend email",
+                      message:
+                        error.response?.data?.message || "Something went wrong",
+                      visible: true,
+                      variant: "danger",
+                      dismissible: true,
+                    });
+                  }
+                }}
+              >
+                {isResending ? "Resending..." : "Resend verification email"}
+              </Button>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                If you don’t see it, check your spam folder and make sure your
+                inbox can receive emails from CloudAudit.
+              </p>
+            </div>
           )}
           <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
             <Input

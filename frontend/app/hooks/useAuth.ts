@@ -13,6 +13,12 @@ export const useLogin = () => {
   });
 };
 
+export const useResendVerificationEmail = () => {
+  return useMutation({
+    mutationFn: authService.resendVerificationEmail,
+  });
+};
+
 export const useVerifyEmail = () => {
   return useMutation({
     mutationFn: authService.verifyEmail,
