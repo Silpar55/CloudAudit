@@ -157,19 +157,29 @@ export const detectUnusedEC2 = async (account, anomalies) => {
         resource_id,
         LOOKBACK_DAYS,
       );
+      const recentMaxCpu = await cw.getRecentEC2CpuMax(
+        credentials,
+        resource_id,
+        2,
+      );
 
       if (cpu && net) {
         metadata = {
           ...metadata,
           avg_cpu: cpu.avg,
           avg_network_mb: (net.avgInBytes + net.avgOutBytes) / (1024 * 1024),
+          recent_max_cpu_2h: recentMaxCpu ?? null,
         };
         if (
           cpu.avg < EC2_CPU_THRESHOLD &&
           net.avgInBytes + net.avgOutBytes < EC2_NET_THRESHOLD
         ) {
-          isIdle = true;
-          confidence = 0.95; // High confidence due to CloudWatch metrics
+          // If the instance is currently seeing meaningful spikes,
+          // don't recommend stopping it even if the long-term average is low.
+          if (!recentMaxCpu || recentMaxCpu <= 20.0) {
+            isIdle = true;
+            confidence = 0.95; // High confidence due to CloudWatch metrics
+          }
         }
       }
     } else {
@@ -335,6 +345,19 @@ export const implementRecommendation = async (
         throw new AppError(
           `Aborted: EC2 instance CPU spiked to ${recentMaxCpu.toFixed(1)}% in the last 2 hours.`,
           409,
+          {
+            code: "REC_IMPLEMENT_CONFLICT",
+            headline: "Auto-apply blocked (workload spike)",
+            detail:
+              "This recommendation is stale or unsafe to apply automatically right now. Re-run analysis to generate an updated recommendation, or dismiss it if it no longer applies.",
+            meta: {
+              resourceType: rec.resource_type,
+              resourceId: rec.resource_id,
+              lookbackHours: 2,
+              recentMaxCpuPct: Number(recentMaxCpu.toFixed(1)),
+              thresholdCpuPct: 20.0,
+            },
+          },
         );
       }
       await ec2.stopEC2Instance(credentials, rec.resource_id);

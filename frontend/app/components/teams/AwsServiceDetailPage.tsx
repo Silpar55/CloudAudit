@@ -101,6 +101,17 @@ const AwsServiceDetailPage = () => {
     [serviceRows],
   );
 
+  const rawCeNamesBySlug = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const r of rows) {
+      const s = resolveService(r.service).slug;
+      if (!map[s]) map[s] = [];
+      map[s].push(r.service);
+    }
+    for (const s of Object.keys(map)) map[s] = [...new Set(map[s])];
+    return map;
+  }, [rows]);
+
   const {
     recommendations,
     loading: recLoading,
@@ -111,21 +122,39 @@ const AwsServiceDetailPage = () => {
 
   const { data: anomalies = [] } = useGetAnomalies(teamId, accId);
 
-  const filteredRecs = useMemo(
-    () =>
-      recommendations.filter(
+  const detectedServiceSlugs = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) set.add(resolveService(r.service).slug);
+    return [...set];
+  }, [rows]);
+
+  const filteredRecs = useMemo(() => {
+    const pending = recommendations.filter((r) => r.status === "pending");
+    if ((slug ?? "") === "others") {
+      return pending.filter(
         (r) =>
-          r.status === "pending" && recommendationMatchesSlug(r, slug ?? ""),
-      ),
-    [recommendations, slug],
-  );
+          !detectedServiceSlugs.some((s) => recommendationMatchesSlug(r, s)),
+      );
+    }
+    return pending.filter((r) => recommendationMatchesSlug(r, slug ?? ""));
+  }, [recommendations, slug, detectedServiceSlugs]);
 
   const filteredAnomalies = useMemo(
-    () =>
-      (anomalies as any[])
-        .filter((a) => !a.status || a.status === "open")
-        .filter((a) => anomalyMatchesSlug(a, slug ?? "", rawCeNames)),
-    [anomalies, slug, rawCeNames],
+    () => {
+      const open = (anomalies as any[]).filter(
+        (a) => !a.status || a.status === "open",
+      );
+      if ((slug ?? "") === "others") {
+        return open.filter(
+          (a) =>
+            !detectedServiceSlugs.some((s) =>
+              anomalyMatchesSlug(a, s, rawCeNamesBySlug[s] || []),
+            ),
+        );
+      }
+      return open.filter((a) => anomalyMatchesSlug(a, slug ?? "", rawCeNames));
+    },
+    [anomalies, slug, rawCeNames, detectedServiceSlugs, rawCeNamesBySlug],
   );
 
   const totalCost = useMemo(
@@ -183,7 +212,7 @@ const AwsServiceDetailPage = () => {
     );
   }
 
-  if (isLoading && serviceRows.length === 0) {
+  if (isLoading && serviceRows.length === 0 && slug !== "others") {
     return (
       <div className="p-8">
         <SectionLoader />
@@ -211,35 +240,38 @@ const AwsServiceDetailPage = () => {
               {meta.label}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
-              Spend trend, regional split, and AI recommendations scoped to this
-              AWS service (from Cost Explorer cache).
+              {slug === "others"
+                ? "Anomalies and recommendations that could not be mapped to a specific AWS service."
+                : "Spend trend, regional split, and AI recommendations scoped to this AWS service (from Cost Explorer cache)."}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onChangeStart={setStartDate}
-            onChangeEnd={setEndDate}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isSyncing || isFetching}
-            icon={
-              <RefreshCw
-                className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
-              />
-            }
-          >
-            Refresh costs
-          </Button>
-        </div>
+        {slug === "others" ? null : (
+          <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onChangeStart={setStartDate}
+              onChangeEnd={setEndDate}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isSyncing || isFetching}
+              icon={
+                <RefreshCw
+                  className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
+                />
+              }
+            >
+              Refresh costs
+            </Button>
+          </div>
+        )}
       </div>
 
-      {serviceRows.length === 0 && !isFetching ? (
+      {slug !== "others" && serviceRows.length === 0 && !isFetching ? (
         <Card
           padding="lg"
           className="border-dashed border-gray-300 dark:border-slate-600"
@@ -267,28 +299,31 @@ const AwsServiceDetailPage = () => {
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MetricTile
-          label={`${meta.label} spend`}
-          value={fmt(totalCost)}
-          sub={lastUpdated ? `Cache updated ${lastUpdated}` : "Estimated"}
-          icon={<Icon className="w-4 h-4" />}
-        />
-        <MetricTile
-          label="Share of workspace"
-          value={`${sharePct.toFixed(1)}%`}
-          sub="Vs. all services in range"
-          icon={<Sparkles className="w-4 h-4" />}
-        />
-        <MetricTile
-          label="Regions"
-          value={String(byRegion.length)}
-          sub="With recorded usage"
-          icon={<Boxes className="w-4 h-4" />}
-        />
-      </div>
+      {slug === "others" ? null : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <MetricTile
+            label={`${meta.label} spend`}
+            value={fmt(totalCost)}
+            sub={lastUpdated ? `Cache updated ${lastUpdated}` : "Estimated"}
+            icon={<Icon className="w-4 h-4" />}
+          />
+          <MetricTile
+            label="Share of workspace"
+            value={`${sharePct.toFixed(1)}%`}
+            sub="Vs. all services in range"
+            icon={<Sparkles className="w-4 h-4" />}
+          />
+          <MetricTile
+            label="Regions"
+            value={String(byRegion.length)}
+            sub="With recorded usage"
+            icon={<Boxes className="w-4 h-4" />}
+          />
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {slug === "others" ? null : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card padding="lg" className="shadow-lg">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Daily spend
@@ -370,7 +405,8 @@ const AwsServiceDetailPage = () => {
             </div>
           )}
         </Card>
-      </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         <div>

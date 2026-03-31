@@ -7,6 +7,7 @@ import * as authModel from "#modules/auth/auth.model.js";
 import {
   getAnomalies,
   triggerAnalysis,
+  getAnalysisStatus,
 } from "#modules/anomaly/anomaly.controller.js";
 
 describe("Anomaly Controller", () => {
@@ -49,9 +50,9 @@ describe("Anomaly Controller", () => {
   });
 
   describe("triggerAnalysis", () => {
-    it("Should return 200 and analysis result", async () => {
+    it("Should return 202 and async start result", async () => {
       const mockResult = { status: "success" };
-      anomalyService.triggerAnalysis.mockResolvedValue(mockResult);
+      anomalyService.triggerAnalysisAsync.mockResolvedValue(mockResult);
       authModel.findUserById.mockResolvedValue({
         first_name: "User",
         last_name: "1",
@@ -60,21 +61,31 @@ describe("Anomaly Controller", () => {
 
       await triggerAnalysis(req, res, next);
 
-      expect(anomalyService.triggerAnalysis).toHaveBeenCalledWith(
+      expect(anomalyService.triggerAnalysisAsync).toHaveBeenCalledWith(
         { id: "acc-123" },
         "user-1",
         "User 1",
       );
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(202);
       expect(res.send).toHaveBeenCalledWith(mockResult);
     });
 
     it("Should call next(error) if service fails", async () => {
       const error = new Error("Service failed");
-      anomalyService.triggerAnalysis.mockRejectedValue(error);
+      anomalyService.triggerAnalysisAsync.mockRejectedValue(error);
 
       await triggerAnalysis(req, res, next);
       expect(next).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe("getAnalysisStatus", () => {
+    it("Should return 200 and status payload", async () => {
+      anomalyService.getAnalysisStatus.mockReturnValue({ state: "idle" });
+      await getAnalysisStatus(req, res, next);
+      expect(anomalyService.getAnalysisStatus).toHaveBeenCalledWith("acc-123");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith({ state: "idle" });
     });
   });
 });

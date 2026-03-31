@@ -11,5 +11,9 @@ export function errorHandler(err, _req, res, _next) {
 
   res.status(status).json({
     message: err.message || "Internal Server Error",
+    ...(err.code ? { code: err.code } : {}),
+    ...(err.headline ? { headline: err.headline } : {}),
+    ...(err.detail ? { detail: err.detail } : {}),
+    ...(err.meta ? { meta: err.meta } : {}),
   });
 }

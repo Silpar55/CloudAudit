@@ -18,7 +18,11 @@ import { Link, useNavigate } from "react-router";
 import { useGetTeamsByUserId } from "~/hooks/useTeam";
 import { useGetCachedCostData } from "~/hooks/useAws";
 import type { ServiceMeta } from "~/utils/awsServiceCatalog";
-import { resolveService } from "~/utils/awsServiceCatalog";
+import {
+  resolveService,
+  anomalyMatchesSlug,
+  recommendationMatchesSlug,
+} from "~/utils/awsServiceCatalog";
 
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useGetAnomalies } from "~/hooks/useAnomaly";
@@ -137,6 +141,57 @@ const Sidebar = ({
     return result.sort((a, b) => a.label.localeCompare(b.label));
   }, [costRows]);
 
+  const rawCeNamesBySlug = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const row of costRows) {
+      const meta = resolveService(row.service);
+      if (!map[meta.slug]) map[meta.slug] = [];
+      map[meta.slug].push(row.service);
+    }
+    for (const slug of Object.keys(map)) {
+      map[slug] = [...new Set(map[slug])];
+    }
+    return map;
+  }, [costRows]);
+
+  const hasIssuesBySlug = useMemo(() => {
+    const openAnomalies = (anomalies as any[]).filter(
+      (a) => !a.status || a.status === "open",
+    );
+    const pendingRecs = recommendations.filter((r) => r.status === "pending");
+
+    const out: Record<string, boolean> = {};
+    for (const svc of resourceServices) {
+      const slug = svc.slug;
+      const rawCeNames = rawCeNamesBySlug[slug] || [];
+      const hasRec = pendingRecs.some((r) => recommendationMatchesSlug(r, slug));
+      const hasAnom = openAnomalies.some((a) =>
+        anomalyMatchesSlug(a, slug, rawCeNames),
+      );
+      out[slug] = hasRec || hasAnom;
+    }
+    return out;
+  }, [anomalies, recommendations, rawCeNamesBySlug, resourceServices]);
+
+  const othersHasIssues = useMemo(() => {
+    const openAnomalies = (anomalies as any[]).filter(
+      (a) => !a.status || a.status === "open",
+    );
+    const pendingRecs = recommendations.filter((r) => r.status === "pending");
+    const slugs = resourceServices.map((s) => s.slug);
+
+    const recHasService = (r: any) =>
+      slugs.some((slug) => recommendationMatchesSlug(r, slug));
+    const anomalyHasService = (a: any) =>
+      slugs.some((slug) =>
+        anomalyMatchesSlug(a, slug, rawCeNamesBySlug[slug] || []),
+      );
+
+    const hasUnmappedRec = pendingRecs.some((r) => !recHasService(r));
+    const hasUnmappedAnom = openAnomalies.some((a) => !anomalyHasService(a));
+    return hasUnmappedRec || hasUnmappedAnom;
+  }, [anomalies, recommendations, rawCeNamesBySlug, resourceServices]);
+
   // ── Nav components ────────────────────────────────────────────────────────
 
   const NavLink = ({
@@ -175,7 +230,7 @@ const Sidebar = ({
     );
   };
 
-  const ResourceLink = ({ slug, Icon, label }: any) => {
+  const ResourceLink = ({ slug, Icon, label, hasIssues }: any) => {
     const href = `/resources/${slug}`;
     const isActive = activeRoute === href;
     return (
@@ -189,6 +244,15 @@ const Sidebar = ({
       >
         <Icon className="w-4 h-4 shrink-0" />
         <span className="flex-1 truncate">{label}</span>
+        {hasIssues ? (
+          <span
+            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+              isActive ? "bg-aws-orange" : "bg-amber-500"
+            }`}
+            aria-label="Has recommendations or anomalies"
+            title="Has recommendations or anomalies"
+          />
+        ) : null}
       </Link>
     );
   };
@@ -360,14 +424,29 @@ const Sidebar = ({
                     No services detected yet.
                   </p>
                 ) : (
-                  resourceServices.map((svc) => (
-                    <ResourceLink
-                      key={svc.slug}
-                      slug={svc.slug}
-                      Icon={svc.Icon}
-                      label={svc.label}
-                    />
-                  ))
+                  <>
+                    {resourceServices.map((svc) => (
+                      <ResourceLink
+                        key={svc.slug}
+                        slug={svc.slug}
+                        Icon={svc.Icon}
+                        label={svc.label}
+                        hasIssues={hasIssuesBySlug[svc.slug]}
+                      />
+                    ))}
+
+                    <div className="pt-2">
+                      <div className="px-3 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                        Others
+                      </div>
+                      <ResourceLink
+                        slug="others"
+                        Icon={Boxes}
+                        label="Others"
+                        hasIssues={othersHasIssues}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             )}

@@ -18,12 +18,23 @@ export const triggerAnalysis = async (req, res, next) => {
       actor?.email ||
       "User";
 
-    const result = await anomalyService.triggerAnalysis(
+    const result = await anomalyService.triggerAnalysisAsync(
       req.awsAccount,
       req.userId,
       actorName,
     );
-    return res.status(200).send(result);
+
+    // 202: analysis started (async). Frontend should poll /analyze/status.
+    return res.status(202).send(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAnalysisStatus = async (req, res, next) => {
+  try {
+    const status = anomalyService.getAnalysisStatus(req.awsAccount.id);
+    return res.status(200).send(status);
   } catch (err) {
     next(err);
   }

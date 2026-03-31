@@ -144,6 +144,73 @@ export const triggerAnalysis = async (
   }
 };
 
+// ── Async analysis runner (prevents gateway timeouts) ─────────────────────────
+
+const analysisRuns = new Map(); // accountInternalId -> status
+
+const nowIso = () => new Date().toISOString();
+
+export const getAnalysisStatus = (accountInternalId) => {
+  return (
+    analysisRuns.get(accountInternalId) ?? {
+      state: "idle",
+      startedAt: null,
+      finishedAt: null,
+      result: null,
+      error: null,
+    }
+  );
+};
+
+export const triggerAnalysisAsync = async (account, userId, actorName = "User") => {
+  const current = getAnalysisStatus(account.id);
+  if (current.state === "running") {
+    return {
+      message: "Analysis already running",
+      state: "running",
+      startedAt: current.startedAt,
+    };
+  }
+
+  analysisRuns.set(account.id, {
+    state: "running",
+    startedAt: nowIso(),
+    finishedAt: null,
+    result: null,
+    error: null,
+  });
+
+  // Fire-and-forget analysis so the HTTP request returns quickly.
+  setImmediate(async () => {
+    try {
+      const startedAt = analysisRuns.get(account.id)?.startedAt ?? nowIso();
+      const result = await triggerAnalysis(account, userId, actorName);
+      analysisRuns.set(account.id, {
+        state: "completed",
+        startedAt,
+        finishedAt: nowIso(),
+        result,
+        error: null,
+      });
+    } catch (e) {
+      const startedAt = analysisRuns.get(account.id)?.startedAt ?? nowIso();
+      analysisRuns.set(account.id, {
+        state: "failed",
+        startedAt,
+        finishedAt: nowIso(),
+        result: null,
+        error: e?.message || "Analysis failed",
+      });
+    }
+  });
+
+  return {
+    message: "Analysis started",
+    state: "running",
+    startedAt: getAnalysisStatus(account.id).startedAt,
+  };
+};
+
 export const dismissAnomaly = async (account, anomalyId, statusNote) => {
   const anomaly = await anomalyModel.getAnomalyById(anomalyId, account.id);
   if (!anomaly) throw new AppError("Anomaly not found", 404);

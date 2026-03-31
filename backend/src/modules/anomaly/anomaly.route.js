@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getAnomalies,
   triggerAnalysis,
+  getAnalysisStatus,
   dismissAnomaly,
   resolveAnomaly,
 } from "./anomaly.controller.js";
@@ -13,6 +14,7 @@ router.get("/", getAnomalies);
 
 // POST /teams/:teamId/aws-accounts/:accId/anomalies/analyze
 router.post("/analyze", triggerAnalysis);
+router.get("/analyze/status", getAnalysisStatus);
 router.patch("/:anomalyId/dismiss", dismissAnomaly);
 router.patch("/:anomalyId/resolve", resolveAnomaly);
 

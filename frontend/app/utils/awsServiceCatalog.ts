@@ -14,6 +14,7 @@ import {
   BarChart2,
   Activity,
   Archive,
+  Receipt,
 } from "lucide-react";
 import type { Recommendation } from "~/services/recommendationsService";
 
@@ -28,6 +29,24 @@ export interface ServiceMeta {
 }
 
 type MapEntry = { match: string; meta: ServiceMeta };
+
+const TAXES_META: ServiceMeta = {
+  label: "Taxes",
+  Icon: Receipt,
+  slug: "taxes",
+};
+
+/** Cost Explorer tax lines — must NOT use loose substring "T" or "Tax" (those match almost every service name, or false positives like "Elasticsearch"). */
+function resolveTaxesLine(raw: string): ServiceMeta | null {
+  const s = raw.trim();
+  if (!s) return null;
+  const u = s.toUpperCase();
+  // Single-letter tax code sometimes used in CUR/CE exports
+  if (u === "T") return TAXES_META;
+  if (/^(AWS\s*)?TAX(ES)?$/i.test(s)) return TAXES_META;
+  if (/^tax(es)?$/i.test(s)) return TAXES_META;
+  return null;
+}
 
 export const SERVICE_MAP: MapEntry[] = [
   {
@@ -129,12 +148,27 @@ export const SERVICE_MAP: MapEntry[] = [
 ];
 
 export function resolveService(fullName: string): ServiceMeta {
+  const raw = String(fullName ?? "").trim();
+  if (!raw) return { label: "Other", Icon: Boxes, slug: "other" };
+
+  const tax = resolveTaxesLine(raw);
+  if (tax) return tax;
+
   const hit = SERVICE_MAP.find((s) =>
-    fullName.toLowerCase().includes(s.match.toLowerCase()),
+    raw.toLowerCase().includes(s.match.toLowerCase()),
   );
   if (hit) return hit.meta;
 
-  const abbr = fullName
+  // Cost Explorer sometimes returns short opaque codes (e.g. "EOSM", "T").
+  // Preserve them rather than collapsing to a 1-letter acronym.
+  if (/^[A-Za-z0-9_-]{1,14}$/.test(raw) && !raw.includes(" ")) {
+    const label = raw.length <= 14 ? raw.toUpperCase() : raw.slice(0, 14);
+    const slug =
+      label.toLowerCase().replace(/[^a-z0-9-]/g, "") || "other-charges";
+    return { label, Icon: Boxes, slug };
+  }
+
+  const abbr = raw
     .replace(/^Amazon\s+/i, "")
     .replace(/^AWS\s+/i, "")
     .split(/\s+/)
@@ -143,10 +177,11 @@ export function resolveService(fullName: string): ServiceMeta {
     .toUpperCase()
     .slice(0, 4);
 
-  const slug = (abbr || "svc").toLowerCase().replace(/[^a-z0-9-]/g, "") || "svc";
+  const slug =
+    (abbr || "svc").toLowerCase().replace(/[^a-z0-9-]/g, "") || "svc";
 
   return {
-    label: abbr || fullName.slice(0, 8),
+    label: abbr || raw.slice(0, 8),
     Icon: Boxes,
     slug,
   };
@@ -154,6 +189,7 @@ export function resolveService(fullName: string): ServiceMeta {
 
 /** Display label for a known slug (sidebar resource title, headers). */
 export function getServiceMetaForSlug(slug: string): ServiceMeta {
+  if (slug === TAXES_META.slug) return TAXES_META;
   const entry = SERVICE_MAP.find((e) => e.meta.slug === slug);
   if (entry) return entry.meta;
   const human = slug
@@ -161,6 +197,9 @@ export function getServiceMetaForSlug(slug: string): ServiceMeta {
     .replace(/\b\w/g, (c) => c.toUpperCase());
   return { label: human, Icon: Boxes, slug };
 }
+
+// (intentionally no "other/charges" bucketing here anymore — the UI keeps the
+// full services list intact and adds a separate "Others" virtual service entry)
 
 export function recommendationMatchesSlug(
   r: Recommendation,
@@ -207,10 +246,7 @@ export function anomalyMatchesSlug(
 
   const rid = String(anomaly.resource_id ?? "").toLowerCase();
   if (slug === "ec2" && /^i-[a-f0-9]{8,17}/.test(rid)) return true;
-  if (
-    (slug === "rds" || slug === "aurora") &&
-    /^db-[a-z0-9-]+/.test(rid)
-  ) {
+  if ((slug === "rds" || slug === "aurora") && /^db-[a-z0-9-]+/.test(rid)) {
     if (slug === "aurora") return /aurora|cluster/i.test(rid + detailsStr);
     return !/aurora/i.test(rid + detailsStr);
   }

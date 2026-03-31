@@ -56,10 +56,16 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
       if (actionType === "resolve") await onResolve(id);
       if (actionType === "dismiss") await onDismiss(id);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          `Failed to ${actionType} recommendation.`,
-      );
+      const data = err?.response?.data;
+      if (data?.code === "REC_IMPLEMENT_CONFLICT") {
+        const headline = data?.headline || "Could not auto-apply";
+        const detail = data?.detail || data?.message;
+        setError(`${headline}${detail ? ` — ${detail}` : ""}`);
+      } else {
+        setError(
+          data?.message || `Failed to ${actionType} recommendation.`,
+        );
+      }
     } finally {
       setLoadingAction(null);
     }

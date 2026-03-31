@@ -4,6 +4,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 jest.mock("#modules/anomaly/anomaly.controller.js", () => ({
   getAnomalies: jest.fn(),
   triggerAnalysis: jest.fn(),
+  getAnalysisStatus: jest.fn(),
   dismissAnomaly: jest.fn(),
   resolveAnomaly: jest.fn(),
 }));
@@ -26,6 +27,7 @@ describe("Anomaly Routes", () => {
 
     expect(routes).toContainEqual({ path: "/", method: "get" });
     expect(routes).toContainEqual({ path: "/analyze", method: "post" });
+    expect(routes).toContainEqual({ path: "/analyze/status", method: "get" });
     expect(routes).toContainEqual({ path: "/:anomalyId/dismiss", method: "patch" });
     expect(routes).toContainEqual({ path: "/:anomalyId/resolve", method: "patch" });
   });
