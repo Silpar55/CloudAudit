@@ -7,7 +7,7 @@ import {
 } from "react-router";
 import { Sidebar, Header } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";
-import { PageLoader } from "~/components/ui";
+import { Alert, Button, Card, PageLoader } from "~/components/ui";
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { AwsAccountProvider } from "~/context/AwsAccountContext";
 import { getServiceMetaForSlug } from "~/utils/awsServiceCatalog";
@@ -84,9 +84,49 @@ export default function TeamLayout() {
   const location = useLocation();
 
   const { teamId } = useParams<{ teamId: string }>();
-  const { data, isLoading } = useWorkspaceTeamData(teamId!);
+  const { data, isLoading, error } = useWorkspaceTeamData(teamId!);
 
   if (isLoading) return <PageLoader />;
+
+  // If a user was removed from the team (or never had access), the API will 403.
+  // Show a friendly message with a dashboard escape hatch.
+  const status = (error as any)?.response?.status;
+  if (status === 403) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 px-6 py-14">
+        <div className="mx-auto w-full max-w-2xl">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Workspace unavailable
+          </h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            This workspace isn&apos;t available for your account. You may have
+            been removed, or you don&apos;t have permission to access it.
+          </p>
+
+          <Card
+            padding="lg"
+            className="mt-6 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+          >
+            <Alert variant="warning" title="Access restricted">
+              If you believe this is a mistake, ask a workspace owner/admin to
+              send you a new invitation.
+            </Alert>
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              <Button onClick={() => navigate("/dashboard")}>
+                Go to dashboard
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const { user, team, teamMember } = data!;
 

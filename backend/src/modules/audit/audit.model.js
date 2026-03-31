@@ -3,14 +3,16 @@ import { pool } from "#config";
 export const insertAuditLog = async (teamId, userId, action, details) => {
   const query = `
     INSERT INTO audit_logs (team_id, user_id, action, details)
-    VALUES ($1, $2, $3, $4);
+    VALUES ($1, $2, $3, $4)
+    RETURNING audit_log_id;
   `;
-  await pool.query(query, [
+  const { rows } = await pool.query(query, [
     teamId,
     userId,
     action,
     typeof details === "string" ? details : JSON.stringify(details ?? {}),
   ]);
+  return rows[0]?.audit_log_id ?? null;
 };
 
 export const listTeamNotificationsForUser = async (

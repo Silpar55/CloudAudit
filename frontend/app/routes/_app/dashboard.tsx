@@ -1,10 +1,16 @@
 import { useNavigate } from "react-router";
 import { useState } from "react";
 import { CreateTeamForm, TeamCard } from "~/components/dashboard";
-import { Button, Modal } from "~/components/ui";
+import { Alert, Button, Card, Modal, SectionLoader } from "~/components/ui";
 import { useGetTeamsByUserId } from "~/hooks/useTeam";
 import { useTeamNotificationCounts } from "~/hooks/useTeamNotificationCounts";
 import { UsersRound } from "lucide-react";
+import {
+  useAcceptInvitation,
+  useDeclineInvitation,
+  useMyInvitations,
+  type PendingInvitation,
+} from "~/hooks/useInvitations";
 
 function formatMonthlyCost(cost: unknown): string {
   if (cost == null || cost === "") return "";
@@ -18,12 +24,99 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data, isLoading } = useGetTeamsByUserId();
   const { data: countsData } = useTeamNotificationCounts();
+  const {
+    data: invitations = [],
+    isLoading: invitesLoading,
+    error: invitesError,
+  } = useMyInvitations();
+  const acceptInvite = useAcceptInvitation();
+  const declineInvite = useDeclineInvitation();
   const teams = data?.teams ?? [];
   const hasTeams = teams.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              Pending invitations
+            </h2>
+          </div>
+
+          {invitesLoading ? (
+            <Card padding="lg" className="border-gray-200 dark:border-slate-700">
+              <SectionLoader />
+            </Card>
+          ) : invitesError ? (
+            <Alert variant="danger" title="Could not load invitations">
+              Please refresh and try again.
+            </Alert>
+          ) : invitations.length === 0 ? (
+            <Card
+              padding="lg"
+              className="border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            >
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                No pending invitations.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {(invitations as PendingInvitation[]).map((inv) => {
+                const inviter =
+                  [inv.invited_by_first_name, inv.invited_by_last_name]
+                    .filter(Boolean)
+                    .join(" ") ||
+                  inv.invited_by_email ||
+                  "Someone";
+                return (
+                  <Card
+                    key={inv.invitation_id}
+                    padding="lg"
+                    className="border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  >
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Invited by {inviter}
+                    </p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                      {inv.team_name}
+                    </p>
+                    {inv.team_description ? (
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        {inv.team_description}
+                      </p>
+                    ) : null}
+                    <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                      <Button
+                        disabled={acceptInvite.isPending}
+                        onClick={async () => {
+                          const res = await acceptInvite.mutateAsync(
+                            inv.invitation_id,
+                          );
+                          const teamId = res?.teamId || inv.team_id;
+                          if (teamId) navigate(`/teams/${teamId}`);
+                        }}
+                      >
+                        {acceptInvite.isPending ? "Joining…" : "Join"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={declineInvite.isPending}
+                        onClick={() =>
+                          declineInvite.mutate(inv.invitation_id)
+                        }
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

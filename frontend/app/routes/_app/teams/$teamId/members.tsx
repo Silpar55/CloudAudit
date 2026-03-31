@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import {
   Button,
@@ -13,7 +13,7 @@ import {
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { useTeamMembers } from "~/hooks/useTeamMembers";
 import { getAvatarColor, getInitials } from "~/utils/format";
-import { Users, UserPlus, Trash2 } from "lucide-react";
+import { RefreshCw, Users, UserPlus, Trash2 } from "lucide-react";
 
 const roleBadgeVariant = (role: string) => {
   if (role === "owner") return "primary";
@@ -25,11 +25,24 @@ export default function TeamMembersPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const { data: workspace, isLoading: workspaceLoading } =
     useWorkspaceTeamData(teamId);
-  const { members, loading, addMember, removeMember, updateRole } =
+  const {
+    members,
+    loading,
+    addMember,
+    removeMember,
+    updateRole,
+    searchInviteCandidates,
+    refetch,
+  } =
     useTeamMembers(teamId);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSuggestions, setInviteSuggestions] = useState<any[]>([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteSelectedEmail, setInviteSelectedEmail] = useState<string | null>(
+    null,
+  );
   const [removeTarget, setRemoveTarget] = useState<{
     userId: string;
     label: string;
@@ -43,12 +56,24 @@ export default function TeamMembersPage() {
   const isOwner = teamMember?.role === "owner";
   const isAdmin = teamMember?.role === "admin";
 
+  // Light polling so owners see new joins without hard refresh.
+  useEffect(() => {
+    if (!teamId) return;
+    const t = setInterval(() => {
+      refetch();
+    }, 8000);
+    return () => clearInterval(t);
+  }, [teamId, refetch]);
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setPageError(null);
     try {
-      await addMember.mutateAsync(inviteEmail.trim());
+      const emailToInvite = (inviteSelectedEmail || inviteEmail).trim();
+      await addMember.mutateAsync(emailToInvite);
       setInviteEmail("");
+      setInviteSuggestions([]);
+      setInviteSelectedEmail(null);
       setInviteOpen(false);
     } catch (err: any) {
       setPageError(
@@ -56,6 +81,36 @@ export default function TeamMembersPage() {
       );
     }
   };
+
+  useEffect(() => {
+    if (!inviteOpen) return;
+    const q = inviteEmail.trim();
+    if (!canManage || q.length < 2) {
+      setInviteSuggestions([]);
+      setInviteLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setInviteLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const users = await searchInviteCandidates(q);
+        if (cancelled) return;
+        setInviteSuggestions(users ?? []);
+      } catch {
+        if (cancelled) return;
+        setInviteSuggestions([]);
+      } finally {
+        if (!cancelled) setInviteLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [inviteEmail, inviteOpen, canManage, searchInviteCandidates]);
 
   const handleRemove = async () => {
     if (!removeTarget) return;
@@ -82,13 +137,6 @@ export default function TeamMembersPage() {
   };
 
   const roleOptions = () => {
-    if (isOwner) {
-      return [
-        { value: "member", label: "Member" },
-        { value: "admin", label: "Admin" },
-        { value: "owner", label: "Owner" },
-      ];
-    }
     return [
       { value: "member", label: "Member" },
       { value: "admin", label: "Admin" },
@@ -148,17 +196,27 @@ export default function TeamMembersPage() {
             others and manage roles.
           </p>
         </div>
-        {canManage && (
+        <div className="flex items-center gap-2">
           <Button
-            icon={<UserPlus className="w-4 h-4" />}
-            onClick={() => {
-              setPageError(null);
-              setInviteOpen(true);
-            }}
+            variant="outline"
+            icon={<RefreshCw className="w-4 h-4" />}
+            onClick={() => refetch()}
+            disabled={loading}
           >
-            Invite member
+            Refresh
           </Button>
-        )}
+          {canManage && (
+            <Button
+              icon={<UserPlus className="w-4 h-4" />}
+              onClick={() => {
+                setPageError(null);
+                setInviteOpen(true);
+              }}
+            >
+              Invite member
+            </Button>
+          )}
+        </div>
       </div>
 
       {pageError && (
@@ -299,11 +357,11 @@ export default function TeamMembersPage() {
         maxWidth="max-w-md"
       >
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-          Invite a member
+          Send an invitation
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          They must already have a CloudAudit account. We&apos;ll send them into
-          this workspace once they accept.
+          Choose a registered user from the suggestions. They&apos;ll join this
+          workspace after they accept the invitation.
         </p>
         <form onSubmit={handleInvite} className="space-y-4">
           <Input
@@ -312,11 +370,46 @@ export default function TeamMembersPage() {
             placeholder="colleague@company.com"
             value={inviteEmail}
             name="email"
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setInviteEmail(e.target.value)
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const next = e.target.value;
+              setInviteEmail(next);
+              setInviteSelectedEmail(null);
+            }}
             required
           />
+          {inviteLoading ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Searching…
+            </p>
+          ) : inviteSuggestions.length > 0 ? (
+            <div className="rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+              {inviteSuggestions.slice(0, 6).map((u) => (
+                <button
+                  key={u.user_id}
+                  type="button"
+                  onClick={() => {
+                    setInviteEmail(u.email);
+                    setInviteSelectedEmail(u.email);
+                    setInviteSuggestions([]);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {[u.first_name, u.last_name].filter(Boolean).join(" ") ||
+                      u.email}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {u.email}
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : inviteEmail.trim().length >= 2 ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Keep typing to search. Select a user from the list to enable
+              sending.
+            </p>
+          ) : null}
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
@@ -325,8 +418,15 @@ export default function TeamMembersPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={addMember.isPending}>
-              {addMember.isPending ? "Sending…" : "Invite"}
+            <Button
+              type="submit"
+              disabled={
+                addMember.isPending ||
+                !inviteSelectedEmail ||
+                inviteSelectedEmail.trim().length === 0
+              }
+            >
+              {addMember.isPending ? "Sending…" : "Send invite"}
             </Button>
           </div>
         </form>

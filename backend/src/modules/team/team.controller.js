@@ -11,6 +11,19 @@ export const listTeamMembers = async (req, res, next) => {
   }
 };
 
+export const searchUsersToInvite = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+    const q = String(req.query.email ?? "").trim();
+    if (!q) return res.status(200).send({ users: [] });
+
+    const users = await teamService.searchUsersToInvite(teamId, q);
+    return res.status(200).send({ users });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getTeamsByUserId = async (req, res, next) => {
   try {
     const teams = await teamService.getTeamsByUserId(req.userId);
@@ -111,16 +124,68 @@ export const addTeamMember = async (req, res, next) => {
   try {
     const { email } = req.body;
     const { teamId } = req.params;
-    const teamMemberId = await teamService.addTeamMember(email, teamId);
+    const workspaceName = req.team?.name;
 
-    await insertAuditLog(teamId, req.userId, "TEAM_MEMBER_INVITED", {
+    const result = await teamService.inviteTeamMember({
+      teamId,
       email,
-      teamMemberId,
+      actorUserId: req.userId,
+      teamName: workspaceName ?? "your workspace",
+      actorName: "",
     });
 
-    return res
-      .status(201)
-      .send({ message: "Member added into the team", teamMemberId });
+    return res.status(201).send({
+      message: "Invitation sent. The user must accept to join this workspace.",
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const acceptTeamInvitation = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    const result = await teamService.acceptInvitationByToken({
+      token,
+      actorUserId: req.userId,
+    });
+    return res.status(200).send({ message: "Invitation accepted", ...result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const acceptTeamInvitationById = async (req, res, next) => {
+  try {
+    const { invitationId } = req.params;
+    const result = await teamService.acceptInvitationById({
+      invitationId,
+      actorUserId: req.userId,
+    });
+    return res.status(200).send({ message: "Invitation accepted", ...result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const listMyInvitations = async (req, res, next) => {
+  try {
+    const invites = await teamService.listMyPendingInvitations(req.userId);
+    return res.status(200).send({ invitations: invites });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const declineInvitation = async (req, res, next) => {
+  try {
+    const { invitationId } = req.params;
+    const result = await teamService.declineInvitation({
+      invitationId,
+      actorUserId: req.userId,
+    });
+    return res.status(200).send({ message: "Invitation declined", ...result });
   } catch (err) {
     next(err);
   }

@@ -63,6 +63,8 @@ export default function Signup() {
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear the field error as the user types, so stale errors don't persist into success UI.
+    setErrors((prev: any) => ({ ...prev, [name]: "" }));
   };
 
   const handleOnDismiss = () => {
@@ -98,6 +100,8 @@ export default function Signup() {
     if (hasErrors) return;
 
     try {
+      // Clear any previous UI alerts before submitting.
+      setAlert((prev: any) => ({ ...prev, visible: false }));
       const data = await mutateAsync({
         ...formData,
         phone: formData.nationalNumber,

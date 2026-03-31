@@ -22,6 +22,11 @@ import {
   addTeamMember,
   deactivateTeamMember,
   changeMemberRole,
+  searchUsersToInvite,
+  acceptTeamInvitation,
+  acceptTeamInvitationById,
+  listMyInvitations,
+  declineInvitation,
 } from "./team.controller.js";
 import { awsRoutes } from "#modules/aws/aws.route.js";
 
@@ -30,6 +35,14 @@ const router = Router();
 // Teams resource
 router.get("/", getTeamsByUserId);
 router.post("/", createTeam);
+
+// Invitations (user-scoped). Must be registered BEFORE "/:teamId" routes,
+// otherwise Express will treat "invitations" as a teamId.
+router.get("/invitations", listMyInvitations);
+router.post("/invitations/accept", acceptTeamInvitation);
+router.post("/invitations/:invitationId/accept", acceptTeamInvitationById);
+router.post("/invitations/:invitationId/decline", declineInvitation);
+
 router.get(
   "/:teamId/audit-logs",
   verifyTeamId,
@@ -61,7 +74,7 @@ router.patch(
   verifyTeamMembership,
   dismissNotification,
 );
-router.get("/:teamId", verifyTeamId, getTeamById);
+router.get("/:teamId", verifyTeamId, verifyTeamMembership, getTeamById);
 router.patch("/:teamId", verifyPermissions, verifyTeamId, updateTeam);
 router.delete("/:teamId", verifyPermissions, verifyTeamId, deleteTeam);
 
@@ -72,7 +85,13 @@ router.get(
   verifyTeamMembership,
   listTeamMembers,
 );
-router.get("/:teamId/members", verifyTeamId, getTeamMemberById);
+router.get(
+  "/:teamId/members/search",
+  verifyTeamId,
+  verifyPermissions,
+  searchUsersToInvite,
+);
+router.get("/:teamId/members", verifyTeamId, verifyTeamMembership, getTeamMemberById);
 router.post("/:teamId/members", verifyPermissions, verifyTeamId, addTeamMember);
 router.delete(
   "/:teamId/members/:userId",
@@ -88,6 +107,6 @@ router.patch(
 
 // AWS sub-resource
 // /:teamId/aws-accounts
-router.use("/:teamId/aws-accounts", verifyTeamId, awsRoutes);
+router.use("/:teamId/aws-accounts", verifyTeamId, verifyTeamMembership, awsRoutes);
 
 export const teamRoutes = router;

@@ -16,5 +16,8 @@ export const useWorkspaceTeamData = (teamId: string | undefined) => {
       return { user, team, teamMember };
     },
     enabled: !!teamId, // prevents running if teamId is undefined
+    retry: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: 8000,
   });
 };

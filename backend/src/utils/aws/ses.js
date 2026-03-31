@@ -121,3 +121,51 @@ export const sendEmail = async ({
   const command = new SendEmailCommand(params);
   return await sesClient.send(command);
 };
+
+export const sendTeamInvitationEmail = async ({
+  toAddress,
+  teamName,
+  token,
+  invitedByName,
+}) => {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const inviteLink = `${frontendUrl}/invite/accept?token=${token}`;
+  const senderEmail = process.env.SES_SENDER_EMAIL;
+
+  const subject = `You're invited to join ${teamName} — CloudAudit`;
+  const safeInvitedBy = invitedByName ? `${invitedByName} ` : "";
+
+  const params = {
+    Source: senderEmail,
+    Destination: {
+      ToAddresses: [toAddress],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: "UTF-8",
+      },
+      Body: {
+        Html: {
+          Data: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Workspace invitation</h2>
+              <p>${safeInvitedBy}invited you to join the <strong>${teamName}</strong> workspace on CloudAudit.</p>
+              <p>Click below to accept this invitation.</p>
+              <a href="${inviteLink}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #f58536; text-decoration: none; border-radius: 8px; font-weight: 700;">Accept invitation</a>
+              <p style="margin-top: 16px; font-size: 12px; color: #666;">If you weren't expecting this, you can ignore this email.</p>
+            </div>
+          `,
+          Charset: "UTF-8",
+        },
+        Text: {
+          Data: `${safeInvitedBy}invited you to join the "${teamName}" workspace on CloudAudit.\n\nAccept: ${inviteLink}\n\nIf you weren't expecting this, ignore this email.`,
+          Charset: "UTF-8",
+        },
+      },
+    },
+  };
+
+  const command = new SendEmailCommand(params);
+  return await sesClient.send(command);
+};

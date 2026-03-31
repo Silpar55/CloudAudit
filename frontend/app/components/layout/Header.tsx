@@ -31,8 +31,11 @@ const Header = ({
   // account is null while loading or when the team has no connected account yet.
   const { account, isLoading: isAccountLoading } = useAwsAccount();
 
+  // Only fetch notifications if the workspace is accessible.
+  // When a user is removed, team pages will render an "unavailable" screen,
+  // and this prevents noisy 403s in the console.
   const { data, isLoading: isNotificationsLoading } =
-    useTeamNotifications(teamId, { enabled: true, limit: 20 });
+    useTeamNotifications(teamId, { enabled: Boolean(teamId), limit: 20 });
 
   const awsAccountId = account?.aws_account_id;
 

@@ -64,6 +64,31 @@ export const getActiveTeamMembersWithUsers = async (teamId) => {
   return rows;
 };
 
+export const searchInvitableUsersByEmail = async (teamId, q, limit = 8) => {
+  const query = `
+    SELECT
+      u.user_id,
+      u.email,
+      u.first_name,
+      u.last_name
+    FROM users u
+    WHERE u.is_active = TRUE
+      AND u.email ILIKE $2
+      AND u.user_id NOT IN (
+        SELECT tm.user_id
+        FROM team_members tm
+        WHERE tm.team_id = $1
+          AND tm.is_active = TRUE
+      )
+    ORDER BY u.email
+    LIMIT $3;
+  `;
+
+  const like = `%${q}%`;
+  const { rows } = await pool.query(query, [teamId, like, limit]);
+  return rows;
+};
+
 export const countActiveOwners = async (teamId) => {
   const query = `
     SELECT COUNT(*)::int AS c
@@ -83,6 +108,7 @@ export const getTeamsByUserId = async (userId) => {
         SELECT team_id
         FROM team_members
         WHERE user_id = $1
+          AND is_active = TRUE
       )
     `;
 
@@ -222,6 +248,24 @@ export const activateTeamMember = async (memberId) => {
   }
 };
 
+export const reactivateTeamMemberAsMember = async (memberId) => {
+  const query = `
+    UPDATE team_members
+    SET is_active = TRUE,
+        role = 'member'
+    WHERE team_member_id = $1
+    RETURNING *;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [memberId]);
+    return rows[0];
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+
 export const changeMemberRole = async (memberId, newRole) => {
   const query = `
       UPDATE team_members SET role = $1
@@ -269,4 +313,127 @@ export const deactivateTeamMember = async (memberId) => {
     console.log(error);
     return null;
   }
+};
+
+// ─── Invitations ───────────────────────────────────────────────────────────────
+
+export const createTeamInvitation = async ({
+  teamId,
+  invitedUserId,
+  invitedEmail,
+  invitedBy,
+  token,
+  expiresAt,
+}) => {
+  const query = `
+    INSERT INTO team_invitations (
+      team_id,
+      invited_user_id,
+      invited_email,
+      invited_by,
+      token,
+      status,
+      expires_at
+    )
+    VALUES ($1,$2,$3,$4,$5,'pending',$6)
+    RETURNING *;
+  `;
+  const { rows } = await pool.query(query, [
+    teamId,
+    invitedUserId,
+    invitedEmail,
+    invitedBy,
+    token,
+    expiresAt,
+  ]);
+  return rows[0] || null;
+};
+
+export const getInvitationByToken = async (token) => {
+  const query = `
+    SELECT *
+    FROM team_invitations
+    WHERE token = $1;
+  `;
+  const { rows } = await pool.query(query, [token]);
+  return rows[0] || null;
+};
+
+export const getInvitationById = async (invitationId) => {
+  const query = `
+    SELECT *
+    FROM team_invitations
+    WHERE invitation_id = $1;
+  `;
+  const { rows } = await pool.query(query, [invitationId]);
+  return rows[0] || null;
+};
+
+export const markInvitationAccepted = async (invitationId) => {
+  const query = `
+    UPDATE team_invitations
+    SET status = 'accepted',
+        responded_at = NOW()
+    WHERE invitation_id = $1
+      AND status = 'pending'
+    RETURNING *;
+  `;
+  const { rows } = await pool.query(query, [invitationId]);
+  return rows[0] || null;
+};
+
+export const listPendingInvitationsForUser = async (userId, limit = 20) => {
+  const query = `
+    SELECT
+      i.invitation_id,
+      i.team_id,
+      i.invited_email,
+      i.invited_by,
+      i.status,
+      i.created_at,
+      i.expires_at,
+      t.name AS team_name,
+      t.description AS team_description,
+      u.email AS invited_by_email,
+      u.first_name AS invited_by_first_name,
+      u.last_name AS invited_by_last_name
+    FROM team_invitations i
+    INNER JOIN teams t ON t.team_id = i.team_id
+    LEFT JOIN users u ON u.user_id = i.invited_by
+    WHERE i.invited_user_id = $1
+      AND i.status = 'pending'
+      AND (i.expires_at IS NULL OR i.expires_at > NOW())
+    ORDER BY i.created_at DESC
+    LIMIT $2;
+  `;
+  const { rows } = await pool.query(query, [userId, limit]);
+  return rows;
+};
+
+export const markInvitationDeclined = async (invitationId, userId) => {
+  const query = `
+    UPDATE team_invitations
+    SET status = 'declined',
+        responded_at = NOW()
+    WHERE invitation_id = $1
+      AND invited_user_id = $2
+      AND status = 'pending'
+    RETURNING *;
+  `;
+  const { rows } = await pool.query(query, [invitationId, userId]);
+  return rows[0] || null;
+};
+
+export const cancelPendingInvitationsForUserAndTeam = async (teamId, userId) => {
+  const query = `
+    UPDATE team_invitations
+    SET status = 'cancelled',
+        responded_at = NOW()
+    WHERE team_id = $1
+      AND invited_user_id = $2
+      AND status = 'pending'
+    RETURNING invitation_id;
+  `;
+  const { rows } = await pool.query(query, [teamId, userId]);
+  return rows;
 };

@@ -1,7 +1,9 @@
+import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   teamMemberService,
   type TeamMemberRow,
+  type UserInviteCandidate,
 } from "../services/teamMemberService";
 
 export const useTeamMembers = (teamId: string | undefined) => {
@@ -11,6 +13,7 @@ export const useTeamMembers = (teamId: string | undefined) => {
     queryKey: ["teamMembers", teamId],
     queryFn: () => teamMemberService.listTeamMembers(teamId!),
     enabled: !!teamId,
+    refetchOnWindowFocus: true,
   });
 
   const invalidate = () => {
@@ -40,8 +43,17 @@ export const useTeamMembers = (teamId: string | undefined) => {
     onSuccess: invalidate,
   });
 
+  const searchInviteCandidates = useCallback(
+    (emailQuery: string) =>
+      teamMemberService.searchInviteCandidates(teamId!, emailQuery) as Promise<
+        UserInviteCandidate[]
+      >,
+    [teamId],
+  );
+
   return {
     members: (listQuery.data ?? []) as TeamMemberRow[],
+    searchInviteCandidates,
     loading: listQuery.isLoading,
     error: listQuery.error,
     refetch: listQuery.refetch,

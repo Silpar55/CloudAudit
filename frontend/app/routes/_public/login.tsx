@@ -49,6 +49,7 @@ export default function Login() {
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev: any) => ({ ...prev, [name]: "" }));
   };
 
   const handleOnDismiss = () => {

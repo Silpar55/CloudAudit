@@ -274,7 +274,37 @@ const Sidebar = ({
 
       {/* ── Navigation ──────────────────────────────────────────────────── */}
       <nav className="flex-1 p-4 overflow-y-auto">
-        {currentTeam.status !== "aws_required" ? (
+        {currentTeam.status === "aws_required" ? (
+          <div className="space-y-6">
+            <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 p-4">
+              <div className="space-y-2 text-center">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  AWS Setup Required
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  You can manage your workspace now, and connect AWS when you’re
+                  ready.
+                </p>
+              </div>
+              <div className="mt-4">
+                <NavLink href="/" icon={Home} label="Setup" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <SectionLabel>Workspace</SectionLabel>
+              <NavLink href="/members" icon={Users} label="Team Members" />
+              {(role === "admin" || role === "owner") && (
+                <NavLink
+                  href="/audit-logs"
+                  icon={FileBarChart}
+                  label="Audit Logs"
+                />
+              )}
+              <NavLink href="/settings" icon={Settings} label="Settings" />
+            </div>
+          </div>
+        ) : (
           <div className="space-y-1">
             {/* Analytics */}
             <SectionLabel>Analytics</SectionLabel>
@@ -353,17 +383,6 @@ const Sidebar = ({
               />
             )}
             <NavLink href="/settings" icon={Settings} label="Settings" />
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                AWS Setup Required
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Configure your AWS account to access workspace navigation.
-              </p>
-            </div>
           </div>
         )}
       </nav>

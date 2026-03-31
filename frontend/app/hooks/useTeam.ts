@@ -26,6 +26,8 @@ export const useGetTeamsByUserId = () => {
   return useQuery({
     queryKey: ["userTeams"],
     queryFn: teamService.getTeamsByUserId,
+    refetchOnWindowFocus: true,
+    refetchInterval: 8000,
   });
 };
 

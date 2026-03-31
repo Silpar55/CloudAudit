@@ -10,6 +10,13 @@ export type TeamMemberRow = {
   last_name: string;
 };
 
+export type UserInviteCandidate = {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+};
+
 export const teamMemberService = {
   getTeamMemberByUserId: async (teamId: string) => {
     const response = await apiClient.get(`/teams/${teamId}/members`);
@@ -21,10 +28,44 @@ export const teamMemberService = {
     return data.members ?? [];
   },
 
+  searchInviteCandidates: async (
+    teamId: string,
+    emailQuery: string,
+  ): Promise<UserInviteCandidate[]> => {
+    const { data } = await apiClient.get(`/teams/${teamId}/members/search`, {
+      params: { email: emailQuery },
+    });
+    return data.users ?? [];
+  },
+
   addTeamMember: async (teamId: string, email: string) => {
     const { data } = await apiClient.post(`/teams/${teamId}/members`, {
       email,
     });
+    return data;
+  },
+
+  acceptInvitationByToken: async (token: string) => {
+    const { data } = await apiClient.post(`/teams/invitations/accept`, { token });
+    return data;
+  },
+
+  acceptInvitationById: async (invitationId: string) => {
+    const { data } = await apiClient.post(
+      `/teams/invitations/${invitationId}/accept`,
+    );
+    return data;
+  },
+
+  listMyInvitations: async () => {
+    const { data } = await apiClient.get(`/teams/invitations`);
+    return data?.invitations ?? [];
+  },
+
+  declineInvitation: async (invitationId: string) => {
+    const { data } = await apiClient.post(
+      `/teams/invitations/${invitationId}/decline`,
+    );
     return data;
   },
 

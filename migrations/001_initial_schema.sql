@@ -16,6 +16,8 @@ DROP TABLE IF EXISTS cost_explorer_cache;
 DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS aws_accounts;
 DROP TABLE IF EXISTS team_members;
+DROP TABLE IF EXISTS team_invitations;
+DROP TABLE IF EXISTS notification_receipts;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS teams;
@@ -106,6 +108,39 @@ CREATE TABLE team_members (
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE (team_id, user_id)
 );
+
+-- Enforce: exactly one active owner per workspace (team)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_team_single_active_owner
+ON team_members (team_id)
+WHERE is_active = TRUE AND role = 'owner';
+
+-- TEAM_INVITATIONS TABLE (pending invites that must be accepted)
+CREATE TABLE IF NOT EXISTS team_invitations (
+  invitation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams (team_id) ON DELETE CASCADE,
+  invited_user_id UUID REFERENCES users (user_id) ON DELETE CASCADE,
+  invited_email TEXT NOT NULL,
+  invited_by UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'declined', 'expired', 'cancelled')) DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  responded_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_invitations_team_status
+  ON team_invitations (team_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_team_invitations_invited_user
+  ON team_invitations (invited_user_id, status, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_team_invitations_pending_user
+  ON team_invitations (team_id, invited_user_id)
+  WHERE status = 'pending' AND invited_user_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_team_invitations_pending_email
+  ON team_invitations (team_id, invited_email)
+  WHERE status = 'pending';
 
 -- AWS_ACCOUNTS TABLE
 CREATE TABLE aws_accounts (
