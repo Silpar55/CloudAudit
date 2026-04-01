@@ -52,6 +52,16 @@ export const formatAnomalyForUI = (anomaly) => {
   };
 };
 
+const normalizeActionStepsForUi = (raw) => {
+  const parsed = parseJSONSafe(raw);
+  if (Array.isArray(parsed)) return parsed.map(String);
+  if (typeof parsed === "string" && parsed.trim()) return [parsed.trim()];
+  if (parsed && typeof parsed === "object") {
+    return Object.values(parsed).map(String).filter(Boolean);
+  }
+  return [];
+};
+
 export const formatRecommendationForUI = (rec) => {
   if (!rec) return rec;
   return {
@@ -61,6 +71,6 @@ export const formatRecommendationForUI = (rec) => {
     resource_type_display: formatResourceType(rec.resource_type),
     confidence_score_pct: `${formatCost(parseFloat(rec.confidence_score || 0) * 100)}%`,
     metadata: parseJSONSafe(rec.metadata),
-    action_steps: parseJSONSafe(rec.action_steps),
+    action_steps: normalizeActionStepsForUi(rec.action_steps),
   };
 };

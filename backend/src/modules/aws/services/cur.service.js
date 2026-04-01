@@ -3,10 +3,12 @@ import { getTemporaryCredentials } from "#utils/aws/sts.js";
 import {
   startQuery,
   getQueryStatus,
-  getQueryResults,
+  getQueryExecutionSummary,
+  getAllQueryResultRows,
 } from "#utils/aws/athena.js";
 import { AppError } from "#utils/helper/AppError.js";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { logger } from "#utils/logger.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -37,8 +39,65 @@ const executeAthenaQuery = async (
   return executionId;
 };
 
+const parseSingleCountCell = (rows) => {
+  if (!rows || rows.length < 2) return null;
+  const cell = rows[1]?.Data?.[0]?.VarCharValue;
+  if (cell == null || cell === "") return null;
+  const n = Number(cell);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * AWS CUR line items are often not plain "Usage" (e.g. DiscountedUsage, SavingsPlanCoveredUsage).
+ * CUR files also commonly lag — current calendar month in UTC can be empty while prior days have data.
+ * Override types: CLOUDAUDIT_CUR_LINE_ITEM_TYPES=Usage,DiscountedUsage
+ * Override lookback: CLOUDAUDIT_CUR_LOOKBACK_DAYS=90 (1–366)
+ */
+const getCurExtractFilter = () => {
+  const rawDays = parseInt(process.env.CLOUDAUDIT_CUR_LOOKBACK_DAYS || "90", 10);
+  const lookbackDays = Number.isFinite(rawDays)
+    ? Math.min(Math.max(rawDays, 1), 366)
+    : 90;
+
+  const typesFromEnv = process.env.CLOUDAUDIT_CUR_LINE_ITEM_TYPES;
+  const lineItemTypes = typesFromEnv
+    ? typesFromEnv
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : ["Usage", "DiscountedUsage", "SavingsPlanCoveredUsage"];
+
+  const escapedTypes = lineItemTypes.map((t) => `'${String(t).replace(/'/g, "''")}'`);
+  const typeInClause = escapedTypes.join(", ");
+
+  const datePredicate = `line_item_usage_start_date >= date_add('day', -${lookbackDays}, current_date)`;
+  const typePredicate = `line_item_line_item_type IN (${typeInClause})`;
+  const whereSql = `${datePredicate}\n      AND ${typePredicate}`;
+
+  return {
+    whereSql,
+    lookbackDays,
+    lineItemTypes,
+  };
+};
+
+const getCurRowLimit = () => {
+  const raw = parseInt(process.env.CLOUDAUDIT_CUR_ATHENA_ROW_LIMIT || "50000", 10);
+  if (!Number.isFinite(raw)) return 50000;
+  return Math.min(Math.max(raw, 100), 500000);
+};
+
 // ─── Core Service: Automate DDL & Extract Data ──────────────────────────────
 export const fetchAndSyncCUR = async (account) => {
+  const awsAccountNumber = account.aws_account_id;
+  const internalAccountId = account.id;
+
+  const logCtx = {
+    component: "cur_athena",
+    awsAccountNumber,
+    internalAccountId: internalAccountId || null,
+  };
+
   try {
     const credentials = await getTemporaryCredentials(account);
     const athenaClient = createAthenaClient("us-east-1", credentials);
@@ -46,15 +105,19 @@ export const fetchAndSyncCUR = async (account) => {
     // Dynamic defaults unique to this specific user's account
     const athenaDatabase = "cloudaudit_cur";
     const athenaTable = "daily_report";
-    const bucketName = `cloudaudit-cur-data-${account.aws_account_id}`;
-    const s3OutputLocation = `s3://aws-athena-query-results-${account.aws_account_id}-us-east-1/`;
+    const bucketName = `cloudaudit-cur-data-${awsAccountNumber}`;
+    const s3OutputLocation = `s3://aws-athena-query-results-${awsAccountNumber}-us-east-1/`;
 
     // AWS automatically nests the Parquet files based on Prefix and Report Name
     const dataLocation = `s3://${bucketName}/cur/CloudAudit_Daily_Report/CloudAudit_Daily_Report/`;
 
-    console.log(
-      `[Athena] Preparing Database and Table for account ${account.aws_account_id}...`,
-    );
+    logger.info("CUR Athena: preparing database and external table", {
+      ...logCtx,
+      athenaDatabase,
+      athenaTable,
+      dataLocation,
+      s3OutputLocation,
+    });
 
     // 1. Create the Database (If it doesn't exist)
     const createDbQuery = `CREATE DATABASE IF NOT EXISTS ${athenaDatabase};`;
@@ -81,7 +144,8 @@ export const fetchAndSyncCUR = async (account) => {
     `;
     await executeAthenaQuery(athenaClient, createTableQuery, s3OutputLocation);
 
-    console.log(`[Athena] Executing Data Extraction Query...`);
+    const { whereSql, lookbackDays, lineItemTypes } = getCurExtractFilter();
+    const rowLimit = getCurRowLimit();
 
     // 3. Extract the Granular Data
     const selectQuery = `
@@ -90,10 +154,18 @@ export const fetchAndSyncCUR = async (account) => {
         line_item_operation, line_item_usage_amount, line_item_unblended_cost,
         product_region, line_item_usage_start_date, line_item_blended_cost
       FROM ${athenaDatabase}.${athenaTable}
-      WHERE line_item_usage_start_date >= date_trunc('month', current_date)
-      AND line_item_line_item_type = 'Usage'
-      LIMIT 1000;
+      WHERE ${whereSql}
+      LIMIT ${rowLimit};
     `;
+
+    logger.info("CUR Athena: running extraction SELECT", {
+      ...logCtx,
+      lookbackDays,
+      lineItemTypes,
+      rowLimit,
+      filterNote:
+        "Date window is rolling UTC days from CLOUDAUDIT_CUR_LOOKBACK_DAYS; types from CLOUDAUDIT_CUR_LINE_ITEM_TYPES or defaults include DiscountedUsage / SavingsPlanCoveredUsage.",
+    });
 
     const selectExecutionId = await executeAthenaQuery(
       athenaClient,
@@ -101,9 +173,18 @@ export const fetchAndSyncCUR = async (account) => {
       s3OutputLocation,
     );
 
-    // 4. Retrieve and Parse Results
-    const rows = await getQueryResults(athenaClient, selectExecutionId);
+    const execSummary = await getQueryExecutionSummary(
+      athenaClient,
+      selectExecutionId,
+    );
+
+    // 4. Retrieve and Parse Results (all pages — Athena paginates at ~1000 rows)
+    const rows = await getAllQueryResultRows(athenaClient, selectExecutionId);
+    const headerRow = rows[0];
     const dataRows = rows.slice(1); // Skip headers
+
+    const headerLabels =
+      headerRow?.Data?.map((c) => c.VarCharValue).filter(Boolean) ?? [];
 
     const parsedData = dataRows.map((row) => {
       const getVal = (index) => row.Data[index]?.VarCharValue || null;
@@ -132,7 +213,80 @@ export const fetchAndSyncCUR = async (account) => {
       };
     });
 
-    console.log(`[Athena] Successfully parsed ${parsedData.length} records.`);
+    const sampleRowRaw =
+      dataRows[0]?.Data?.map((c) => c.VarCharValue ?? "") ?? [];
+    const sampleRowTruncated = sampleRowRaw.map((v) =>
+      String(v).length > 120 ? `${String(v).slice(0, 120)}…` : String(v),
+    );
+
+    logger.info("CUR Athena: extraction finished", {
+      ...logCtx,
+      queryExecutionId: selectExecutionId,
+      athenaStatistics: execSummary,
+      resultRowCountRaw: rows.length,
+      headerColumnCount: headerLabels.length,
+      headerLabels,
+      dataRowCount: dataRows.length,
+      parsedRecordCount: parsedData.length,
+      firstDataRowSample: sampleRowTruncated.length ? sampleRowTruncated : null,
+    });
+
+    if (parsedData.length === 0) {
+      logger.warn("CUR Athena: zero rows after parse — ML daily_cost_summaries will stay empty until CUR returns data", {
+        ...logCtx,
+        queryExecutionId: selectExecutionId,
+        lookbackDays,
+        lineItemTypes,
+        hints: [
+          "If countAllTableRows > 0 but extraction is 0, widen CLOUDAUDIT_CUR_LOOKBACK_DAYS or set CLOUDAUDIT_CUR_LINE_ITEM_TYPES to match your CUR (see AWS CUR line_item_line_item_type).",
+          "CREATE EXTERNAL TABLE IF NOT EXISTS does not fix a wrong LOCATION; drop the table in Athena if the path changed.",
+        ],
+        dataLocation,
+      });
+
+      const runDiagnostics =
+        process.env.CLOUDAUDIT_CUR_ATHENA_DIAGNOSTICS === "1" ||
+        process.env.CLOUDAUDIT_CUR_ATHENA_DIAGNOSTICS === "true";
+
+      if (runDiagnostics) {
+        try {
+          const countAll = `SELECT COUNT(*) AS c FROM ${athenaDatabase}.${athenaTable}`;
+          const countFiltered = `
+            SELECT COUNT(*) AS c FROM ${athenaDatabase}.${athenaTable}
+            WHERE ${whereSql}
+          `;
+          const idAll = await executeAthenaQuery(
+            athenaClient,
+            countAll,
+            s3OutputLocation,
+          );
+          const rowsAll = await getAllQueryResultRows(athenaClient, idAll);
+          const idFil = await executeAthenaQuery(
+            athenaClient,
+            countFiltered,
+            s3OutputLocation,
+          );
+          const rowsFil = await getAllQueryResultRows(athenaClient, idFil);
+
+          logger.warn("CUR Athena: diagnostic COUNT queries", {
+            ...logCtx,
+            countAllTableRows: parseSingleCountCell(rowsAll),
+            countMatchingExtractFilter: parseSingleCountCell(rowsFil),
+            lookbackDays,
+            lineItemTypes,
+          });
+        } catch (diagErr) {
+          logger.error("CUR Athena: diagnostic queries failed", {
+            ...logCtx,
+            error: diagErr?.message,
+          });
+        }
+      } else {
+        logger.info("CUR Athena: set CLOUDAUDIT_CUR_ATHENA_DIAGNOSTICS=true to run COUNT(*) diagnostics when rows are zero", {
+          ...logCtx,
+        });
+      }
+    }
 
     return {
       status: "real_sync_complete",
@@ -140,7 +294,11 @@ export const fetchAndSyncCUR = async (account) => {
       data: parsedData,
     };
   } catch (error) {
-    console.error("CUR Sync Error:", error);
+    logger.error("CUR Athena: sync failed", {
+      ...logCtx,
+      error: error?.message,
+      stack: error?.stack,
+    });
     throw new AppError(`Failed to sync CUR data: ${error.message}`, 500);
   }
 };

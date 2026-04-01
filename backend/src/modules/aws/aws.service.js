@@ -11,6 +11,7 @@ import * as curSetupService from "./services/cur-setup.service.js";
 
 import { validateSTSConnection } from "#utils/aws/sts.js";
 import { generateScripts } from "#utils/aws/policy-generator.js";
+import { logger } from "#utils/logger.js";
 
 export const initializePendingAccount = async (teamId, roleArn) => {
   if (!validRoleARN(roleArn)) throw new AppError("Role ARN is invalid", 400);
@@ -212,12 +213,26 @@ export const syncCurData = async (account) => {
 
   const result = await curService.fetchAndSyncCUR(account);
 
-  if (result.data && result.data.length > 0) {
+  const curRows = result.data?.length ?? 0;
+  if (curRows > 0) {
     const rowsInserted = await awsModel.batchInsertCurData(
       account.id,
       result.data,
     );
     result.message = `Successfully synced and saved ${rowsInserted} records to the database.`;
+    logger.info("CUR sync: rows persisted to cost_data", {
+      component: "cur_sync",
+      internalAccountId: account.id,
+      awsAccountNumber: account.aws_account_id,
+      rowsFromAthena: curRows,
+      rowsInserted,
+    });
+  } else {
+    logger.warn("CUR sync: Athena returned no rows — cost_data unchanged; ML needs daily_cost_summaries from CUR", {
+      component: "cur_sync",
+      internalAccountId: account.id,
+      awsAccountNumber: account.aws_account_id,
+    });
   }
 
   delete result.data;

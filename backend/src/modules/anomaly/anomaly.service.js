@@ -11,6 +11,7 @@ import {
   sendAnomalyAlertEmail,
   sendMlAnalysisPassedEmail,
 } from "#utils/notifications/email.js";
+import { logger } from "#utils/logger.js";
 
 export const getAnomalies = async (account) => {
   const anomalies = await anomalyModel.getAnomaliesByInternalId(account.id);
@@ -31,6 +32,13 @@ export const triggerAnalysis = async (
     process.env.ML_SERVICE_URL ||
     "http://127.0.0.1:5001/api/ml/analyze?version=2";
 
+  const mlCtx = {
+    component: "ml_bridge",
+    internalAccountId: account.id,
+    awsAccountNumber: account.aws_account_id || null,
+    mlServiceUrl,
+  };
+
   try {
     const response = await fetch(mlServiceUrl, {
       method: "POST",
@@ -38,8 +46,44 @@ export const triggerAnalysis = async (
       body: JSON.stringify({ aws_account_id: account.id }),
     });
 
-    if (!response.ok) throw new Error(`ML Service Error`);
-    const mlData = await response.json();
+    const responseText = await response.text();
+    if (!response.ok) {
+      logger.error("ML service HTTP failure", {
+        ...mlCtx,
+        status: response.status,
+        bodyPreview: responseText.slice(0, 2000),
+      });
+      throw new Error(`ML Service Error`);
+    }
+
+    let mlData;
+    try {
+      mlData = JSON.parse(responseText);
+    } catch (parseErr) {
+      logger.error("ML service returned non-JSON", {
+        ...mlCtx,
+        bodyPreview: responseText.slice(0, 2000),
+        error: parseErr?.message,
+      });
+      throw new Error(`ML Service Error`);
+    }
+
+    logger.info("ML service response", {
+      ...mlCtx,
+      mlStatus: mlData?.status,
+      mlMessage: mlData?.message,
+      anomaliesReportedByMl: mlData?.anomalies_detected,
+      modelVersion: mlData?.model_version,
+    });
+
+    if (mlData?.status === "skipped") {
+      logger.warn("ML analysis skipped (no anomalies written)", {
+        ...mlCtx,
+        mlMessage: mlData?.message,
+        hint:
+          "Usually empty daily_cost_summaries or fewer than 14 points per service/region — run CUR sync and check CUR Athena logs.",
+      });
+    }
 
     const recResult = await recommendationsService.runDetectionCycle(account);
 
@@ -134,12 +178,24 @@ export const triggerAnalysis = async (
       }
     }
 
+    logger.info("ML pipeline: post-recommendations DB snapshot", {
+      ...mlCtx,
+      openAnomaliesInDb: anomaliesDetected,
+      recommendationsInDb: recommendationsGenerated,
+      recommendationCycleAiCount: recResult?.ai_recommendations_generated,
+    });
+
     return {
       message: "Analysis complete",
       anomalies_detected: anomaliesDetected,
       recommendations_generated: recommendationsGenerated,
     };
   } catch (error) {
+    logger.error("ML pipeline failed", {
+      ...mlCtx,
+      error: error?.message,
+      stack: error?.stack,
+    });
     throw new AppError("AI Analysis is currently unavailable.", 503);
   }
 };

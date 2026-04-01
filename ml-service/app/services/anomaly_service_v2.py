@@ -221,7 +221,18 @@ class AnomalyServiceV2:
             """
             df = pd.read_sql(query, conn, params={"account_id": aws_account_id})
 
+            logger.info(
+                "ML v2 loaded daily_cost_summaries rows=%s account=%s",
+                len(df.index),
+                aws_account_id,
+            )
+
             if df.empty:
+                logger.warning(
+                    "ML v2 skipped: daily_cost_summaries is empty for account=%s "
+                    "(CUR sync → cost_data → trigger must populate this table).",
+                    aws_account_id,
+                )
                 return {
                     "status": "skipped",
                     "model_version": self.model_version,
@@ -231,6 +242,11 @@ class AnomalyServiceV2:
             # Check minimum data across any single segment
             segment_counts = df.groupby(["service", "region"]).size()
             if segment_counts.max() < 14:
+                logger.warning(
+                    "ML v2 skipped: insufficient history account=%s max_segment_days=%s",
+                    aws_account_id,
+                    int(segment_counts.max()),
+                )
                 return {
                     "status": "skipped",
                     "model_version": self.model_version,
@@ -245,6 +261,12 @@ class AnomalyServiceV2:
             detected_list = []
             if not anomalies_df.empty:
                 detected_list = self._save_anomalies(anomalies_df, conn)
+
+            logger.info(
+                "ML v2 detection done account=%s anomalies_saved=%s",
+                aws_account_id,
+                len(detected_list),
+            )
 
             return {
                 "status": "success",

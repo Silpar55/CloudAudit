@@ -55,5 +55,19 @@ describe("Formatters Utility", () => {
       expect(formatted.confidence_score_pct).toBe("85%");
       expect(formatted.metadata).toEqual({ cpu: 5 });
     });
+
+    it("Should coerce string action_steps to an array for the UI", () => {
+      const rawRec = {
+        recommendation_id: "rec-1",
+        estimated_monthly_savings: "10",
+        resource_type: "other",
+        confidence_score: "0.7",
+        metadata: "{}",
+        action_steps: "First do this\nSecond do that",
+      };
+      const formatted = formatRecommendationForUI(rawRec);
+      expect(Array.isArray(formatted.action_steps)).toBe(true);
+      expect(formatted.action_steps.length).toBeGreaterThan(0);
+    });
   });
 });

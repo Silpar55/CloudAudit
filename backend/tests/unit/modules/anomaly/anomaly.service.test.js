@@ -49,7 +49,7 @@ describe("Anomaly Service", () => {
       const mockResponse = { status: "success", anomalies_detected: 2 };
       global.fetch.mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        text: async () => JSON.stringify(mockResponse),
       });
 
       anomalyModel.getAnomaliesByInternalId.mockResolvedValue([
@@ -101,7 +101,7 @@ describe("Anomaly Service", () => {
       const mockResponse = { status: "success", anomalies_detected: 2 };
       global.fetch.mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        text: async () => JSON.stringify(mockResponse),
       });
 
       anomalyModel.getAnomaliesByInternalId.mockResolvedValue([]);

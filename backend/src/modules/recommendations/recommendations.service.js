@@ -3,6 +3,7 @@ import * as recommendationsModel from "./recommendations.model.js";
 import * as anomalyModel from "../anomaly/anomaly.model.js";
 import { getTemporaryCredentials } from "#utils/aws/sts.js";
 import { AppError } from "#utils/helper/AppError.js";
+import { logger } from "#utils/logger.js";
 import * as cw from "#utils/aws/cloudwatch.js";
 import * as ec2 from "#utils/aws/ec2.js";
 import * as rds from "#utils/aws/rds.js";
@@ -594,13 +595,113 @@ export const dismissRecommendation = async (account, recommendationId) => {
   return { message: "Recommendation dismissed", recommendation: updatedRec };
 };
 
+/**
+ * Lyzr often returns prose, errors ("Error in L..."), or JSON inside markdown fences.
+ * Never throw — return null so the recommendation cycle can continue for other anomalies.
+ */
+const parseAgentJsonResponse = (raw) => {
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (!s) return null;
+
+  const fence = /^```(?:json)?\s*([\s\S]*?)```$/im.exec(s);
+  if (fence) s = fence[1].trim();
+
+  if (!s.startsWith("{")) {
+    const start = s.indexOf("{");
+    const end = s.lastIndexOf("}");
+    if (start !== -1 && end > start) s = s.slice(start, end + 1);
+  }
+
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+};
+
+const DEFAULT_AI_STEP =
+  "Review the anomaly in CloudAudit and validate usage in the AWS console (Cost Explorer / service).";
+
+/**
+ * Models often return PascalCase keys, `steps` instead of `action_steps`, or a single string.
+ * Maps to the shape expected by detectManualAIRecommendations + the UI.
+ */
+const normalizeLyzrAdvice = (parsed) => {
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const explanationKeys = [
+    "explanation",
+    "Explanation",
+    "summary",
+    "Summary",
+    "analysis",
+    "Analysis",
+    "diagnostic_explanation",
+    "diagnosticExplanation",
+    "message",
+    "Message",
+    "recommendation",
+    "Recommendation",
+    "description",
+    "Description",
+  ];
+
+  let explanation = "";
+  for (const k of explanationKeys) {
+    const v = parsed[k];
+    if (v != null && String(v).trim()) {
+      explanation = String(v).trim();
+      break;
+    }
+  }
+
+  const stepsRaw =
+    parsed.action_steps ??
+    parsed.actionSteps ??
+    parsed.actions ??
+    parsed.Actions ??
+    parsed.steps ??
+    parsed.Steps ??
+    parsed["action steps"];
+
+  let action_steps = null;
+
+  if (Array.isArray(stepsRaw)) {
+    action_steps = stepsRaw.map((x) => String(x).trim()).filter(Boolean);
+  } else if (typeof stepsRaw === "string" && stepsRaw.trim()) {
+    const lines = stepsRaw
+      .split(/\n+/)
+      .map((line) => line.replace(/^\s*\d+[\).\s]+/, "").trim())
+      .filter(Boolean);
+    action_steps = lines.length ? lines : [stepsRaw.trim()];
+  } else if (stepsRaw && typeof stepsRaw === "object") {
+    action_steps = Object.values(stepsRaw)
+      .map((x) => String(x).trim())
+      .filter(Boolean);
+  }
+
+  if (explanation && (!action_steps || action_steps.length === 0)) {
+    action_steps = [DEFAULT_AI_STEP];
+  }
+
+  if (!explanation) return null;
+  if (!action_steps?.length) {
+    action_steps = [DEFAULT_AI_STEP];
+  }
+
+  return { explanation, action_steps };
+};
+
 // LYZR agent
 const fetchAIInvestigation = async (internalAccountId, anomaly) => {
   const lyzrApiKey = process.env.LYZR_API_KEY;
   const agentId = process.env.LYZR_AGENT_ID;
 
   if (!lyzrApiKey || !agentId) {
-    console.warn("Lyzr credentials missing. Skipping AI analysis.");
+    logger.warn("Lyzr credentials missing; skipping AI investigation", {
+      component: "lyzr_investigation",
+    });
     return null;
   }
 
@@ -627,20 +728,60 @@ const fetchAIInvestigation = async (internalAccountId, anomaly) => {
       }),
     });
 
-    if (!response.ok)
-      throw new Error(`Lyzr API responded with ${response.status}`);
+    const bodyText = await response.text();
 
-    const data = await response.json();
-    // Lyzr returns the agent's response in the `response` field
+    if (!response.ok) {
+      logger.warn("Lyzr API HTTP error", {
+        component: "lyzr_investigation",
+        anomalyId: anomaly.anomaly_id,
+        status: response.status,
+        bodyPreview: bodyText.slice(0, 800),
+      });
+      return null;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(bodyText);
+    } catch {
+      logger.warn("Lyzr API returned non-JSON body", {
+        component: "lyzr_investigation",
+        anomalyId: anomaly.anomaly_id,
+        bodyPreview: bodyText.slice(0, 800),
+      });
+      return null;
+    }
+
     const aiResponseText = data.response;
+    const parsed = parseAgentJsonResponse(aiResponseText);
 
-    // Parse the strict JSON schema we enforced in the prompt
-    return JSON.parse(aiResponseText);
+    if (!parsed) {
+      logger.warn("Lyzr agent `response` was not valid JSON (often a provider/agent error string)", {
+        component: "lyzr_investigation",
+        anomalyId: anomaly.anomaly_id,
+        responsePreview: String(aiResponseText ?? "").slice(0, 800),
+      });
+      return null;
+    }
+
+    const normalized = normalizeLyzrAdvice(parsed);
+    if (!normalized) {
+      logger.warn("Lyzr JSON parsed but no explanation field matched (expected explanation/summary/etc.)", {
+        component: "lyzr_investigation",
+        anomalyId: anomaly.anomaly_id,
+        parsedKeys: Object.keys(parsed),
+      });
+      return null;
+    }
+
+    return normalized;
   } catch (error) {
-    console.error(
-      `AI Analysis failed for anomaly ${anomaly.anomaly_id}:`,
-      error,
-    );
+    logger.error("AI investigation request failed", {
+      component: "lyzr_investigation",
+      anomalyId: anomaly.anomaly_id,
+      error: error?.message,
+      stack: error?.stack,
+    });
     return null;
   }
 };
@@ -653,7 +794,6 @@ export const detectManualAIRecommendations = async (account) => {
   for (const anomaly of orphans) {
     const aiAdvice = await fetchAIInvestigation(account.id, anomaly);
 
-    console.log(aiAdvice);
     if (aiAdvice && aiAdvice.explanation && aiAdvice.action_steps) {
       // Determine a safe resource type fallback
       let resourceType = "other";
