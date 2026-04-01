@@ -3,8 +3,13 @@ import { Link } from "react-router";
 
 import { validEmail, validPassword } from "~/utils/validation";
 import React from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { useLogin, useResendVerificationEmail } from "~/hooks/useAuth";
 import { useAuth } from "~/context/AuthContext";
+import {
+  setPendingInviteToken,
+  getPendingInviteToken,
+} from "~/utils/pendingInviteToken";
 
 const validateField = (name: string, value: string) => {
   switch (name) {
@@ -21,10 +26,17 @@ const validateField = (name: string, value: string) => {
 };
 
 export default function Login() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { mutateAsync, isPending } = useLogin();
   const { mutateAsync: resendAsync, isPending: isResending } =
     useResendVerificationEmail();
   const { login } = useAuth();
+
+  React.useEffect(() => {
+    const invite = searchParams.get("invite")?.trim();
+    if (invite) setPendingInviteToken(invite);
+  }, [searchParams]);
 
   const [formData, setFormData] = React.useState({
     email: "",
@@ -41,6 +53,11 @@ export default function Login() {
   });
 
   const [showResend, setShowResend] = React.useState(false);
+
+  const inviteFromUrl = searchParams.get("invite")?.trim();
+  const signupHref = inviteFromUrl
+    ? `/signup?invite=${encodeURIComponent(inviteFromUrl)}`
+    : "/signup";
 
   const isFormValid =
     validEmail(formData.email) && validPassword(formData.password).length === 0;
@@ -95,6 +112,12 @@ export default function Login() {
 
       setShowResend(false);
       login(data.token);
+      const pending = getPendingInviteToken();
+      if (pending) {
+        navigate(`/invite/accept?token=${encodeURIComponent(pending)}`, {
+          replace: true,
+        });
+      }
     } catch (error: any) {
       const msg = error.response?.data?.message || "Something went wrong";
       const status = error.response?.status;
@@ -140,7 +163,7 @@ export default function Login() {
             <p className="text-sm text-gray-600 dark:text-gray-300">
               New to CloudAudit?{" "}
               <Link
-                to="/signup"
+                to={signupHref}
                 className="font-semibold text-aws-orange hover:text-aws-orange-dark"
               >
                 Create your free account

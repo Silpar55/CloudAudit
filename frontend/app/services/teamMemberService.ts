@@ -45,6 +45,13 @@ export const teamMemberService = {
     return data;
   },
 
+  previewInvitation: async (token: string) => {
+    const { data } = await apiClient.get(`/teams/invitations/preview`, {
+      params: { token },
+    });
+    return data;
+  },
+
   acceptInvitationByToken: async (token: string) => {
     const { data } = await apiClient.post(`/teams/invitations/accept`, { token });
     return data;

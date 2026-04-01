@@ -107,25 +107,55 @@ export const addTeamMember = async (email, teamId) => {
   throw new AppError("User is already in the team", 400);
 };
 
+const buildInviteLink = (token) => {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  return `${frontendUrl}/invite/accept?token=${token}`;
+};
+
+export const previewInvitationByToken = async (rawToken) => {
+  const token = String(rawToken || "").trim();
+  if (!token) throw new AppError("Invitation token is required", 400);
+
+  const inv = await teamModel.getInvitationByToken(token);
+  if (!inv || inv.status !== "pending")
+    throw new AppError("Invitation is invalid or has expired", 404);
+  if (inv.expires_at && new Date(inv.expires_at) < new Date())
+    throw new AppError("Invitation has expired", 400);
+
+  const team = await teamModel.getTeamById(inv.team_id);
+  if (!team) throw new AppError("Invitation is invalid or has expired", 404);
+
+  return {
+    teamName: team.name,
+    invitedEmail: inv.invited_email,
+    expiresAt: inv.expires_at,
+  };
+};
+
 export const inviteTeamMember = async ({ teamId, email, actorUserId, teamName, actorName }) => {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   if (!normalizedEmail) throw new AppError("Email is required", 400);
 
   const user = await authModel.findUser(normalizedEmail);
-  if (!user || user.is_active === false)
-    throw new AppError("User does not exist", 404);
+  if (user && user.is_active === false)
+    throw new AppError("This email belongs to a deactivated account", 400);
 
-  const existing = await teamModel.getTeamMemberById(teamId, user.user_id);
-  if (existing?.is_active) throw new AppError("User is already in the team", 400);
+  if (user) {
+    const existing = await teamModel.getTeamMemberById(teamId, user.user_id);
+    if (existing?.is_active) throw new AppError("User is already in the team", 400);
+  }
 
-  // Create a pending invitation (even if previously removed).
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const inviteLink = buildInviteLink(token);
+
+  const invitedUserId = user?.user_id ?? null;
+  const invitedEmail = user?.email ?? normalizedEmail;
 
   const invitation = await teamModel.createTeamInvitation({
     teamId,
-    invitedUserId: user.user_id,
-    invitedEmail: user.email,
+    invitedUserId,
+    invitedEmail,
     invitedBy: actorUserId,
     token,
     expiresAt,
@@ -134,31 +164,40 @@ export const inviteTeamMember = async ({ teamId, email, actorUserId, teamName, a
 
   const auditLogId = await insertAuditLog(teamId, actorUserId, "TEAM_INVITE_CREATED", {
     invitationId: invitation.invitation_id,
-    invitedUserId: user.user_id,
-    invitedEmail: user.email,
+    invitedUserId,
+    invitedEmail,
   });
 
+  let emailSent = false;
   try {
     await sendTeamInvitationEmail({
-      toAddress: user.email,
+      toAddress: invitedEmail,
       teamName,
       token,
       invitedByName: actorName,
+      isOpenInvite: !invitedUserId,
     });
+    emailSent = true;
   } catch (_e) {
-    // Invitation still exists; user can accept in-app. Surface email failure upstream.
-    // Do not leak internals.
-    throw new AppError(
-      "Invitation created, but we couldn't send the email right now. The user can still accept from in-app notifications.",
-      503,
-    );
+    emailSent = false;
   }
+
+  const message = emailSent
+    ? invitedUserId
+      ? "Invitation sent. The user must accept to join this workspace."
+      : "Invitation email sent. They can also join using the invite link if they already use CloudAudit."
+    : invitedUserId
+      ? "Invitation created, but we couldn't send the email. Share the invite link or they can accept from in-app notifications."
+      : "Invitation created, but we couldn't send the email. Share the invite link so they can sign up or sign in.";
 
   return {
     invitationId: invitation.invitation_id,
     auditLogId,
-    invitedUserId: user.user_id,
-    invitedEmail: user.email,
+    invitedUserId,
+    invitedEmail,
+    inviteLink,
+    emailSent,
+    message,
   };
 };
 
@@ -184,16 +223,44 @@ const getMembershipState = async (teamId, userId) => {
   };
 };
 
+const assertInvitationMatchesActor = (inv, actorUser) => {
+  if (!actorUser || actorUser.is_active === false) {
+    throw new AppError("You must be signed in to accept this invitation", 401);
+  }
+
+  if (inv.invited_user_id != null) {
+    if (String(inv.invited_user_id) !== String(actorUser.user_id)) {
+      throw new AppError("This invitation is not for your account", 403);
+    }
+    return;
+  }
+
+  const invEmail = String(inv.invited_email || "").trim().toLowerCase();
+  const userEmail = String(actorUser.email || "").trim().toLowerCase();
+  if (invEmail !== userEmail) {
+    throw new AppError(
+      "Sign in with the email address that received this invitation.",
+      403,
+    );
+  }
+  if (!actorUser.email_verified) {
+    throw new AppError(
+      "Please verify your email before joining this workspace.",
+      403,
+    );
+  }
+};
+
 export const acceptInvitationByToken = async ({ token, actorUserId }) => {
   const t = String(token || "").trim();
   if (!t) throw new AppError("Invitation token is required", 400);
 
+  const actorUser = await authModel.findUserById(actorUserId);
   const inv = await teamModel.getInvitationByToken(t);
   if (!inv) throw new AppError("Invitation is invalid or already used", 400);
   if (inv.expires_at && new Date(inv.expires_at) < new Date())
     throw new AppError("Invitation has expired", 400);
-  if (String(inv.invited_user_id) !== String(actorUserId))
-    throw new AppError("This invitation is not for your account", 403);
+  assertInvitationMatchesActor(inv, actorUser);
 
   if (inv.status === "declined" || inv.status === "cancelled" || inv.status === "expired") {
     throw new AppError("Invitation is invalid or already used", 400);
@@ -238,12 +305,12 @@ export const acceptInvitationById = async ({ invitationId, actorUserId }) => {
   const id = String(invitationId || "").trim();
   if (!id) throw new AppError("Invitation id is required", 400);
 
+  const actorUser = await authModel.findUserById(actorUserId);
   const inv = await teamModel.getInvitationById(id);
   if (!inv) throw new AppError("Invitation is invalid or already used", 400);
   if (inv.expires_at && new Date(inv.expires_at) < new Date())
     throw new AppError("Invitation has expired", 400);
-  if (String(inv.invited_user_id) !== String(actorUserId))
-    throw new AppError("This invitation is not for your account", 403);
+  assertInvitationMatchesActor(inv, actorUser);
 
   if (inv.status === "declined" || inv.status === "cancelled" || inv.status === "expired") {
     throw new AppError("Invitation is invalid or already used", 400);
@@ -280,14 +347,19 @@ export const acceptInvitationById = async ({ invitationId, actorUserId }) => {
 };
 
 export const listMyPendingInvitations = async (actorUserId) => {
-  return teamModel.listPendingInvitationsForUser(actorUserId, 25);
+  const user = await authModel.findUserById(actorUserId);
+  if (!user?.email) return [];
+  return teamModel.listPendingInvitationsForUser(actorUserId, user.email, 25);
 };
 
 export const declineInvitation = async ({ invitationId, actorUserId }) => {
   const id = String(invitationId || "").trim();
   if (!id) throw new AppError("Invitation id is required", 400);
 
-  const row = await teamModel.markInvitationDeclined(id, actorUserId);
+  const user = await authModel.findUserById(actorUserId);
+  if (!user?.email) throw new AppError("Invitation is invalid or already used", 400);
+
+  const row = await teamModel.markInvitationDeclined(id, actorUserId, user.email);
   if (!row) throw new AppError("Invitation is invalid or already used", 400);
 
   await insertAuditLog(row.team_id, actorUserId, "TEAM_INVITE_DECLINED", {
@@ -330,8 +402,13 @@ export const deactivateTeamMember = async (teamId, targetUserId, actorUserId) =>
   const row = await teamModel.deactivateTeamMember(member.team_member_id);
   if (!row) throw new AppError("Failed to remove member", 500);
 
-  // Cancel any still-pending invitations so they can't be used later.
-  await teamModel.cancelPendingInvitationsForUserAndTeam(teamId, targetUserId);
+  const targetUser = await authModel.findUserById(targetUserId);
+  const targetEmail = targetUser?.email || "";
+  await teamModel.cancelPendingInvitationsForUserAndTeam(
+    teamId,
+    targetUserId,
+    targetEmail,
+  );
 
   return row.team_member_id;
 };

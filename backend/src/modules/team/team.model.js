@@ -382,7 +382,11 @@ export const markInvitationAccepted = async (invitationId) => {
   return rows[0] || null;
 };
 
-export const listPendingInvitationsForUser = async (userId, limit = 20) => {
+export const listPendingInvitationsForUser = async (
+  userId,
+  userEmail,
+  limit = 20,
+) => {
   const query = `
     SELECT
       i.invitation_id,
@@ -400,40 +404,64 @@ export const listPendingInvitationsForUser = async (userId, limit = 20) => {
     FROM team_invitations i
     INNER JOIN teams t ON t.team_id = i.team_id
     LEFT JOIN users u ON u.user_id = i.invited_by
-    WHERE i.invited_user_id = $1
-      AND i.status = 'pending'
+    WHERE i.status = 'pending'
       AND (i.expires_at IS NULL OR i.expires_at > NOW())
+      AND (
+        i.invited_user_id = $1
+        OR (
+          i.invited_user_id IS NULL
+          AND LOWER(TRIM(i.invited_email)) = LOWER(TRIM($2::text))
+        )
+      )
     ORDER BY i.created_at DESC
-    LIMIT $2;
+    LIMIT $3;
   `;
-  const { rows } = await pool.query(query, [userId, limit]);
+  const { rows } = await pool.query(query, [userId, userEmail, limit]);
   return rows;
 };
 
-export const markInvitationDeclined = async (invitationId, userId) => {
+export const markInvitationDeclined = async (invitationId, userId, userEmail) => {
+  const email = String(userEmail || "").trim().toLowerCase();
   const query = `
     UPDATE team_invitations
     SET status = 'declined',
         responded_at = NOW()
     WHERE invitation_id = $1
-      AND invited_user_id = $2
       AND status = 'pending'
+      AND (
+        invited_user_id = $2
+        OR (
+          invited_user_id IS NULL
+          AND LOWER(TRIM(invited_email)) = $3
+        )
+      )
     RETURNING *;
   `;
-  const { rows } = await pool.query(query, [invitationId, userId]);
+  const { rows } = await pool.query(query, [invitationId, userId, email]);
   return rows[0] || null;
 };
 
-export const cancelPendingInvitationsForUserAndTeam = async (teamId, userId) => {
+export const cancelPendingInvitationsForUserAndTeam = async (
+  teamId,
+  userId,
+  userEmail,
+) => {
+  const email = String(userEmail || "").trim().toLowerCase();
   const query = `
     UPDATE team_invitations
     SET status = 'cancelled',
         responded_at = NOW()
     WHERE team_id = $1
-      AND invited_user_id = $2
       AND status = 'pending'
+      AND (
+        invited_user_id = $2
+        OR (
+          invited_user_id IS NULL
+          AND LOWER(TRIM(invited_email)) = $3
+        )
+      )
     RETURNING invitation_id;
   `;
-  const { rows } = await pool.query(query, [teamId, userId]);
+  const { rows } = await pool.query(query, [teamId, userId, email]);
   return rows;
 };

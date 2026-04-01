@@ -1,10 +1,12 @@
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Input, Button, Alert } from "~/components/ui";
 
 import { validEmail, validName, validPassword } from "~/utils/validation";
 import React from "react";
 import { parsePhoneNumber } from "react-phone-number-input";
 import { useResendVerificationEmail, useSignUp } from "~/hooks/useAuth";
+import { setPendingInviteToken } from "~/utils/pendingInviteToken";
+import { teamMemberService } from "~/services/teamMemberService";
 
 const validateField = (name: string, value: string) => {
   switch (name) {
@@ -31,6 +33,7 @@ export default function Signup() {
   const { mutateAsync: resendAsync, isPending: isResending } =
     useResendVerificationEmail();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = React.useState({
     firstName: "",
     lastName: "",
@@ -51,6 +54,33 @@ export default function Signup() {
   });
 
   const [signupResult, setSignupResult] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const invite = searchParams.get("invite")?.trim();
+    if (!invite) return;
+    setPendingInviteToken(invite);
+    let cancelled = false;
+    (async () => {
+      try {
+        const preview = await teamMemberService.previewInvitation(invite);
+        if (cancelled || !preview?.invitedEmail) return;
+        setFormData((prev) => ({
+          ...prev,
+          email: prev.email.trim() ? prev.email : preview.invitedEmail,
+        }));
+      } catch {
+        /* invalid token — user can still sign up */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
+
+  const inviteFromUrl = searchParams.get("invite")?.trim();
+  const loginHref = inviteFromUrl
+    ? `/login?invite=${encodeURIComponent(inviteFromUrl)}`
+    : "/login";
 
   const isFormValid =
     validName(formData.firstName) &&
@@ -221,7 +251,7 @@ export default function Signup() {
             <p className="text-sm text-gray-600 dark:text-gray-300">
               Already have an account?{" "}
               <a
-                href="/login"
+                href={loginHref}
                 className="font-semibold text-aws-orange hover:text-aws-orange-dark"
               >
                 Sign in

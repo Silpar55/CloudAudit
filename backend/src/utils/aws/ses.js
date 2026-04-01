@@ -127,6 +127,7 @@ export const sendTeamInvitationEmail = async ({
   teamName,
   token,
   invitedByName,
+  isOpenInvite = false,
 }) => {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
   const inviteLink = `${frontendUrl}/invite/accept?token=${token}`;
@@ -134,6 +135,12 @@ export const sendTeamInvitationEmail = async ({
 
   const subject = `You're invited to join ${teamName} — CloudAudit`;
   const safeInvitedBy = invitedByName ? `${invitedByName} ` : "";
+  const openCopy = isOpenInvite
+    ? "<p>If you already have a CloudAudit account, sign in with this email to join. If not, create an account with the same email, verify it, then open the link again.</p>"
+    : "";
+  const openCopyText = isOpenInvite
+    ? "If you already have a CloudAudit account, sign in with this email to join. If not, create an account with the same email, verify it, then open the link again.\n\n"
+    : "";
 
   const params = {
     Source: senderEmail,
@@ -151,6 +158,7 @@ export const sendTeamInvitationEmail = async ({
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2>Workspace invitation</h2>
               <p>${safeInvitedBy}invited you to join the <strong>${teamName}</strong> workspace on CloudAudit.</p>
+              ${openCopy}
               <p>Click below to accept this invitation.</p>
               <a href="${inviteLink}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #f58536; text-decoration: none; border-radius: 8px; font-weight: 700;">Accept invitation</a>
               <p style="margin-top: 16px; font-size: 12px; color: #666;">If you weren't expecting this, you can ignore this email.</p>
@@ -159,7 +167,7 @@ export const sendTeamInvitationEmail = async ({
           Charset: "UTF-8",
         },
         Text: {
-          Data: `${safeInvitedBy}invited you to join the "${teamName}" workspace on CloudAudit.\n\nAccept: ${inviteLink}\n\nIf you weren't expecting this, ignore this email.`,
+          Data: `${safeInvitedBy}invited you to join the "${teamName}" workspace on CloudAudit.\n\n${openCopyText}Accept: ${inviteLink}\n\nIf you weren't expecting this, ignore this email.`,
           Charset: "UTF-8",
         },
       },

@@ -13,7 +13,8 @@ import {
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { useTeamMembers } from "~/hooks/useTeamMembers";
 import { getAvatarColor, getInitials } from "~/utils/format";
-import { RefreshCw, Users, UserPlus, Trash2 } from "lucide-react";
+import { validEmail } from "~/utils/validation";
+import { RefreshCw, Users, UserPlus, Trash2, Copy, Check } from "lucide-react";
 
 const roleBadgeVariant = (role: string) => {
   if (role === "owner") return "primary";
@@ -43,6 +44,13 @@ export default function TeamMembersPage() {
   const [inviteSelectedEmail, setInviteSelectedEmail] = useState<string | null>(
     null,
   );
+  const [inviteStep, setInviteStep] = useState<"form" | "done">("form");
+  const [inviteResult, setInviteResult] = useState<{
+    message?: string;
+    inviteLink?: string;
+    emailSent?: boolean;
+  } | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{
     userId: string;
     label: string;
@@ -65,16 +73,34 @@ export default function TeamMembersPage() {
     return () => clearInterval(t);
   }, [teamId, refetch]);
 
+  const resetInviteModal = () => {
+    setInviteEmail("");
+    setInviteSuggestions([]);
+    setInviteSelectedEmail(null);
+    setInviteStep("form");
+    setInviteResult(null);
+    setCopiedLink(false);
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setPageError(null);
+    const emailToInvite = (inviteSelectedEmail || inviteEmail).trim();
+    if (!validEmail(emailToInvite)) {
+      setPageError("Enter a valid email address.");
+      return;
+    }
     try {
-      const emailToInvite = (inviteSelectedEmail || inviteEmail).trim();
-      await addMember.mutateAsync(emailToInvite);
+      const data = await addMember.mutateAsync(emailToInvite);
+      setInviteResult({
+        message: data?.message,
+        inviteLink: data?.inviteLink,
+        emailSent: data?.emailSent,
+      });
+      setInviteStep("done");
       setInviteEmail("");
       setInviteSuggestions([]);
       setInviteSelectedEmail(null);
-      setInviteOpen(false);
     } catch (err: any) {
       setPageError(
         err.response?.data?.message || "Could not invite this member.",
@@ -210,6 +236,7 @@ export default function TeamMembersPage() {
               icon={<UserPlus className="w-4 h-4" />}
               onClick={() => {
                 setPageError(null);
+                resetInviteModal();
                 setInviteOpen(true);
               }}
             >
@@ -353,83 +380,157 @@ export default function TeamMembersPage() {
 
       <Modal
         isOpen={inviteOpen}
-        onClose={() => setInviteOpen(false)}
+        onClose={() => {
+          setInviteOpen(false);
+          resetInviteModal();
+        }}
         maxWidth="max-w-md"
       >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-          Send an invitation
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Choose a registered user from the suggestions. They&apos;ll join this
-          workspace after they accept the invitation.
-        </p>
-        <form onSubmit={handleInvite} className="space-y-4">
-          <Input
-            type="email"
-            label="Email address"
-            placeholder="colleague@company.com"
-            value={inviteEmail}
-            name="email"
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              const next = e.target.value;
-              setInviteEmail(next);
-              setInviteSelectedEmail(null);
-            }}
-            required
-          />
-          {inviteLoading ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Searching…
+        {inviteStep === "done" && inviteResult ? (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              Invitation ready
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {inviteResult.message}
             </p>
-          ) : inviteSuggestions.length > 0 ? (
-            <div className="rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-              {inviteSuggestions.slice(0, 6).map((u) => (
-                <button
-                  key={u.user_id}
-                  type="button"
-                  onClick={() => {
-                    setInviteEmail(u.email);
-                    setInviteSelectedEmail(u.email);
-                    setInviteSuggestions([]);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {[u.first_name, u.last_name].filter(Boolean).join(" ") ||
-                      u.email}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {u.email}
-                  </p>
-                </button>
-              ))}
+            {inviteResult.emailSent === false && (
+              <Alert variant="warning" title="Email not delivered">
+                Share the link below so they can join.
+              </Alert>
+            )}
+            {inviteResult.inviteLink ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Invite link
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    className="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 px-3 py-2 text-xs text-gray-800 dark:text-gray-200"
+                    value={inviteResult.inviteLink}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    icon={
+                      copiedLink ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )
+                    }
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          inviteResult.inviteLink ?? "",
+                        );
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
+                  >
+                    {copiedLink ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            <div className="flex justify-end pt-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  setInviteOpen(false);
+                  resetInviteModal();
+                }}
+              >
+                Done
+              </Button>
             </div>
-          ) : inviteEmail.trim().length >= 2 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Keep typing to search. Select a user from the list to enable
-              sending.
-            </p>
-          ) : null}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setInviteOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                addMember.isPending ||
-                !inviteSelectedEmail ||
-                inviteSelectedEmail.trim().length === 0
-              }
-            >
-              {addMember.isPending ? "Sending…" : "Send invite"}
-            </Button>
           </div>
-        </form>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              Send an invitation
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Enter an email address. If they already use CloudAudit, they can
+              sign in and join. If not, they&apos;ll create an account with that
+              email, verify it, then accept the invite.
+            </p>
+            <form onSubmit={handleInvite} className="space-y-4">
+              <Input
+                type="email"
+                label="Email address"
+                placeholder="colleague@company.com"
+                value={inviteEmail}
+                name="email"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const next = e.target.value;
+                  setInviteEmail(next);
+                  setInviteSelectedEmail(null);
+                }}
+                required
+              />
+              {inviteLoading ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Searching…
+                </p>
+              ) : inviteSuggestions.length > 0 ? (
+                <div className="rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                  {inviteSuggestions.slice(0, 6).map((u) => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onClick={() => {
+                        setInviteEmail(u.email);
+                        setInviteSelectedEmail(u.email);
+                        setInviteSuggestions([]);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {[u.first_name, u.last_name].filter(Boolean).join(" ") ||
+                          u.email}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {u.email}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ) : inviteEmail.trim().length >= 2 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No matching CloudAudit users yet — you can still send an invite
+                  to this address.
+                </p>
+              ) : null}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setInviteOpen(false);
+                    resetInviteModal();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    addMember.isPending ||
+                    !validEmail((inviteSelectedEmail || inviteEmail).trim())
+                  }
+                >
+                  {addMember.isPending ? "Sending…" : "Send invite"}
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
       </Modal>
 
       <Modal

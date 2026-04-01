@@ -3,6 +3,7 @@ import { useSearchParams, Link, useNavigate } from "react-router";
 import { useVerifyEmail } from "~/hooks/useAuth";
 import { useAuth } from "~/context/AuthContext";
 import { Card, Button, Alert, Spinner } from "~/components/ui";
+import { getPendingInviteToken } from "~/utils/pendingInviteToken";
 
 const REDIRECT_DELAY = 5000;
 
@@ -35,7 +36,14 @@ export default function VerifyEmailPage() {
     const timeout = setTimeout(() => {
       if (data?.token) {
         login(data.token);
-        navigate("/dashboard", { replace: true });
+        const pending = getPendingInviteToken();
+        if (pending) {
+          navigate(`/invite/accept?token=${encodeURIComponent(pending)}`, {
+            replace: true,
+          });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
       } else {
         navigate("/login", { replace: true });
       }

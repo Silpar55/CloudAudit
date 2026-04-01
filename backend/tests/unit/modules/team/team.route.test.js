@@ -79,16 +79,23 @@ describe("/team", () => {
     const url = `${endpoint}`;
     const teamId = "team-id";
 
-    it("Should throw error when user does not exist in the database", async () => {
-      teamService.inviteTeamMember.mockRejectedValueOnce(
-        new AppError("User does not exist", 404),
-      );
+    it("Should create an invitation when the email is not registered yet", async () => {
+      teamService.inviteTeamMember.mockResolvedValueOnce({
+        invitationId: "inv-open",
+        invitedUserId: null,
+        invitedEmail: "newcomer@test.com",
+        inviteLink: "http://localhost:5173/invite/accept?token=abc",
+        emailSent: true,
+        message: "Invitation email sent.",
+      });
       const response = await request(app)
         .post(`${url}/${teamId}/members`)
-        .send({ email: "unexistentUser@test.com" });
+        .send({ email: "newcomer@test.com" });
 
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe("User does not exist");
+      expect(response.status).toBe(201);
+      expect(response.body.invitationId).toBe("inv-open");
+      expect(response.body.invitedUserId).toBeNull();
+      expect(response.body.inviteLink).toContain("invite/accept");
     });
 
     it("Should throw error when user is already in the team and is active", async () => {

@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 
 import { errorHandler, verifyToken } from "#middleware";
 import { healthRoutes, authRoutes, teamRoutes, profileRoutes } from "#modules";
+import { previewTeamInvitation } from "#modules/team/team.controller.js";
 import {
   requestLoggerMiddleware,
   requestMetricsMiddleware,
@@ -28,6 +29,7 @@ var corsOptions = {
 app.use(cors(corsOptions));
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.get("/api/teams/invitations/preview", previewTeamInvitation);
 app.use("/api/teams", verifyToken, teamRoutes);
 app.use("/api/profile", verifyToken, profileRoutes);
 

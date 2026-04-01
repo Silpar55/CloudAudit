@@ -1,6 +1,16 @@
 import * as teamService from "./team.service.js";
 import { insertAuditLog } from "#modules/audit/audit.model.js";
 
+export const previewTeamInvitation = async (req, res, next) => {
+  try {
+    const token = String(req.query.token ?? "").trim();
+    const preview = await teamService.previewInvitationByToken(token);
+    return res.status(200).send(preview);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const listTeamMembers = async (req, res, next) => {
   try {
     const { teamId } = req.params;
@@ -135,7 +145,7 @@ export const addTeamMember = async (req, res, next) => {
     });
 
     return res.status(201).send({
-      message: "Invitation sent. The user must accept to join this workspace.",
+      message: result.message,
       ...result,
     });
   } catch (err) {

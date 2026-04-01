@@ -21,12 +21,15 @@ export default [
     route("verify-email", "routes/_auth/verify-email.tsx"),
   ]),
 
+  layout("routes/invite/layout.tsx", [
+    route("invite/accept", "routes/invite/accept.tsx"),
+  ]),
+
   // Protected App Area
   layout("routes/_app/layout.tsx", [
     route("dashboard", "routes/_app/dashboard.tsx"),
     route("monitoring", "routes/_app/monitoring.tsx"),
     route("profile", "routes/_app/profile.tsx"),
-    route("invite/accept", "routes/_app/invite/accept.tsx"),
   ]),
 
   // Team Routes
