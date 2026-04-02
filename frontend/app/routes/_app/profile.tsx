@@ -2,6 +2,7 @@ import { useProfile } from "~/hooks/useProfile";
 import { Alert, SectionLoader } from "~/components/ui";
 import {
   EmailSettings,
+  NotificationSettings,
   ProfileUpdateForm,
   PasswordSettings,
   DeleteAccount,
@@ -43,6 +44,14 @@ export default function ProfilePage() {
 
         <div className="pt-12">
           <EmailSettings currentEmail={profile?.email} />
+        </div>
+
+        <div className="pt-12">
+          <NotificationSettings
+            emailNotificationsEnabled={
+              profile?.email_notifications_enabled !== false
+            }
+          />
         </div>
 
         <div className="pt-12">

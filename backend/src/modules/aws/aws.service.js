@@ -189,7 +189,8 @@ export const getCachedCostData = async (
   return rows;
 };
 
-export const syncCurData = async (account) => {
+export const syncCurData = async (account, options = {}) => {
+  const { force = false } = options;
   const MOCK_ACCOUNTS = ["111122223333", "444455556666", "777788889999"];
 
   if (MOCK_ACCOUNTS.includes(account.aws_account_id)) {
@@ -201,7 +202,7 @@ export const syncCurData = async (account) => {
   }
 
   const lastSync = await awsModel.getLastCurSyncTime(account.id);
-  if (lastSync) {
+  if (!force && lastSync) {
     const hoursSinceLastSync = dayjs().diff(dayjs(lastSync), "hour");
     if (hoursSinceLastSync < 12) {
       return {

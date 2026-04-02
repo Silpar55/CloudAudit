@@ -20,6 +20,7 @@ import {
   getTeamMemberById,
   listTeamMembers,
   addTeamMember,
+  getOrCreateTeamShareInvite,
   deactivateTeamMember,
   changeMemberRole,
   searchUsersToInvite,
@@ -92,6 +93,12 @@ router.get(
   searchUsersToInvite,
 );
 router.get("/:teamId/members", verifyTeamId, verifyTeamMembership, getTeamMemberById);
+router.post(
+  "/:teamId/members/share-link",
+  verifyPermissions,
+  verifyTeamId,
+  getOrCreateTeamShareInvite,
+);
 router.post("/:teamId/members", verifyPermissions, verifyTeamId, addTeamMember);
 router.delete(
   "/:teamId/members/:userId",

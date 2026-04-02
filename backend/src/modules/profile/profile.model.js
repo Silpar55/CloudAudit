@@ -10,7 +10,8 @@ export const getProfileById = async (userId) => {
         last_name, 
         phone,
         country_code,
-        created_at
+        created_at,
+        email_notifications_enabled
     FROM users
     WHERE user_id = $1;
   `;
@@ -27,7 +28,7 @@ export const getProfileById = async (userId) => {
 // PATCH FUNCTION
 export const updateProfile = async (
   userId,
-  { first_name, last_name, phone, country_code },
+  { first_name, last_name, phone, country_code, email_notifications_enabled },
 ) => {
   // Dynamic query generation to handle partial updates
   const fields = [];
@@ -50,6 +51,10 @@ export const updateProfile = async (
     fields.push(`country_code = $${idx++}`);
     values.push(country_code);
   }
+  if (email_notifications_enabled !== undefined) {
+    fields.push(`email_notifications_enabled = $${idx++}`);
+    values.push(Boolean(email_notifications_enabled));
+  }
 
   if (fields.length === 0) return null;
 
@@ -58,7 +63,7 @@ export const updateProfile = async (
     UPDATE users 
     SET ${fields.join(", ")}
     WHERE user_id = $${idx}
-    RETURNING user_id, email, first_name, last_name, phone, country_code;
+    RETURNING user_id, email, first_name, last_name, phone, country_code, email_notifications_enabled;
   `;
 
   try {

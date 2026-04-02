@@ -86,6 +86,7 @@ CREATE TABLE users (
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	is_active BOOLEAN NOT NULL DEFAULT TRUE,
 	deactivated_at TIMESTAMP,
+	email_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
 	UNIQUE(user_id, email)
 );
 
@@ -115,6 +116,7 @@ ON team_members (team_id)
 WHERE is_active = TRUE AND role = 'owner';
 
 -- TEAM_INVITATIONS TABLE (pending invites that must be accepted)
+-- is_global_link: reusable workspace share link; invited_email is a placeholder; row stays pending.
 CREATE TABLE IF NOT EXISTS team_invitations (
   invitation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id UUID NOT NULL REFERENCES teams (team_id) ON DELETE CASCADE,
@@ -125,7 +127,9 @@ CREATE TABLE IF NOT EXISTS team_invitations (
   status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'declined', 'expired', 'cancelled')) DEFAULT 'pending',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP WITH TIME ZONE,
-  responded_at TIMESTAMP WITH TIME ZONE
+  responded_at TIMESTAMP WITH TIME ZONE,
+  invite_emails_sent INTEGER NOT NULL DEFAULT 0,
+  is_global_link BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_team_invitations_team_status
@@ -138,9 +142,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_team_invitations_pending_user
   ON team_invitations (team_id, invited_user_id)
   WHERE status = 'pending' AND invited_user_id IS NOT NULL;
 
+-- One pending email-specific invite per (team, email); excludes global share rows.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_team_invitations_pending_email
-  ON team_invitations (team_id, invited_email)
-  WHERE status = 'pending';
+  ON team_invitations (team_id, LOWER(TRIM(invited_email)))
+  WHERE status = 'pending' AND is_global_link = FALSE;
+
+-- At most one active global share link per team.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_team_invitations_pending_global
+  ON team_invitations (team_id)
+  WHERE status = 'pending' AND is_global_link = TRUE;
 
 -- AWS_ACCOUNTS TABLE
 CREATE TABLE aws_accounts (

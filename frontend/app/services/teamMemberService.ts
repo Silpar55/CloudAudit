@@ -38,11 +38,27 @@ export const teamMemberService = {
     return data.users ?? [];
   },
 
-  addTeamMember: async (teamId: string, email: string) => {
+  addTeamMember: async (
+    teamId: string,
+    email: string,
+    options?: { sendEmail?: boolean },
+  ) => {
     const { data } = await apiClient.post(`/teams/${teamId}/members`, {
       email,
+      sendEmail: options?.sendEmail !== false,
     });
     return data;
+  },
+
+  /** Idempotent: one reusable link per workspace (newcomer sign-up flow). */
+  getOrCreateShareInvite: async (teamId: string) => {
+    const { data } = await apiClient.post(`/teams/${teamId}/members/share-link`);
+    return data as {
+      invitationId: string;
+      inviteLink: string;
+      isNew: boolean;
+      message: string;
+    };
   },
 
   previewInvitation: async (token: string) => {

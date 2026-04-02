@@ -112,6 +112,67 @@ const buildInviteLink = (token) => {
   return `${frontendUrl}/invite/accept?token=${token}`;
 };
 
+/** Max SES invitation emails per pending row (resend if the first did not arrive). */
+const MAX_INVITE_EMAILS = 2;
+
+const RESERVED_INVITE_EMAIL_DOMAIN = "invite.link.cloudaudit";
+
+/** Placeholder email for the one reusable global share row per team (not user-facing). */
+const globalSharePlaceholderEmail = (teamId) =>
+  `share+${teamId}@${RESERVED_INVITE_EMAIL_DOMAIN}`;
+
+/**
+ * Reusable workspace link: one pending row per team, not tied to an email.
+ * Joiners follow the newcomer flow (sign up, verify, accept).
+ */
+export const getOrCreateGlobalShareInvite = async ({
+  teamId,
+  actorUserId,
+  teamName: _teamName,
+  actorName: _actorName,
+}) => {
+  const existing = await teamModel.findPendingGlobalInvitationByTeamId(teamId);
+  if (existing) {
+    return {
+      invitationId: existing.invitation_id,
+      inviteLink: buildInviteLink(existing.token),
+      isNew: false,
+      message:
+        "Anyone with this link can sign up and join this workspace (newcomer flow: create an account, verify email, then join).",
+    };
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  const invitedEmail = globalSharePlaceholderEmail(teamId);
+
+  const invitation = await teamModel.createTeamInvitation({
+    teamId,
+    invitedUserId: null,
+    invitedEmail,
+    invitedBy: actorUserId,
+    token,
+    expiresAt,
+    isGlobalLink: true,
+  });
+  if (!invitation)
+    throw new AppError("Could not create workspace share link", 500);
+
+  await insertAuditLog(teamId, actorUserId, "TEAM_INVITE_CREATED", {
+    invitationId: invitation.invitation_id,
+    isGlobalLink: true,
+    invitedEmail,
+  });
+
+  return {
+    invitationId: invitation.invitation_id,
+    inviteLink: buildInviteLink(token),
+    isNew: true,
+    message:
+      "Workspace invite link created. Share it with newcomers — they create an account, verify email, then join.",
+  };
+};
+
 export const previewInvitationByToken = async (rawToken) => {
   const token = String(rawToken || "").trim();
   if (!token) throw new AppError("Invitation token is required", 400);
@@ -127,14 +188,29 @@ export const previewInvitationByToken = async (rawToken) => {
 
   return {
     teamName: team.name,
-    invitedEmail: inv.invited_email,
+    invitedEmail: inv.is_global_link ? "" : inv.invited_email,
     expiresAt: inv.expires_at,
+    isGlobalLink: Boolean(inv.is_global_link),
   };
 };
 
-export const inviteTeamMember = async ({ teamId, email, actorUserId, teamName, actorName }) => {
+export const inviteTeamMember = async ({
+  teamId,
+  email,
+  actorUserId,
+  teamName,
+  actorName,
+  sendEmail = true,
+}) => {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   if (!normalizedEmail) throw new AppError("Email is required", 400);
+
+  if (normalizedEmail.endsWith(`@${RESERVED_INVITE_EMAIL_DOMAIN}`)) {
+    throw new AppError(
+      "This email address is reserved for workspace share links.",
+      400,
+    );
+  }
 
   const user = await authModel.findUser(normalizedEmail);
   if (user && user.is_active === false)
@@ -145,12 +221,87 @@ export const inviteTeamMember = async ({ teamId, email, actorUserId, teamName, a
     if (existing?.is_active) throw new AppError("User is already in the team", 400);
   }
 
+  const invitedUserId = user?.user_id ?? null;
+  const invitedEmail = user?.email ?? normalizedEmail;
+
+  const pending = await teamModel.findPendingInvitationByTeamAndEmail(
+    teamId,
+    normalizedEmail,
+  );
+
+  if (pending) {
+    const inviteLink = buildInviteLink(pending.token);
+    const sentCount = Math.min(
+      Number(pending.invite_emails_sent) || 0,
+      MAX_INVITE_EMAILS,
+    );
+
+    if (!sendEmail) {
+      return {
+        invitationId: pending.invitation_id,
+        auditLogId: null,
+        invitedUserId: pending.invited_user_id,
+        invitedEmail: pending.invited_email,
+        inviteLink,
+        emailSent: false,
+        inviteEmailsSent: sentCount,
+        message:
+          "Invitation link is ready. Copy it below — no email was sent. You can send up to two invitation emails from this screen if needed.",
+      };
+    }
+
+    if (sentCount >= MAX_INVITE_EMAILS) {
+      throw new AppError(
+        "You have already sent the maximum of 2 invitation emails for this address. Share the invite link below, or wait until the invite expires and send a new one.",
+        400,
+        {
+          meta: {
+            inviteLink,
+            invitationId: pending.invitation_id,
+            inviteEmailsSent: sentCount,
+          },
+        },
+      );
+    }
+
+    let emailSent = false;
+    try {
+      await sendTeamInvitationEmail({
+        toAddress: invitedEmail,
+        teamName,
+        token: pending.token,
+        invitedByName: actorName,
+        isOpenInvite: !invitedUserId,
+      });
+      emailSent = true;
+    } catch (_e) {
+      emailSent = false;
+    }
+
+    const nextCount = emailSent ? sentCount + 1 : sentCount;
+    await teamModel.setInvitationEmailsSent(pending.invitation_id, nextCount);
+
+    const message = emailSent
+      ? `Invitation email sent (${nextCount}/${MAX_INVITE_EMAILS}). They can also use the invite link below.`
+      : invitedUserId
+        ? "We couldn't send the email. Share the invite link or they can accept from in-app notifications."
+        : "We couldn't send the email. Share the invite link so they can sign up or sign in.";
+
+    return {
+      invitationId: pending.invitation_id,
+      auditLogId: null,
+      invitedUserId: pending.invited_user_id,
+      invitedEmail: pending.invited_email,
+      inviteLink,
+      emailSent,
+      inviteEmailsSent: nextCount,
+      message,
+    };
+  }
+
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const inviteLink = buildInviteLink(token);
-
-  const invitedUserId = user?.user_id ?? null;
-  const invitedEmail = user?.email ?? normalizedEmail;
 
   const invitation = await teamModel.createTeamInvitation({
     teamId,
@@ -169,26 +320,34 @@ export const inviteTeamMember = async ({ teamId, email, actorUserId, teamName, a
   });
 
   let emailSent = false;
-  try {
-    await sendTeamInvitationEmail({
-      toAddress: invitedEmail,
-      teamName,
-      token,
-      invitedByName: actorName,
-      isOpenInvite: !invitedUserId,
-    });
-    emailSent = true;
-  } catch (_e) {
-    emailSent = false;
+  let inviteEmailsSent = 0;
+
+  if (sendEmail) {
+    try {
+      await sendTeamInvitationEmail({
+        toAddress: invitedEmail,
+        teamName,
+        token,
+        invitedByName: actorName,
+        isOpenInvite: !invitedUserId,
+      });
+      emailSent = true;
+      inviteEmailsSent = 1;
+    } catch (_e) {
+      emailSent = false;
+    }
+    await teamModel.setInvitationEmailsSent(invitation.invitation_id, inviteEmailsSent);
   }
 
-  const message = emailSent
-    ? invitedUserId
-      ? "Invitation sent. The user must accept to join this workspace."
-      : "Invitation email sent. They can also join using the invite link if they already use CloudAudit."
-    : invitedUserId
-      ? "Invitation created, but we couldn't send the email. Share the invite link or they can accept from in-app notifications."
-      : "Invitation created, but we couldn't send the email. Share the invite link so they can sign up or sign in.";
+  const message = !sendEmail
+    ? "Invitation link is ready. Copy it below — no email was sent. You can send up to two invitation emails from this screen if needed."
+    : emailSent
+      ? invitedUserId
+        ? "Invitation sent. The user must accept to join this workspace."
+        : "Invitation email sent. They can also join using the invite link below."
+      : invitedUserId
+        ? "Invitation created, but we couldn't send the email. Share the invite link or they can accept from in-app notifications."
+        : "Invitation created, but we couldn't send the email. Share the invite link so they can sign up or sign in.";
 
   return {
     invitationId: invitation.invitation_id,
@@ -197,6 +356,7 @@ export const inviteTeamMember = async ({ teamId, email, actorUserId, teamName, a
     invitedEmail,
     inviteLink,
     emailSent,
+    inviteEmailsSent,
     message,
   };
 };
@@ -231,6 +391,17 @@ const assertInvitationMatchesActor = (inv, actorUser) => {
   if (inv.invited_user_id != null) {
     if (String(inv.invited_user_id) !== String(actorUser.user_id)) {
       throw new AppError("This invitation is not for your account", 403);
+    }
+    return;
+  }
+
+  // Global share link: not email-bound; any verified account can join (newcomer UX path).
+  if (inv.is_global_link) {
+    if (!actorUser.email_verified) {
+      throw new AppError(
+        "Please verify your email before joining this workspace.",
+        403,
+      );
     }
     return;
   }
@@ -277,10 +448,8 @@ export const acceptInvitationByToken = async ({ token, actorUserId }) => {
     );
   }
 
-  // Idempotent behavior:
-  // - pending: mark accepted
-  // - accepted: keep accepted and ensure membership active
-  if (inv.status === "pending") {
+  // Global share links stay pending so many people can use the same URL.
+  if (inv.status === "pending" && !inv.is_global_link) {
     const accepted = await teamModel.markInvitationAccepted(inv.invitation_id);
     if (!accepted) {
       // Another request may have accepted it already; continue as idempotent
@@ -295,6 +464,7 @@ export const acceptInvitationByToken = async ({ token, actorUserId }) => {
   if (!alreadyMember) {
     await insertAuditLog(inv.team_id, actorUserId, "TEAM_INVITE_ACCEPTED", {
       invitationId: inv.invitation_id,
+      isGlobalLink: Boolean(inv.is_global_link),
     });
   }
 
@@ -325,7 +495,7 @@ export const acceptInvitationById = async ({ invitationId, actorUserId }) => {
     );
   }
 
-  if (inv.status === "pending") {
+  if (inv.status === "pending" && !inv.is_global_link) {
     const accepted = await teamModel.markInvitationAccepted(inv.invitation_id);
     if (!accepted) {
       // Another request may have accepted it already; continue as idempotent
@@ -340,6 +510,7 @@ export const acceptInvitationById = async ({ invitationId, actorUserId }) => {
   if (!alreadyMember) {
     await insertAuditLog(inv.team_id, actorUserId, "TEAM_INVITE_ACCEPTED", {
       invitationId: inv.invitation_id,
+      isGlobalLink: Boolean(inv.is_global_link),
     });
   }
 

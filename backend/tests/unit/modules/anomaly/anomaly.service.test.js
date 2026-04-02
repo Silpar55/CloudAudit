@@ -6,6 +6,16 @@ jest.mock("../../../../src/modules/recommendations/recommendations.service.js");
 jest.mock("../../../../src/modules/recommendations/recommendations.model.js");
 jest.mock("#utils/notifications/slack.js");
 jest.mock("#modules/audit/audit.model.js");
+jest.mock("#modules/auth/auth.model.js", () => ({
+  findUserById: jest.fn().mockResolvedValue({
+    user_id: "user-1",
+    email_notifications_enabled: true,
+  }),
+}));
+jest.mock("#utils/notifications/email.js", () => ({
+  sendAnomalyAlertEmail: jest.fn().mockResolvedValue({}),
+  sendMlAnalysisPassedEmail: jest.fn().mockResolvedValue({}),
+}));
 
 import * as anomalyModel from "#modules/anomaly/anomaly.model.js";
 import * as recommendationsService from "../../../../src/modules/recommendations/recommendations.service.js";

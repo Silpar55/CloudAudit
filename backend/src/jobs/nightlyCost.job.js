@@ -13,9 +13,9 @@ export const runNightlyCostJob = async () => {
 
   try {
     const accounts = await awsModel.getAllAccounts();
-    Promise.all(
+    await Promise.all(
       accounts.map(async (acc) => {
-        await awsService.ceGetCostAndUsage(acc.team_id, acc.aws_account_id);
+        await awsService.ceGetCostAndUsage(acc);
       }),
     );
 

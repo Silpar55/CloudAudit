@@ -101,6 +101,20 @@ export const countActiveOwners = async (teamId) => {
   return rows[0]?.c ?? 0;
 };
 
+/** For scheduled jobs: audit log must reference a real user (FK). */
+export const getActiveTeamOwnerUserId = async (teamId) => {
+  const query = `
+    SELECT user_id
+    FROM team_members
+    WHERE team_id = $1
+      AND is_active = TRUE
+      AND role = 'owner'
+    LIMIT 1;
+  `;
+  const { rows } = await pool.query(query, [teamId]);
+  return rows[0]?.user_id ?? null;
+};
+
 export const getTeamsByUserId = async (userId) => {
   const query = `
       SELECT * FROM team_dashboard_view
@@ -317,6 +331,33 @@ export const deactivateTeamMember = async (memberId) => {
 
 // ─── Invitations ───────────────────────────────────────────────────────────────
 
+export const findPendingInvitationByTeamAndEmail = async (teamId, normalizedEmail) => {
+  const query = `
+    SELECT *
+    FROM team_invitations
+    WHERE team_id = $1
+      AND LOWER(TRIM(invited_email)) = LOWER(TRIM($2::text))
+      AND status = 'pending'
+      AND is_global_link = FALSE
+    LIMIT 1;
+  `;
+  const { rows } = await pool.query(query, [teamId, normalizedEmail]);
+  return rows[0] || null;
+};
+
+export const findPendingGlobalInvitationByTeamId = async (teamId) => {
+  const query = `
+    SELECT *
+    FROM team_invitations
+    WHERE team_id = $1
+      AND status = 'pending'
+      AND is_global_link = TRUE
+    LIMIT 1;
+  `;
+  const { rows } = await pool.query(query, [teamId]);
+  return rows[0] || null;
+};
+
 export const createTeamInvitation = async ({
   teamId,
   invitedUserId,
@@ -324,6 +365,7 @@ export const createTeamInvitation = async ({
   invitedBy,
   token,
   expiresAt,
+  isGlobalLink = false,
 }) => {
   const query = `
     INSERT INTO team_invitations (
@@ -333,9 +375,10 @@ export const createTeamInvitation = async ({
       invited_by,
       token,
       status,
-      expires_at
+      expires_at,
+      is_global_link
     )
-    VALUES ($1,$2,$3,$4,$5,'pending',$6)
+    VALUES ($1,$2,$3,$4,$5,'pending',$6,$7)
     RETURNING *;
   `;
   const { rows } = await pool.query(query, [
@@ -345,7 +388,20 @@ export const createTeamInvitation = async ({
     invitedBy,
     token,
     expiresAt,
+    isGlobalLink,
   ]);
+  return rows[0] || null;
+};
+
+export const setInvitationEmailsSent = async (invitationId, count) => {
+  const query = `
+    UPDATE team_invitations
+    SET invite_emails_sent = $2
+    WHERE invitation_id = $1
+      AND status = 'pending'
+    RETURNING *;
+  `;
+  const { rows } = await pool.query(query, [invitationId, count]);
   return rows[0] || null;
 };
 
@@ -405,6 +461,7 @@ export const listPendingInvitationsForUser = async (
     INNER JOIN teams t ON t.team_id = i.team_id
     LEFT JOIN users u ON u.user_id = i.invited_by
     WHERE i.status = 'pending'
+      AND i.is_global_link = FALSE
       AND (i.expires_at IS NULL OR i.expires_at > NOW())
       AND (
         i.invited_user_id = $1

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 jest.mock("#modules/aws/aws.model.js");
-jest.mock("#modules/recommendations/recommendations.service.js");
+jest.mock("#modules/aws/aws.service.js");
+jest.mock("#modules/anomaly/anomaly.service.js");
 jest.mock("#utils/notifications/slack.js");
 
 import * as awsModel from "#modules/aws/aws.model.js";
-import * as recommendationsService from "#modules/recommendations/recommendations.service.js";
+import * as awsService from "#modules/aws/aws.service.js";
+import * as anomalyService from "#modules/anomaly/anomaly.service.js";
 import { sendWeeklyReportSlackMessage } from "#utils/notifications/slack.js";
 import { runWeeklyRecommendationsJob } from "../../../src/jobs/weeklyRecommendations.job.js";
 
@@ -20,12 +22,16 @@ describe("weeklyRecommendations job", () => {
       { id: "acc-2", status: "disconnected" },
       { id: "acc-3", status: "active" },
     ]);
-    recommendationsService.runDetectionCycle.mockResolvedValue({});
+    awsService.syncCurData.mockResolvedValue({ status: "ok" });
+    anomalyService.runScheduledWeeklyAccountAnalysis.mockResolvedValue({});
     sendWeeklyReportSlackMessage.mockResolvedValue({ ok: true });
 
     await runWeeklyRecommendationsJob();
 
-    expect(recommendationsService.runDetectionCycle).toHaveBeenCalledTimes(2);
+    expect(awsService.syncCurData).toHaveBeenCalledTimes(2);
+    expect(anomalyService.runScheduledWeeklyAccountAnalysis).toHaveBeenCalledTimes(
+      2,
+    );
     expect(sendWeeklyReportSlackMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         totalAccounts: 2,

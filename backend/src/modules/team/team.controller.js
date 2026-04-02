@@ -132,9 +132,11 @@ export const getTeamMemberById = async (req, res, next) => {
 
 export const addTeamMember = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const { email, sendEmail: rawSendEmail } = req.body;
     const { teamId } = req.params;
     const workspaceName = req.team?.name;
+
+    const sendEmail = rawSendEmail !== false && rawSendEmail !== "false";
 
     const result = await teamService.inviteTeamMember({
       teamId,
@@ -142,12 +144,32 @@ export const addTeamMember = async (req, res, next) => {
       actorUserId: req.userId,
       teamName: workspaceName ?? "your workspace",
       actorName: "",
+      sendEmail,
     });
 
     return res.status(201).send({
       message: result.message,
       ...result,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** Idempotent: returns existing global share link or creates one (no email required). */
+export const getOrCreateTeamShareInvite = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+    const workspaceName = req.team?.name;
+
+    const result = await teamService.getOrCreateGlobalShareInvite({
+      teamId,
+      actorUserId: req.userId,
+      teamName: workspaceName ?? "your workspace",
+      actorName: "",
+    });
+
+    return res.status(200).send(result);
   } catch (err) {
     next(err);
   }

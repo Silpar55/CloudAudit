@@ -8,7 +8,12 @@ import {
   clearPendingInviteToken,
 } from "~/utils/pendingInviteToken";
 
-type Preview = { teamName: string; invitedEmail: string; expiresAt?: string };
+type Preview = {
+  teamName: string;
+  invitedEmail: string;
+  expiresAt?: string;
+  isGlobalLink?: boolean;
+};
 
 export default function AcceptInvitePage() {
   const [params] = useSearchParams();
@@ -58,7 +63,14 @@ export default function AcceptInvitePage() {
   }, [token]);
 
   useEffect(() => {
-    if (!token || !isAuthenticated || isChecking || loading || error || !preview)
+    if (
+      !token ||
+      !isAuthenticated ||
+      isChecking ||
+      loading ||
+      error ||
+      !preview
+    )
       return;
 
     let cancelled = false;
@@ -88,15 +100,7 @@ export default function AcceptInvitePage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    token,
-    isAuthenticated,
-    isChecking,
-    loading,
-    error,
-    preview,
-    navigate,
-  ]);
+  }, [token, isAuthenticated, isChecking, loading, error, preview, navigate]);
 
   const loginHref = `/login?invite=${encodeURIComponent(token)}`;
   const signupHref = `/signup?invite=${encodeURIComponent(token)}`;
@@ -147,15 +151,32 @@ export default function AcceptInvitePage() {
           </div>
         ) : preview && !isAuthenticated ? (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              This invite is for{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {preview.invitedEmail}
-              </span>
-              . Sign in with that email if you already have an account, or create
-              a new account using the same address. You&apos;ll verify your email
-              before you can join.
-            </p>
+            {preview.isGlobalLink ? (
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  This is a shared workspace link for{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {preview.teamName}
+                  </span>
+                  . Create an account with the email you want to use, verify it,
+                  then you&apos;ll join the workspace.
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  You can also sign in with your existing account to join the
+                  workspace.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                This invite is for{" "}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {preview.invitedEmail}
+                </span>
+                . Sign in with that email if you already have an account, or
+                create a new account using the same address. You&apos;ll verify
+                your email before you can join.
+              </p>
+            )}
             <div className="flex flex-wrap gap-3">
               <Link
                 to={loginHref}

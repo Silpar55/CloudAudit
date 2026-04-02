@@ -13,14 +13,15 @@ export const getProfile = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    // Extracted payload matches the new schema fields
-    const { first_name, last_name, phone, country_code } = req.body;
+    const { first_name, last_name, phone, country_code, email_notifications_enabled } =
+      req.body;
 
     const profile = await profileService.updateProfileDetails(req.userId, {
       first_name,
       last_name,
       phone,
       country_code,
+      email_notifications_enabled,
     });
 
     return res

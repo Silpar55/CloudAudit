@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import * as awsModel from "#modules/aws/aws.model.js";
-import * as recommendationsService from "#modules/recommendations/recommendations.service.js";
+import * as awsService from "#modules/aws/aws.service.js";
+import * as anomalyService from "#modules/anomaly/anomaly.service.js";
 import { sendWeeklyReportSlackMessage } from "#utils/notifications/slack.js";
 import { sendWeeklyReportEmail } from "#utils/notifications/email.js";
 
@@ -26,12 +27,13 @@ export const runWeeklyRecommendationsJob = async () => {
     // to prevent CPU/memory spikes that could cause server downtime or block the event loop.
     for (const account of activeAccounts) {
       try {
-        await recommendationsService.runDetectionCycle(account);
+        await awsService.syncCurData(account, { force: true });
+        await anomalyService.runScheduledWeeklyAccountAnalysis(account);
         successCount++;
       } catch (accountError) {
         errorCount++;
         console.error(
-          `[CRON] Error generating recommendations for account ${account.id}:`,
+          `[CRON] Error in weekly CUR + ML pipeline for account ${account.id}:`,
           accountError,
         );
       }

@@ -5,6 +5,7 @@ export interface ProfilePayload {
   last_name: string;
   phone: string;
   country_code: string;
+  email_notifications_enabled?: boolean;
 }
 
 export const profileService = {

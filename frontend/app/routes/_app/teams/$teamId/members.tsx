@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -14,6 +15,7 @@ import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { useTeamMembers } from "~/hooks/useTeamMembers";
 import { getAvatarColor, getInitials } from "~/utils/format";
 import { validEmail } from "~/utils/validation";
+import { teamMemberService } from "~/services/teamMemberService";
 import { RefreshCw, Users, UserPlus, Trash2, Copy, Check } from "lucide-react";
 
 const roleBadgeVariant = (role: string) => {
@@ -45,10 +47,14 @@ export default function TeamMembersPage() {
     null,
   );
   const [inviteStep, setInviteStep] = useState<"form" | "done">("form");
+  const [sendInviteEmail, setSendInviteEmail] = useState(true);
   const [inviteResult, setInviteResult] = useState<{
     message?: string;
     inviteLink?: string;
     emailSent?: boolean;
+    inviteEmailsSent?: number;
+    /** False when user unchecked "Send invitation email" (link-only). */
+    requestedEmail?: boolean;
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{
@@ -56,10 +62,19 @@ export default function TeamMembersPage() {
     label: string;
   } | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
 
   const user = workspace?.user;
   const teamMember = workspace?.teamMember;
   const canManage = teamMember && ["admin", "owner"].includes(teamMember.role);
+
+  const { data: workspaceShareInvite, isLoading: workspaceShareLoading } =
+    useQuery({
+      queryKey: ["teamShareInvite", teamId],
+      queryFn: () => teamMemberService.getOrCreateShareInvite(teamId!),
+      enabled: Boolean(canManage && teamId),
+      staleTime: Infinity,
+    });
 
   const isOwner = teamMember?.role === "owner";
   const isAdmin = teamMember?.role === "admin";
@@ -80,6 +95,7 @@ export default function TeamMembersPage() {
     setInviteStep("form");
     setInviteResult(null);
     setCopiedLink(false);
+    setSendInviteEmail(true);
   };
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -91,17 +107,37 @@ export default function TeamMembersPage() {
       return;
     }
     try {
-      const data = await addMember.mutateAsync(emailToInvite);
+      const data = await addMember.mutateAsync({
+        email: emailToInvite,
+        sendEmail: sendInviteEmail,
+      });
       setInviteResult({
         message: data?.message,
         inviteLink: data?.inviteLink,
         emailSent: data?.emailSent,
+        inviteEmailsSent: data?.inviteEmailsSent,
+        requestedEmail: sendInviteEmail,
       });
       setInviteStep("done");
       setInviteEmail("");
       setInviteSuggestions([]);
       setInviteSelectedEmail(null);
     } catch (err: any) {
+      const meta = err.response?.data?.meta;
+      if (meta?.inviteLink) {
+        setInviteResult({
+          message: err.response?.data?.message,
+          inviteLink: meta.inviteLink,
+          emailSent: false,
+          inviteEmailsSent: meta.inviteEmailsSent,
+          requestedEmail: true,
+        });
+        setInviteStep("done");
+        setInviteEmail("");
+        setInviteSuggestions([]);
+        setInviteSelectedEmail(null);
+        return;
+      }
       setPageError(
         err.response?.data?.message || "Could not invite this member.",
       );
@@ -252,6 +288,56 @@ export default function TeamMembersPage() {
         </Alert>
       )}
 
+      {canManage && (
+        <Card padding="lg" className="border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
+            Workspace invite link
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Share this link with anyone — they&apos;ll use the newcomer flow:
+            create a CloudAudit account with their own email, verify it, then join
+            this workspace. No need to enter an email here first.
+          </p>
+          {workspaceShareLoading ? (
+            <div className="py-4">
+              <SectionLoader />
+            </div>
+          ) : workspaceShareInvite?.inviteLink ? (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                readOnly
+                className="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200"
+                value={workspaceShareInvite.inviteLink}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                icon={
+                  copiedShareLink ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )
+                }
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(
+                      workspaceShareInvite.inviteLink,
+                    );
+                    setCopiedShareLink(true);
+                    setTimeout(() => setCopiedShareLink(false), 2000);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              >
+                {copiedShareLink ? "Copied" : "Copy link"}
+              </Button>
+            </div>
+          ) : null}
+        </Card>
+      )}
+
       {loading && members.length === 0 ? (
         <div className="py-12">
           <SectionLoader />
@@ -394,11 +480,19 @@ export default function TeamMembersPage() {
             <p className="text-sm text-gray-600 dark:text-gray-300">
               {inviteResult.message}
             </p>
-            {inviteResult.emailSent === false && (
-              <Alert variant="warning" title="Email not delivered">
-                Share the link below so they can join.
-              </Alert>
-            )}
+            {inviteResult.emailSent === false &&
+              inviteResult.requestedEmail !== false && (
+                <Alert variant="warning" title="Email not delivered">
+                  Share the link below so they can join.
+                </Alert>
+              )}
+            {typeof inviteResult.inviteEmailsSent === "number" &&
+              inviteResult.inviteEmailsSent > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Invitation emails sent for this invite:{" "}
+                  {inviteResult.inviteEmailsSent}/2
+                </p>
+              )}
             {inviteResult.inviteLink ? (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -453,12 +547,13 @@ export default function TeamMembersPage() {
         ) : (
           <>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-              Send an invitation
+              Invite someone
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Enter an email address. If they already use CloudAudit, they can
-              sign in and join. If not, they&apos;ll create an account with that
-              email, verify it, then accept the invite.
+              Enter an email address. You can copy a shareable link immediately,
+              with or without sending email. If they already use CloudAudit, they
+              can sign in and join. Otherwise they&apos;ll sign up with that email,
+              verify it, then accept the invite.
             </p>
             <form onSubmit={handleInvite} className="space-y-4">
               <Input
@@ -507,6 +602,18 @@ export default function TeamMembersPage() {
                   to this address.
                 </p>
               ) : null}
+              <label className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-gray-300 text-aws-orange focus:ring-aws-orange"
+                  checked={sendInviteEmail}
+                  onChange={(e) => setSendInviteEmail(e.target.checked)}
+                />
+                <span>
+                  Send invitation email (up to two emails per invite if the first
+                  doesn&apos;t arrive)
+                </span>
+              </label>
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="button"
@@ -525,7 +632,11 @@ export default function TeamMembersPage() {
                     !validEmail((inviteSelectedEmail || inviteEmail).trim())
                   }
                 >
-                  {addMember.isPending ? "Sending…" : "Send invite"}
+                  {addMember.isPending
+                    ? "Working…"
+                    : sendInviteEmail
+                      ? "Send invite"
+                      : "Create invite link"}
                 </Button>
               </div>
             </form>

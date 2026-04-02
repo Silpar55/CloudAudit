@@ -22,7 +22,10 @@ export const useTeamMembers = (teamId: string | undefined) => {
   };
 
   const addMember = useMutation({
-    mutationFn: (email: string) => teamMemberService.addTeamMember(teamId!, email),
+    mutationFn: (vars: { email: string; sendEmail?: boolean }) =>
+      teamMemberService.addTeamMember(teamId!, vars.email, {
+        sendEmail: vars.sendEmail,
+      }),
     onSuccess: invalidate,
   });
 

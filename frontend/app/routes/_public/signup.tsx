@@ -63,7 +63,9 @@ export default function Signup() {
     (async () => {
       try {
         const preview = await teamMemberService.previewInvitation(invite);
-        if (cancelled || !preview?.invitedEmail) return;
+        if (cancelled || !preview) return;
+        if (preview.isGlobalLink) return;
+        if (!preview.invitedEmail) return;
         setFormData((prev) => ({
           ...prev,
           email: prev.email.trim() ? prev.email : preview.invitedEmail,

@@ -1,19 +1,9 @@
-# Backend
+# TASK TO DO FOR FINAL LAUNCH
 
-## Refactor functions that are confusing due ID -> AWS_ACC_ID
+## Make Share link via url available and not only after sending via email
 
-## Handle Repeated recommendations
+## Handle sending multiple invitations to the same person (allowing sending up to 2 emails invitations to the same person in case the first one didn't reach)
 
-## Throw better format for anomalies / recommendations for better UI/UX desing. But keeping current format for AI analysis or backend features that might use it
+## Handle cron job (every week) that request a new CUR report to keep track to new anomalies based on new cost and usage report
 
-# Frontend
-
-## Improve Anomalies dashboard, make it responsive and based on the new JSON format bring a more comprehensible data
-
-## Change current Card component used in anomaly and dashboard into a more specialized Card for them. Using a references famous pages and webapps that handle this kind of displays
-
-# Notes
-
-## Keep format and coding style in backend and frontend
-
-## Keep Color palette design in frontend
+## Allow the user do deactivate email notifications. Also implement the function to join to the slack.
