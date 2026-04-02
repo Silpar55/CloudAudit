@@ -38,6 +38,7 @@ describe("Team Service", () => {
         "team-123",
         "user-123",
         "owner",
+        { analysisPrefsPrompted: false, notifyAnalysisEmail: false },
       );
       expect(result).toBe("team-123");
     });
@@ -76,7 +77,9 @@ describe("Team Service", () => {
         "team-123",
       );
 
-      expect(teamModel.reactivateTeamMemberAsMember).toHaveBeenCalledWith("tm-123");
+      expect(teamModel.reactivateTeamMemberAsMember).toHaveBeenCalledWith(
+        "tm-123",
+      );
       expect(result).toBe("tm-123");
     });
   });
@@ -95,8 +98,7 @@ describe("Team Service", () => {
 
     it("Should throw 404 if target user is not in the team", async () => {
       teamModel.getTeamMemberById.mockImplementation((_tid, uid) => {
-        if (uid === "actor-1")
-          return { role: "owner", is_active: true };
+        if (uid === "actor-1") return { role: "owner", is_active: true };
         return null;
       });
 
@@ -112,8 +114,7 @@ describe("Team Service", () => {
 
     it("Should successfully change the role", async () => {
       teamModel.getTeamMemberById.mockImplementation((_tid, uid) => {
-        if (uid === "actor-1")
-          return { role: "owner", is_active: true };
+        if (uid === "actor-1") return { role: "owner", is_active: true };
         return {
           team_member_id: "tm-123",
           role: "member",
