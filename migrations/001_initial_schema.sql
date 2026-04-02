@@ -1,5 +1,11 @@
 -- ==============================================================================
--- CloudAudit v6.0 - Database Reset & Initial Schema Definition
+-- CloudAudit v6.0 - Database Reset & Initial Schema (canonical production schema)
+-- ==============================================================================
+-- Single source of truth for new environments: tables, team_dashboard_view,
+-- team_members notification prefs (notify_analysis_email, analysis_prefs_prompted),
+-- and related objects. Former incremental changes from
+-- 004_team_dashboard_and_member_notifications.sql are folded in here.
+-- Optional: migrations/002_mock_data_injection.sql for local/dev fixtures only.
 -- ==============================================================================
 
 -- ==============================================================================

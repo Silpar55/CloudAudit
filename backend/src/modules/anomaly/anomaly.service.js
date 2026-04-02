@@ -316,7 +316,7 @@ export const dismissAnomaly = async (account, anomalyId, statusNote) => {
     );
   } catch (err) {
     throw new AppError(
-      "Anomaly status lifecycle is not initialized. Please run DB migration 004.",
+      "Anomaly status lifecycle is not initialized. Please run migrations/001_initial_schema.sql (or ensure cost_anomalies status columns exist).",
       409,
     );
   }
@@ -338,7 +338,7 @@ export const resolveAnomaly = async (account, anomalyId, statusNote) => {
     );
   } catch (err) {
     throw new AppError(
-      "Anomaly status lifecycle is not initialized. Please run DB migration 004.",
+      "Anomaly status lifecycle is not initialized. Please run migrations/001_initial_schema.sql (or ensure cost_anomalies status columns exist).",
       409,
     );
   }
