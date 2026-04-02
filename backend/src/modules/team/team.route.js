@@ -23,6 +23,7 @@ import {
   getOrCreateTeamShareInvite,
   deactivateTeamMember,
   changeMemberRole,
+  updateMyAnalysisNotificationPreferences,
   searchUsersToInvite,
   acceptTeamInvitation,
   acceptTeamInvitationById,
@@ -93,6 +94,12 @@ router.get(
   searchUsersToInvite,
 );
 router.get("/:teamId/members", verifyTeamId, verifyTeamMembership, getTeamMemberById);
+router.patch(
+  "/:teamId/members/me/analysis-notifications",
+  verifyTeamId,
+  verifyTeamMembership,
+  updateMyAnalysisNotificationPreferences,
+);
 router.post(
   "/:teamId/members/share-link",
   verifyPermissions,

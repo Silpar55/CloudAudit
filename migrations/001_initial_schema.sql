@@ -107,6 +107,8 @@ CREATE TABLE team_members (
 	role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
 	is_active BOOL NOT NULL DEFAULT TRUE,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	notify_analysis_email BOOLEAN NOT NULL DEFAULT TRUE,
+	analysis_prefs_prompted BOOLEAN NOT NULL DEFAULT FALSE,
 	UNIQUE (team_id, user_id)
 );
 
@@ -322,7 +324,7 @@ CREATE INDEX IF NOT EXISTS idx_notification_receipts_audit_log_id
 -- 5. VIEWS, FUNCTIONS & TRIGGERS (Automated Data Warehousing)
 -- ==============================================================================
 
--- TEAM DASHBOARD VIEW (member_count via subquery — avoids inflation from cost row joins)
+-- TEAM DASHBOARD VIEW — one row per team; monthly cost from CUR summaries or Cost Explorer cache
 CREATE VIEW team_dashboard_view AS
 SELECT
     t.team_id,
@@ -335,15 +337,53 @@ SELECT
         WHERE tm2.team_id = t.team_id
           AND tm2.is_active = TRUE
     ) AS member_count,
-    a.aws_account_id,
-    a.status AS aws_status,
-    COALESCE(SUM(dcs.total_cost), 0) AS monthly_cost
-FROM teams t
-LEFT JOIN aws_accounts a ON a.team_id = t.team_id
-LEFT JOIN daily_cost_summaries dcs
-    ON dcs.aws_account_id = a.id
-    AND date_trunc('month', dcs.time_period_start) = date_trunc('month', NOW()::timestamp)
-GROUP BY t.team_id, t.name, t.description, t.status, a.aws_account_id, a.status;
+    (
+        SELECT MAX(aa.aws_account_id)::varchar(12)
+        FROM aws_accounts aa
+        WHERE aa.team_id = t.team_id
+          AND aa.status = 'active'
+    ) AS aws_account_id,
+    (
+        SELECT MAX(aa.status)::text
+        FROM aws_accounts aa
+        WHERE aa.team_id = t.team_id
+    ) AS aws_status,
+    COALESCE(
+        NULLIF(
+            (
+                SELECT SUM(dcs.total_cost)::numeric
+                FROM daily_cost_summaries dcs
+                INNER JOIN aws_accounts aa ON aa.id = dcs.aws_account_id
+                WHERE aa.team_id = t.team_id
+                  AND date_trunc('month', dcs.time_period_start::timestamp) =
+                      date_trunc('month', CURRENT_TIMESTAMP)
+            ),
+            0
+        ),
+        (
+            SELECT COALESCE(SUM(cec.unblended_cost), 0)::numeric
+            FROM cost_explorer_cache cec
+            INNER JOIN aws_accounts aa ON aa.id = cec.aws_account_id
+            WHERE aa.team_id = t.team_id
+              AND cec.time_period_start >= date_trunc('month', CURRENT_DATE)::date
+              AND cec.time_period_start <
+                  (date_trunc('month', CURRENT_DATE) + interval '1 month')::date
+        ),
+        0
+    ) AS monthly_cost,
+    COALESCE(
+        (
+            SELECT MAX(cec.unblended_unit)
+            FROM cost_explorer_cache cec
+            INNER JOIN aws_accounts aa ON aa.id = cec.aws_account_id
+            WHERE aa.team_id = t.team_id
+              AND cec.time_period_start >= date_trunc('month', CURRENT_DATE)::date
+              AND cec.time_period_start <
+                  (date_trunc('month', CURRENT_DATE) + interval '1 month')::date
+        ),
+        'USD'
+    ) AS billing_currency
+FROM teams t;
 
 
 -- AGGREGATION FUNCTION: Listens to cost_data inserts and UPSERTs into daily_cost_summaries

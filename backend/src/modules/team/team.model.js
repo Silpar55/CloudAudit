@@ -180,19 +180,90 @@ export const createTeam = async (name, description = null) => {
   }
 };
 
-export const addTeamMember = async (teamId, userId, role) => {
+export const addTeamMember = async (
+  teamId,
+  userId,
+  role,
+  {
+    notifyAnalysisEmail = true,
+    analysisPrefsPrompted = true,
+  } = {},
+) => {
   const query = `
-    INSERT INTO team_members (team_id, user_id, role)
-    VALUES ($1,$2,$3)
+    INSERT INTO team_members (
+      team_id,
+      user_id,
+      role,
+      notify_analysis_email,
+      analysis_prefs_prompted
+    )
+    VALUES ($1,$2,$3,$4,$5)
     RETURNING *;
   `;
 
   try {
-    const { rows } = await pool.query(query, [teamId, userId, role]);
+    const { rows } = await pool.query(query, [
+      teamId,
+      userId,
+      role,
+      notifyAnalysisEmail,
+      analysisPrefsPrompted,
+    ]);
     return rows[0];
   } catch (error) {
     return null;
   }
+};
+
+/** Verified team emails opted in for ML / analysis result notifications. */
+export const getTeamAnalysisNotificationEmails = async (teamId) => {
+  const query = `
+    SELECT DISTINCT ON (LOWER(TRIM(u.email)))
+      TRIM(u.email) AS email
+    FROM team_members tm
+    INNER JOIN users u ON u.user_id = tm.user_id
+    WHERE tm.team_id = $1
+      AND tm.is_active = TRUE
+      AND tm.notify_analysis_email = TRUE
+      AND u.is_active = TRUE
+      AND u.email_verified = TRUE
+      AND TRIM(COALESCE(u.email, '')) <> ''
+    ORDER BY LOWER(TRIM(u.email));
+  `;
+  const { rows } = await pool.query(query, [teamId]);
+  return rows.map((r) => r.email).filter(Boolean);
+};
+
+export const updateMemberAnalysisNotificationPrefs = async (
+  teamId,
+  userId,
+  { notify_analysis_email, analysis_prefs_prompted },
+) => {
+  let n = 1;
+  const fields = [];
+  const values = [];
+
+  if (notify_analysis_email !== undefined) {
+    fields.push(`notify_analysis_email = $${n++}`);
+    values.push(Boolean(notify_analysis_email));
+  }
+  if (analysis_prefs_prompted !== undefined) {
+    fields.push(`analysis_prefs_prompted = $${n++}`);
+    values.push(Boolean(analysis_prefs_prompted));
+  }
+
+  if (fields.length === 0) return null;
+
+  values.push(teamId, userId);
+  const query = `
+    UPDATE team_members
+    SET ${fields.join(", ")}
+    WHERE team_id = $${n} AND user_id = $${n + 1}
+    RETURNING *;
+  `;
+
+  const { rows } = await pool.query(query, values);
+  return rows[0] ?? null;
 };
 
 // PATCH FUNCTIONS

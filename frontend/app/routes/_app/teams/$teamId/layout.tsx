@@ -11,6 +11,7 @@ import { Alert, Button, Card, PageLoader } from "~/components/ui";
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { AwsAccountProvider } from "~/context/AwsAccountContext";
 import { getServiceMetaForSlug } from "~/utils/awsServiceCatalog";
+import { AnalysisNotificationPrompt } from "~/components/team/AnalysisNotificationPrompt";
 
 /**
  * TeamLayout Component
@@ -171,6 +172,7 @@ export default function TeamLayout() {
             <Outlet />
           </div>
         </main>
+        {teamId ? <AnalysisNotificationPrompt teamId={teamId} /> : null}
       </div>
     </AwsAccountProvider>
   );

@@ -113,14 +113,14 @@ const TeamCard = ({
         </div>
       </div>
 
-      {awsAccountId && monthlyCost ? (
+        {awsAccountId ? (
         <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Monthly Cost
+              Monthly cost
             </p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">
-              {monthlyCost}
+              {monthlyCost || "—"}
             </p>
           </div>
           <span className="px-4 py-2 bg-aws-orange text-white text-sm font-semibold rounded-lg group-hover:bg-aws-orange-dark transition-all">

@@ -10,6 +10,16 @@ export type TeamMemberRow = {
   last_name: string;
 };
 
+/** Current user's membership row from GET /teams/:teamId/members */
+export type MyTeamMembership = {
+  team_member_id: string;
+  user_id: string;
+  role: string;
+  notify_analysis_email?: boolean;
+  analysis_prefs_prompted?: boolean;
+  [key: string]: unknown;
+};
+
 export type UserInviteCandidate = {
   user_id: string;
   email: string;
@@ -21,6 +31,20 @@ export const teamMemberService = {
   getTeamMemberByUserId: async (teamId: string) => {
     const response = await apiClient.get(`/teams/${teamId}/members`);
     return response.data?.teamMember ?? null;
+  },
+
+  updateMyAnalysisNotifications: async (
+    teamId: string,
+    body: {
+      notify_analysis_email?: boolean;
+      analysis_prefs_prompted?: boolean;
+    },
+  ) => {
+    const { data } = await apiClient.patch(
+      `/teams/${teamId}/members/me/analysis-notifications`,
+      body,
+    );
+    return data?.teamMember as MyTeamMembership | undefined;
   },
 
   listTeamMembers: async (teamId: string): Promise<TeamMemberRow[]> => {

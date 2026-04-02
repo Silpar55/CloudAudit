@@ -6,15 +6,13 @@ jest.mock("../../../../src/modules/recommendations/recommendations.service.js");
 jest.mock("../../../../src/modules/recommendations/recommendations.model.js");
 jest.mock("#utils/notifications/slack.js");
 jest.mock("#modules/audit/audit.model.js");
-jest.mock("#modules/auth/auth.model.js", () => ({
-  findUserById: jest.fn().mockResolvedValue({
-    user_id: "user-1",
-    email_notifications_enabled: true,
-  }),
+jest.mock("#modules/team/team.model.js", () => ({
+  getTeamAnalysisNotificationEmails: jest
+    .fn()
+    .mockResolvedValue(["member@example.com"]),
 }));
 jest.mock("#utils/notifications/email.js", () => ({
-  sendAnomalyAlertEmail: jest.fn().mockResolvedValue({}),
-  sendMlAnalysisPassedEmail: jest.fn().mockResolvedValue({}),
+  sendTeamMlAnalysisEmails: jest.fn().mockResolvedValue({ sent: 1 }),
 }));
 
 import * as anomalyModel from "#modules/anomaly/anomaly.model.js";
@@ -24,6 +22,7 @@ import {
   sendAnomalyAlertSlackMessage,
   sendMlAnalysisPassedSlackMessage,
 } from "#utils/notifications/slack.js";
+import { sendTeamMlAnalysisEmails } from "#utils/notifications/email.js";
 import { insertAuditLog } from "#modules/audit/audit.model.js";
 import {
   getAnomalies,
@@ -93,6 +92,16 @@ describe("Anomaly Service", () => {
         anomaliesDetected: 2,
         recommendationsGenerated: 1,
       });
+      expect(sendTeamMlAnalysisEmails).toHaveBeenCalledWith(
+        "team-1",
+        "anomaly",
+        expect.objectContaining({
+          actorName: "User 1",
+          awsAccountNumber: "123456789012",
+          anomaliesDetected: 2,
+          recommendationsGenerated: 1,
+        }),
+      );
       expect(sendMlAnalysisPassedSlackMessage).not.toHaveBeenCalled();
       expect(insertAuditLog).toHaveBeenCalledWith(
         "team-1",
@@ -140,6 +149,15 @@ describe("Anomaly Service", () => {
         awsAccountNumber: "123456789012",
         recommendationsGenerated: 0,
       });
+      expect(sendTeamMlAnalysisEmails).toHaveBeenCalledWith(
+        "team-1",
+        "passed",
+        expect.objectContaining({
+          actorName: "User 1",
+          awsAccountNumber: "123456789012",
+          recommendationsGenerated: 0,
+        }),
+      );
       expect(insertAuditLog).toHaveBeenCalledWith(
         "team-1",
         "user-1",

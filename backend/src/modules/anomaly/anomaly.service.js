@@ -1,7 +1,6 @@
 import * as anomalyModel from "./anomaly.model.js";
 import * as recommendationsService from "../recommendations/recommendations.service.js";
 import * as recommendationsModel from "../recommendations/recommendations.model.js";
-import * as authModel from "#modules/auth/auth.model.js";
 import * as teamModel from "#modules/team/team.model.js";
 import { AppError } from "#utils/helper/AppError.js";
 import { insertAuditLog } from "#modules/audit/audit.model.js";
@@ -9,10 +8,7 @@ import {
   sendAnomalyAlertSlackMessage,
   sendMlAnalysisPassedSlackMessage,
 } from "#utils/notifications/slack.js";
-import {
-  sendAnomalyAlertEmail,
-  sendMlAnalysisPassedEmail,
-} from "#utils/notifications/email.js";
+import { sendTeamMlAnalysisEmails } from "#utils/notifications/email.js";
 import { logger } from "#utils/logger.js";
 
 export const getAnomalies = async (account) => {
@@ -25,14 +21,13 @@ export const getAnomalies = async (account) => {
 
 /**
  * @param {object} options
- * @param {boolean} [options.silent] - If true (weekly cron), skip Slack/email to operators.
- * @param {boolean} [options.sendEmail] - If false, skip SES anomaly/success emails (user preference).
+ * @param {boolean} [options.silent] - If true (weekly cron), skip Slack and team emails.
  */
 const runMlAnalysisCore = async (
   account,
   userId,
   actorName = "User",
-  { silent = false, sendEmail = true } = {},
+  { silent = false } = {},
 ) => {
   await anomalyModel.ensureFallbackResourceExists();
 
@@ -112,7 +107,7 @@ const runMlAnalysisCore = async (
     const awsAccountNumber = account.aws_account_id || account.external_id || account.id;
 
     const shouldSlack = !silent;
-    const shouldEmail = !silent && sendEmail;
+    const shouldEmailTeam = !silent;
 
     if (userId) {
       try {
@@ -128,7 +123,7 @@ const runMlAnalysisCore = async (
       }
     }
 
-    if (shouldSlack || shouldEmail) {
+    if (shouldSlack || shouldEmailTeam) {
       if (anomaliesDetected > 0) {
         if (shouldSlack) {
           try {
@@ -146,9 +141,9 @@ const runMlAnalysisCore = async (
           }
         }
 
-        if (shouldEmail) {
+        if (shouldEmailTeam) {
           try {
-            await sendAnomalyAlertEmail({
+            await sendTeamMlAnalysisEmails(account.team_id, "anomaly", {
               actorName,
               awsAccountNumber,
               anomaliesDetected,
@@ -156,7 +151,7 @@ const runMlAnalysisCore = async (
             });
           } catch (emailError) {
             console.error(
-              `Failed to send anomaly email alert for account ${awsAccountNumber}:`,
+              `Failed to send anomaly team emails for account ${awsAccountNumber}:`,
               emailError,
             );
           }
@@ -177,16 +172,16 @@ const runMlAnalysisCore = async (
           }
         }
 
-        if (shouldEmail) {
+        if (shouldEmailTeam) {
           try {
-            await sendMlAnalysisPassedEmail({
+            await sendTeamMlAnalysisEmails(account.team_id, "passed", {
               actorName,
               awsAccountNumber,
               recommendationsGenerated,
             });
           } catch (emailError) {
             console.error(
-              `Failed to send ML success email message for account ${awsAccountNumber}:`,
+              `Failed to send ML success team emails for account ${awsAccountNumber}:`,
               emailError,
             );
           }
@@ -221,12 +216,7 @@ export const triggerAnalysis = async (
   userId,
   actorName = "User",
 ) => {
-  const actor = await authModel.findUserById(userId);
-  const sendEmail = actor?.email_notifications_enabled !== false;
-  return runMlAnalysisCore(account, userId, actorName, {
-    silent: false,
-    sendEmail,
-  });
+  return runMlAnalysisCore(account, userId, actorName, { silent: false });
 };
 
 /**
@@ -242,7 +232,6 @@ export const runScheduledWeeklyAccountAnalysis = async (account) => {
   }
   return runMlAnalysisCore(account, ownerId, "Weekly schedule", {
     silent: true,
-    sendEmail: false,
   });
 };
 

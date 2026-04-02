@@ -18,6 +18,10 @@ const addNewMember = async (teamId, userId) => {
     teamId,
     userId,
     TEAM_ROLES.MEMBER,
+    {
+      notifyAnalysisEmail: false,
+      analysisPrefsPrompted: false,
+    },
   );
   return team_member_id;
 };
@@ -64,7 +68,10 @@ export const createTeam = async (name, userId, description) => {
 
   if (!team) throw new AppError("Failed to create team", 500);
 
-  await teamModel.addTeamMember(team.team_id, userId, TEAM_ROLES.OWNER);
+  await teamModel.addTeamMember(team.team_id, userId, TEAM_ROLES.OWNER, {
+    notifyAnalysisEmail: false,
+    analysisPrefsPrompted: false,
+  });
 
   return team.team_id;
 };
@@ -361,10 +368,17 @@ export const inviteTeamMember = async ({
   };
 };
 
-const ensureMembershipActiveAsMember = async (teamId, userId) => {
+const ensureMembershipActiveAsMember = async (
+  teamId,
+  userId,
+  newMemberOptions = {
+    notifyAnalysisEmail: true,
+    analysisPrefsPrompted: true,
+  },
+) => {
   const member = await teamModel.getTeamMemberById(teamId, userId);
   if (!member) {
-    await teamModel.addTeamMember(teamId, userId, TEAM_ROLES.MEMBER);
+    await teamModel.addTeamMember(teamId, userId, TEAM_ROLES.MEMBER, newMemberOptions);
     return { alreadyMember: false };
   }
   if (!member.is_active) {
@@ -459,6 +473,10 @@ export const acceptInvitationByToken = async ({ token, actorUserId }) => {
   const { alreadyMember } = await ensureMembershipActiveAsMember(
     inv.team_id,
     actorUserId,
+    {
+      notifyAnalysisEmail: false,
+      analysisPrefsPrompted: false,
+    },
   );
 
   if (!alreadyMember) {
@@ -505,6 +523,10 @@ export const acceptInvitationById = async ({ invitationId, actorUserId }) => {
   const { alreadyMember } = await ensureMembershipActiveAsMember(
     inv.team_id,
     actorUserId,
+    {
+      notifyAnalysisEmail: false,
+      analysisPrefsPrompted: false,
+    },
   );
 
   if (!alreadyMember) {
@@ -515,6 +537,16 @@ export const acceptInvitationById = async ({ invitationId, actorUserId }) => {
   }
 
   return { teamId: inv.team_id };
+};
+
+export const updateMyNotificationPreferences = async (teamId, userId, prefs) => {
+  const row = await teamModel.updateMemberAnalysisNotificationPrefs(
+    teamId,
+    userId,
+    prefs,
+  );
+  if (!row) throw new AppError("Could not update notification preferences", 400);
+  return row;
 };
 
 export const listMyPendingInvitations = async (actorUserId) => {

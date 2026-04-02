@@ -11,7 +11,9 @@ import {
 } from "~/components/ui";
 import { useWorkspaceTeamData } from "~/hooks/useWorkspaceTeamData";
 import { useDeleteTeam, useUpdateTeam } from "~/hooks/useTeam";
+import { useUpdateMyAnalysisNotifications } from "~/hooks/useTeamMember";
 import { Settings, Trash2 } from "lucide-react";
+import { Toggle } from "~/components/ui";
 
 export default function TeamSettingsPage() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -20,6 +22,7 @@ export default function TeamSettingsPage() {
     useWorkspaceTeamData(teamId);
   const updateTeam = useUpdateTeam(teamId);
   const deleteTeam = useDeleteTeam();
+  const notifyAnalysis = useUpdateMyAnalysisNotifications(teamId);
 
   const team = workspace?.team;
   const teamMember = workspace?.teamMember;
@@ -181,6 +184,27 @@ export default function TeamSettingsPage() {
             </div>
           </div>
         )}
+      </Card>
+
+      <Card padding="lg" className="shadow-lg border border-gray-200 dark:border-slate-700">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+          Analysis emails
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          When AI analysis runs on your linked AWS account, we can email you
+          about anomalies and recommendations for this workspace only.
+        </p>
+        <Toggle
+          label="Email me when analysis completes"
+          checked={teamMember?.notify_analysis_email !== false}
+          disabled={notifyAnalysis.isPending}
+          onChange={(on: boolean) => {
+            notifyAnalysis.mutate({
+              notify_analysis_email: on,
+              analysis_prefs_prompted: true,
+            });
+          }}
+        />
       </Card>
 
       <Card padding="lg" className="shadow-lg border border-gray-200 dark:border-slate-700">

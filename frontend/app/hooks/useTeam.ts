@@ -10,6 +10,7 @@ type Team = {
   aws_account_id: string | null;
   aws_status: string | null;
   monthly_cost: number | null;
+  billing_currency?: string | null;
 };
 
 export const useCreateTeam = () => {

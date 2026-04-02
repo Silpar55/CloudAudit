@@ -12,11 +12,27 @@ import {
   type PendingInvitation,
 } from "~/hooks/useInvitations";
 
-function formatMonthlyCost(cost: unknown): string {
+function formatMonthlyCost(
+  cost: unknown,
+  billingCurrency?: string | null,
+): string {
   if (cost == null || cost === "") return "";
   const n = typeof cost === "string" ? parseFloat(cost) : Number(cost);
   if (Number.isNaN(n)) return "";
-  return `$${n.toFixed(2)}`;
+  const code =
+    typeof billingCurrency === "string" && /^[A-Z]{3}$/i.test(billingCurrency)
+      ? billingCurrency.toUpperCase()
+      : "USD";
+  try {
+    // ISO 4217 codes: CAD, USD, MXN, etc.
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "code",
+    }).format(n);
+  } catch {
+    return `${n.toFixed(2)} ${code}`;
+  }
 }
 
 export default function DashboardPage() {
@@ -159,7 +175,10 @@ export default function DashboardPage() {
                 memberCount={team.member_count}
                 status={team.status}
                 awsAccountId={team.aws_account_id}
-                monthlyCost={formatMonthlyCost(team.monthly_cost)}
+                monthlyCost={formatMonthlyCost(
+                  team.monthly_cost,
+                  team.billing_currency,
+                )}
                 notificationCount={countsData?.counts?.[team.team_id] ?? 0}
                 onClick={() => navigate(`/teams/${team.team_id}`)}
               />

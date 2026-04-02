@@ -130,6 +130,36 @@ export const getTeamMemberById = async (req, res, next) => {
   }
 };
 
+/** Current user: ML / analysis result emails for this workspace (per-member opt-in). */
+export const updateMyAnalysisNotificationPreferences = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+    const { notify_analysis_email, analysis_prefs_prompted } = req.body ?? {};
+    const patch = {
+      ...(notify_analysis_email !== undefined
+        ? { notify_analysis_email: Boolean(notify_analysis_email) }
+        : {}),
+      ...(analysis_prefs_prompted !== undefined
+        ? { analysis_prefs_prompted: Boolean(analysis_prefs_prompted) }
+        : {}),
+    };
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({
+        message:
+          "Provide notify_analysis_email and/or analysis_prefs_prompted",
+      });
+    }
+    const teamMember = await teamService.updateMyNotificationPreferences(
+      teamId,
+      req.userId,
+      patch,
+    );
+    return res.status(200).send({ teamMember });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const addTeamMember = async (req, res, next) => {
   try {
     const { email, sendEmail: rawSendEmail } = req.body;
