@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Profile settings UI: `index.tsx`.
+ */
+
 export { default as EmailSettings } from "./EmailSettings";
 export { default as NotificationSettings } from "./NotificationSettings";
 export { default as ProfileUpdateForm } from "./ProfileUpdateForm";

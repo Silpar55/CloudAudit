@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `emailTemplates`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import {
   formatWeeklyReportEmail,
   formatAnomalyAlertEmail,

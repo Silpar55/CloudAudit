@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared utility: `jwt-helper`.
+ * Cross-cutting helpers (errors, JWT) used by multiple modules.
+ */
+
 import jwt from "jsonwebtoken";
 
 export const verifyJwtHelper = (token) => {

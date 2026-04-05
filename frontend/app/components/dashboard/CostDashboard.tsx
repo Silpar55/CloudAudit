@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `CostDashboard.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 "use client";
 
 import React, {

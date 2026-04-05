@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express middleware: `monitoring.middleware`.
+ * Applied to requests before route handlers; keep side effects minimal and ordered.
+ */
+
 import { logger } from "#utils/logger.js";
 import { recordRequestMetric } from "#utils/monitoring/metrics.store.js";
 

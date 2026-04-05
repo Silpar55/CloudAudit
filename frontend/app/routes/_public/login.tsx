@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Public route: `login.tsx`.
+ * Unauthenticated marketing or sign-in screens; wrapped by public layout.
+ */
+
 import { Input, Button, Alert } from "~/components/ui";
 import { Link } from "react-router";
 

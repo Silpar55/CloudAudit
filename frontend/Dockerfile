@@ -1,3 +1,5 @@
+# CloudAudit — Frontend container image (React Router 7 + Vite, SSR via react-router-serve).
+# VITE_API_URL must be passed at docker build so the client bundle calls the correct API origin.
 # SSR — pass API URL at build: docker build --build-arg VITE_API_URL=http://YOUR_IP:3000/api
 FROM node:22-alpine AS builder
 WORKDIR /app

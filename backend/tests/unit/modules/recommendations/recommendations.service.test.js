@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `recommendations.service`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 import { AppError } from "#utils/helper/AppError.js";
 

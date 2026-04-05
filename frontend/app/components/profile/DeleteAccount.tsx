@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Profile settings UI: `DeleteAccount.tsx`.
+ */
+
 import React, { useState } from "react";
 import { useDeleteAccount } from "~/hooks/useProfile";
 import { useAuth } from "~/context/AuthContext";

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — AWS integration helper: `ec2`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
 import {
   StopInstancesCommand,
   StartInstancesCommand,

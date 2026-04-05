@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `health`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import jwt from "jsonwebtoken";
 import { pool } from "#config";
 import { getMonitoringMetricsSnapshot } from "#utils/monitoring/metrics.store.js";

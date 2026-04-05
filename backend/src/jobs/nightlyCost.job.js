@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Scheduled job: `nightlyCost`.
+ * Started from `server.js`; uses node-cron and domain services.
+ */
+
 import cron from "node-cron";
 import * as awsService from "#modules/aws/aws.service.js";
 import * as awsModel from "#modules/aws/aws.model.js";

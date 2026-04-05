@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `DateRangePicker.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React, { useState } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { daysAgo, today } from "~/utils/format";

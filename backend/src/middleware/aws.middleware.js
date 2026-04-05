@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express middleware: `aws.middleware`.
+ * Applied to requests before route handlers; keep side effects minimal and ordered.
+ */
+
 import * as awsModel from "#modules/aws/aws.model.js";
 
 export async function verifyAwsAccId(req, res, next) {

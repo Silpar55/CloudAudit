@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `PageLoader.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import { Navbar } from "../layout";
 import Spinner from "./Spinner";
 

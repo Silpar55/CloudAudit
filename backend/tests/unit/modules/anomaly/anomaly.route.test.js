@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `anomaly.route`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest } from "@jest/globals";
 
 // Mock the controller to avoid importing real logic during route tests

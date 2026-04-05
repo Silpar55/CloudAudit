@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `team`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import * as teamModel from "./team.model.js";
 import * as authModel from "#modules/auth/auth.model.js";
 

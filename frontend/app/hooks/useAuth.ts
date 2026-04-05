@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React hook: `useAuth`.
+ * Encapsulates data fetching or UI state for consuming components.
+ */
+
 import { useMutation } from "@tanstack/react-query";
 import { authService } from "../services/authService";
 

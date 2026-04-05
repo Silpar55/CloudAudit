@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared utility: `AppError`.
+ * Cross-cutting helpers (errors, JWT) used by multiple modules.
+ */
+
 export class AppError extends Error {
   constructor(message, statusCode, options = {}) {
     super(message);

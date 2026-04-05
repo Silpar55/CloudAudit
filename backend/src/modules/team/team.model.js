@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Data access: `team`.
+ * PostgreSQL queries and row mapping for this feature.
+ */
+
 import { pool } from "#config";
 
 // GET FUNCTION

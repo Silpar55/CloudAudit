@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Profile settings UI: `EmailSettings.tsx`.
+ */
+
 import { useState } from "react";
 import { useRequestEmailChange } from "~/hooks/useProfile";
 import { Card, Input, Button, Spinner, Alert } from "~/components/ui";

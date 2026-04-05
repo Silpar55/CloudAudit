@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `audit-logs.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import React, { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { Button, Card, Input, SectionLoader, Alert } from "~/components/ui";

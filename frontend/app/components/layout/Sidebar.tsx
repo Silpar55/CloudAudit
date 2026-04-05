@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Layout UI: `Sidebar.tsx`.
+ * Navigation chrome shared across authenticated pages.
+ */
+
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Cloud,

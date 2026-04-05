@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `profile.service`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 jest.mock("#modules/profile/profile.model.js");

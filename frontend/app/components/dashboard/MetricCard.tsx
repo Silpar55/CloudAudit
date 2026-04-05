@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `MetricCard.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React from "react";
 
 /**

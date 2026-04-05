@@ -1,3 +1,10 @@
+/**
+ * CloudAudit — Node.js process entrypoint.
+ *
+ * Binds the Express app to PORT, verifies PostgreSQL and AWS platform connectivity
+ * on boot, then starts scheduled jobs (nightly cost sync, weekly recommendations).
+ * Run via `npm start` in `backend/`.
+ */
 import app from "#app";
 import { verifyAwsConnection } from "#utils/aws/sts.js";
 import { verifyDatabaseConnection } from "#config";

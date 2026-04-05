@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `audit`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import * as auditModel from "./audit.model.js";
 
 export const listTeamAuditLogs = async (teamId, query) => {

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Data access: `aws`.
+ * PostgreSQL queries and row mapping for this feature.
+ */
+
 import { pool } from "#config";
 import { AppError } from "#utils/helper/AppError.js";
 

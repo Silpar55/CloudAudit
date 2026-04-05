@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React hook: `useRecommendations`.
+ * Encapsulates data fetching or UI state for consuming components.
+ */
+
 import {
   useQuery,
   useMutation,

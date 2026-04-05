@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Auth flow route: `layout.tsx`.
+ * Email verification and similar post-registration steps.
+ */
+
 import { Navigate, Outlet } from "react-router";
 import { Navbar } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";

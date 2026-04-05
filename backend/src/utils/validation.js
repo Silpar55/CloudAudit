@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Backend utility: `validation`.
+ * Shared helpers for formatting, validation, logging, etc.
+ */
+
 import { PasswordValidator } from "password-validator-pro";
 import libphonenumber from "google-libphonenumber";
 

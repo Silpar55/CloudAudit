@@ -1,6 +1,7 @@
 """
-Ensure a row exists in `resources` before inserting into tables that FK to resources.resource_id.
-Matches backend behavior in recommendations.model.js.
+CloudAudit — Ensure a `resources` row exists before FK writes from ML output.
+
+Aligns with backend behavior in `recommendations.model.js` so inserts into anomaly/recommendation tables never violate FK constraints.
 """
 
 

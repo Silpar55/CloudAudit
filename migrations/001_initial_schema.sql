@@ -6,6 +6,10 @@
 -- and related objects. Former incremental changes from
 -- 004_team_dashboard_and_member_notifications.sql are folded in here.
 -- Optional: migrations/002_mock_data_injection.sql for local/dev fixtures only.
+--
+-- Why this file matters: The Node API and ML service read/write these tables.
+-- A mismatch between code and schema causes runtime failures; keep migrations
+-- reviewed alongside API and ML changes. See migrations/README.md for usage.
 -- ==============================================================================
 
 -- ==============================================================================

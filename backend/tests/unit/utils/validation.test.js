@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `validation`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import {
   validRoleARN,
   validAWSAccId,

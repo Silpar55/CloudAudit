@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — API client: `teamService.ts`.
+ * Typed calls to backend endpoints via `api/axiosClient`.
+ */
+
 import apiClient from "../api/axiosClient";
 
 export const teamService = {

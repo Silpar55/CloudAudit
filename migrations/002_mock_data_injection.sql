@@ -1,5 +1,9 @@
 -- ==============================================================================
--- CloudAudit v6.0 - Mock Data Injection Script (Event-Driven Data Warehousing)
+-- CloudAudit v6.0 - Mock Data Injection Script (local / demo only)
+-- ==============================================================================
+-- Populates users, teams, AWS accounts, and sample cost rows for UI development.
+-- Do NOT run in production (contains fixed UUIDs, test passwords, fake spend).
+-- Apply only after 001_initial_schema.sql on a disposable database.
 -- ==============================================================================
 
 

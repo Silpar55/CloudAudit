@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Layout UI: `Header.tsx`.
+ * Navigation chrome shared across authenticated pages.
+ */
+
 import { useParams } from "react-router";
 import { useAwsAccount } from "~/context/AwsAccountContext";
 import { useTeamNotifications } from "~/hooks/useTeamNotifications";

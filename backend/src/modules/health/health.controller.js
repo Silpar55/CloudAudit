@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `health`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as healthCheckService from "./health.service.js";
 
 export const checkServerStatus = async (_req, res) => {

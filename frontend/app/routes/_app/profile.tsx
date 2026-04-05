@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `profile.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import { useProfile } from "~/hooks/useProfile";
 import { Alert, SectionLoader } from "~/components/ui";
 import {

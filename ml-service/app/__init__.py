@@ -1,6 +1,7 @@
 """
-app/__init__.py
-Flask application factory.
+CloudAudit — Flask application factory (`create_app`).
+
+Registers health and ML blueprints. Part of the ML microservice; see ml-service/README.md.
 """
 from flask import Flask
 from .routes.health import health_bp

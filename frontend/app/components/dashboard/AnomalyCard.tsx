@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `AnomalyCard.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React from "react";
 import { Server, HardDrive, Database, Cloud } from "lucide-react";
 

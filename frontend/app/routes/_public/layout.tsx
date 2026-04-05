@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Public route: `layout.tsx`.
+ * Unauthenticated marketing or sign-in screens; wrapped by public layout.
+ */
+
 import { Navigate, Outlet } from "react-router";
 import { Navbar, PublicFooter } from "~/components/layout";
 import { useAuth } from "~/context/AuthContext";

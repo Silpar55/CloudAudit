@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "CloudAudit REST API — Express, PostgreSQL, AWS integrations, ML client.",
   "type": "module",
   "imports": {
     "#app": "./src/app.js",

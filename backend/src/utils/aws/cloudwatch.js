@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — AWS integration helper: `cloudwatch`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
 import {
   GetMetricStatisticsCommand,
   ListMetricsCommand,

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Layout UI: `Navbar.tsx`.
+ * Navigation chrome shared across authenticated pages.
+ */
+
 import React from "react";
 import { Cloud, LayoutDashboard, LogOut, ActivitySquare } from "lucide-react";
 import { useAuth } from "~/context/AuthContext";

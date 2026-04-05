@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React hook: `useAws`.
+ * Encapsulates data fetching or UI state for consuming components.
+ */
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { awsService } from "~/services/awsService";
 

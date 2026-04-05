@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `sts`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 jest.mock("#utils/aws/client-factory.js", () => ({

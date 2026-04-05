@@ -1,3 +1,10 @@
+/**
+ * CloudAudit — Express application assembly.
+ *
+ * Wires JSON parsing, cookies, request metrics/logging, CORS (see FRONTEND_URL),
+ * and mounts API routes for health, authentication, teams, and profile. Registers
+ * the global error handler last. This module defines the HTTP surface the web app calls.
+ */
 import express from "express";
 import { config } from "dotenv";
 import cors from "cors";

@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Team feature UI: `AnalysisNotificationPrompt.tsx`.
+ */
+
 import React from "react";
 import { Bell, X } from "lucide-react";
 import { Button, Card } from "~/components/ui";

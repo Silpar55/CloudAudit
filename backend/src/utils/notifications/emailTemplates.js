@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Notification helper: `emailTemplates`.
+ * Email (SES), Slack, or templates for user-facing alerts.
+ */
+
 const escapeHtml = (value) =>
   String(value ?? "")
     .replaceAll("&", "&amp;")

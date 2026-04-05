@@ -1,4 +1,9 @@
 /**
+ * CloudAudit — Backend utility: `formatters`.
+ * Shared helpers for formatting, validation, logging, etc.
+ */
+
+/**
  * Safely parses JSON strings. If the data is already an object or null, returns it as-is.
  */
 export const parseJSONSafe = (data) => {

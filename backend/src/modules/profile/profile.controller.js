@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `profile`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as profileService from "./profile.service.js";
 
 export const getProfile = async (req, res, next) => {

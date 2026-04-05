@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `anomaly`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as anomalyService from "./anomaly.service.js";
 import * as authModel from "#modules/auth/auth.model.js";
 

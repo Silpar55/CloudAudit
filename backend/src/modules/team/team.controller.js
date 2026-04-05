@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `team`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as teamService from "./team.service.js";
 import { insertAuditLog } from "#modules/audit/audit.model.js";
 

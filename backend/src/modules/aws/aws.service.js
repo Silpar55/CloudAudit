@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `aws`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import { validRoleARN } from "#utils/validation.js";
 import { AppError } from "#utils/helper/AppError.js";
 import { randomUUID } from "crypto";

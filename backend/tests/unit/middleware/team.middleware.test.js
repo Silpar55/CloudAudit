@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `team.middleware`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 // FIXED: Mocking the correct functions

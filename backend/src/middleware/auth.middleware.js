@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express middleware: `auth.middleware`.
+ * Applied to requests before route handlers; keep side effects minimal and ordered.
+ */
+
 import { verifyJwtHelper } from "#utils/helper/jwt-helper.js";
 import { logger } from "#utils/logger.js";
 

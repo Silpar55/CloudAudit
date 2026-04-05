@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `recommendations`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import { pool } from "#config";
 import * as recommendationsModel from "./recommendations.model.js";
 import * as anomalyModel from "../anomaly/anomaly.model.js";

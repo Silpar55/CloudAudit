@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `platform-role`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { afterEach, describe, expect, it } from "@jest/globals";
 import {
   getPlatformRoleArn,

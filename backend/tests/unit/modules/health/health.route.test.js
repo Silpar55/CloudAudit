@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `health.route`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { expect } from "@jest/globals";
 import request from "supertest";
 import jwt from "jsonwebtoken";

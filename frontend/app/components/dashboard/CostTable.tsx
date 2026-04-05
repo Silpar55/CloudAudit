@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `CostTable.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React, { useState, useMemo } from "react";
 import { Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { type CostRow } from "~/hooks/useAws";

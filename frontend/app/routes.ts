@@ -1,3 +1,9 @@
+/**
+ * CloudAudit — React Router 7 route configuration.
+ *
+ * Declares the file-based route tree (public marketing, auth flows, authenticated app,
+ * team workspaces, invite acceptance). Changing paths here updates URLs site-wide.
+ */
 import {
   type RouteConfig,
   index,

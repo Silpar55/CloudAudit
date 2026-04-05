@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Application configuration: `db`.
+ * Database pool and environment-driven settings for the API process.
+ */
+
 import { pool } from "./pool.js";
 
 export async function verifyDatabaseConnection({

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `recommendations.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import React, { useState, useMemo } from "react";
 import { useRecommendations } from "../../../../hooks/useRecommendations";
 import { useAwsAccount } from "../../../../context/AwsAccountContext";

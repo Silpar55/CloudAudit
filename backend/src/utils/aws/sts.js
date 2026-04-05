@@ -1,4 +1,9 @@
 /**
+ * CloudAudit — AWS integration helper: `sts`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
+/**
  * AWS STS (Security Token Service) Operations
  *
  * Purpose: Handle all STS-related operations (assume role, validate connections)

@@ -1,3 +1,8 @@
+"""
+CloudAudit — ML service logic: `anomaly_service.py`.
+Time-series anomaly detection and explainability; called by the Node API.
+"""
+
 import json
 import os
 import pandas as pd

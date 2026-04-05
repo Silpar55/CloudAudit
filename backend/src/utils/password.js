@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Backend utility: `password`.
+ * Shared helpers for formatting, validation, logging, etc.
+ */
+
 import bcrypt from "bcryptjs";
 
 export const hashPassword = async (password) => {

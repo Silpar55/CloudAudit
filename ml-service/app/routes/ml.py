@@ -1,9 +1,8 @@
 """
-app/routes/ml.py
-Anomaly analysis endpoint with model version switching.
+CloudAudit — ML anomaly analysis HTTP routes.
 
-Query param:  ?version=2  → Prophet v2.0 (default going forward)
-              ?version=1  → Isolation Forest v1.0 (legacy, kept for comparison)
+POST /api/ml/analyze — query param `version=2` (Prophet, preferred) or `version=1` (Isolation Forest, legacy).
+Invoked by the Node API via ML_SERVICE_URL.
 """
 import logging
 

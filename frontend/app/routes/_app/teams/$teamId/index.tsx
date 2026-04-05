@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `index.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import { useParams } from "react-router";
 import { SectionLoader } from "~/components/ui";
 import { AwsSetupForm } from "~/components/teams";

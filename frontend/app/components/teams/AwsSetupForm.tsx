@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Team / AWS setup UI: `AwsSetupForm.tsx`.
+ */
+
 import React, { useState } from "react";
 import { useProvisionAwsAccount, useActivateAwsAccount } from "~/hooks/useAws";
 import {

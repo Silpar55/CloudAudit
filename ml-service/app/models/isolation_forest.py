@@ -1,3 +1,8 @@
+"""
+CloudAudit — ML model / explainer: `isolation_forest.py`.
+Algorithms and interpretation helpers used by anomaly pipelines.
+"""
+
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `recommendations`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as recommendationsService from "./recommendations.service.js";
 import { formatRecommendationForUI } from "#utils/formatters.js";
 

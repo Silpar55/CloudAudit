@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Team invitation route: `layout.tsx`.
+ * Accept or preview invites via token in URL or session.
+ */
+
 import { Outlet } from "react-router";
 import { Navbar } from "~/components/layout";
 

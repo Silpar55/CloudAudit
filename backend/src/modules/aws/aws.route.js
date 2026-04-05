@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express router: `aws`.
+ * Path definitions and middleware chain for this feature.
+ */
+
 import { Router } from "express";
 import {
   initializePendingAccount,

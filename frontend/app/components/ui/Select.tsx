@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Select.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import React from "react";
 import { ChevronDown } from "lucide-react";
 

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React context: `AwsAccountContext.tsx`.
+ * Provides app-wide state to the component tree.
+ */
+
 // AwsAccountContext.tsx
 import { createContext, useContext, useCallback } from "react";
 import { useGetAwsAccount } from "~/hooks/useAws";

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `profile`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import crypto from "crypto";
 import * as profileModel from "./profile.model.js";
 import { AppError } from "#utils/helper/AppError.js";

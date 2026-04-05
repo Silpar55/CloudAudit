@@ -1,3 +1,9 @@
+/**
+ * CloudAudit — HTTP client for the backend API.
+ *
+ * Axios instance with base URL from VITE_API_URL, cookie credentials, and refresh-token
+ * retry logic. All frontend services should use this client for consistent auth behavior.
+ */
 import axios from "axios";
 
 const axiosClient = axios.create({

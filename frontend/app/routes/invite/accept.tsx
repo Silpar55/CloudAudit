@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Team invitation route: `accept.tsx`.
+ * Accept or preview invites via token in URL or session.
+ */
+
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router";
 import { Alert, Button, Card, SectionLoader } from "~/components/ui";

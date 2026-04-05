@@ -1,3 +1,8 @@
+"""
+CloudAudit — ML model / explainer: `explainer.py`.
+Algorithms and interpretation helpers used by anomaly pipelines.
+"""
+
 from typing import Any
 
 import psycopg2.extras

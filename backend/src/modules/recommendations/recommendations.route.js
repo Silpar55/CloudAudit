@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express router: `recommendations`.
+ * Path definitions and middleware chain for this feature.
+ */
+
 import { Router } from "express";
 import {
   getRecommendations,

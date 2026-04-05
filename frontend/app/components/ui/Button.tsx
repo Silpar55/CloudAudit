@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Button.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import React from "react";
 
 type Variant = "primary" | "secondary" | "outline" | "danger" | "ghost";

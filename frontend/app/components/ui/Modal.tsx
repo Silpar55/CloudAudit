@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Modal.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import React, { useEffect } from "react";
 
 type ModalProps = {

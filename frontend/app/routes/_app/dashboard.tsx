@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `dashboard.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import { useNavigate } from "react-router";
 import { useState } from "react";
 import { CreateTeamForm, TeamCard } from "~/components/dashboard";

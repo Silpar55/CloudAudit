@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Layout UI: `index.ts`.
+ * Navigation chrome shared across authenticated pages.
+ */
+
 // Layout Components Index
 // Import all layout components
 

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Backend utility: `logger`.
+ * Shared helpers for formatting, validation, logging, etc.
+ */
+
 import winston from "winston";
 
 const level = process.env.LOG_LEVEL || "info";

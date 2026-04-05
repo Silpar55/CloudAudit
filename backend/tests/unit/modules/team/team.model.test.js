@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `team.model`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import {
   describe,
   expect,

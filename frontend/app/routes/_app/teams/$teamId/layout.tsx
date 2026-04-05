@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `layout.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import {
   Outlet,
   useNavigate,

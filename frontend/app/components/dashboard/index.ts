@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `index.ts`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 // Dashboard Components Index
 // Import all dashboard-specific components
 

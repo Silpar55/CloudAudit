@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React hook: `useTeamMembers`.
+ * Encapsulates data fetching or UI state for consuming components.
+ */
+
 import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {

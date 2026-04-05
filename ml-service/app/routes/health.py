@@ -1,6 +1,7 @@
 """
-app/routes/health.py
-Health check — now also confirms Prophet/cmdstan are importable.
+CloudAudit — ML service health routes.
+
+GET /health — returns OK and dependency versions (numpy, pandas, sklearn, prophet) for load balancers and Docker healthchecks.
 """
 from flask import Blueprint, jsonify
 import numpy as np

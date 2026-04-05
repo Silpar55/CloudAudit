@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `weeklyRecommendations.job`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 jest.mock("#modules/aws/aws.model.js");

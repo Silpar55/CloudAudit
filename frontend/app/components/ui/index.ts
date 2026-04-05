@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `index.ts`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 // UI Components Index
 // Import all UI components for easy access
 

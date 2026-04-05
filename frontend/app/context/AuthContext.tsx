@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React context: `AuthContext.tsx`.
+ * Provides app-wide state to the component tree.
+ */
+
 // AuthContext.tsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { useMe } from "~/hooks/useMe";

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Application configuration: `pool`.
+ * Database pool and environment-driven settings for the API process.
+ */
+
 import pg from "pg";
 
 const { Pool } = pg;

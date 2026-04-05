@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `RecommendationCard.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React, { useState } from "react";
 import type {
   Recommendation,

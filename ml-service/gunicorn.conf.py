@@ -1,6 +1,7 @@
 """
-gunicorn.conf.py
-Gunicorn production configuration.
+CloudAudit — Gunicorn process configuration for the ML Flask service.
+
+Binds workers, timeouts, and logging for container-friendly operation (see comments below).
 """
 
 # Network

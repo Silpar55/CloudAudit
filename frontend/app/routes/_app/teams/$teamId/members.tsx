@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `members.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Public route: `reset-password.tsx`.
+ * Unauthenticated marketing or sign-in screens; wrapped by public layout.
+ */
+
 import React, { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router";
 import { Input, Button, Alert } from "~/components/ui";

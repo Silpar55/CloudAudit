@@ -1,4 +1,9 @@
 /**
+ * CloudAudit — Domain service: `aws`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
+/**
  * AWS Cost Explorer Service
  *
  * Purpose: All Cost Explorer operations

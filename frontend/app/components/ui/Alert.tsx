@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Alert.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import React from "react";
 import { AlertTriangle, CheckCircle, Info, X, XCircle } from "lucide-react";
 

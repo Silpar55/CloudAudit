@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Data access: `anomaly`.
+ * PostgreSQL queries and row mapping for this feature.
+ */
+
 import { pool } from "#config";
 
 let anomalyStatusColumnsAvailable = null;

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `password`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { hashPassword, comparePassword } from "#utils/password.js";
 import { describe, expect } from "@jest/globals";
 

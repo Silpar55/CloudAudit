@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Data access: `auth`.
+ * PostgreSQL queries and row mapping for this feature.
+ */
+
 import { pool } from "#config";
 
 const allowedFields = [

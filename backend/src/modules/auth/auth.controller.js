@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `auth`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import jwt from "jsonwebtoken";
 import * as authService from "./auth.service.js";
 import * as jwtHelper from "#utils/helper/jwt-helper.js";

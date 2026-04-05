@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `aws`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import { createS3Client, createCURClient } from "#utils/aws/client-factory.js";
 import { getTemporaryCredentials } from "#utils/aws/sts.js";
 import { createBucket, putBucketPolicy } from "#utils/aws/s3.js";

@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Frontend utility: `format.ts`.
+ */
+
 export const getAvatarColor = (name: string) => {
   const avatarGradients = [
     "from-red-500 to-red-600",

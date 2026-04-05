@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `settings.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {

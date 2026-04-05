@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Frontend utility: `pendingInviteToken.ts`.
+ */
+
 const KEY = "cloudaudit_pending_invite_token";
 
 export function setPendingInviteToken(token: string | null) {

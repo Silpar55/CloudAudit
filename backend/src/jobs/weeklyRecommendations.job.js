@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Scheduled job: `weeklyRecommendations`.
+ * Started from `server.js`; uses node-cron and domain services.
+ */
+
 import cron from "node-cron";
 import * as awsModel from "#modules/aws/aws.model.js";
 import * as awsService from "#modules/aws/aws.service.js";

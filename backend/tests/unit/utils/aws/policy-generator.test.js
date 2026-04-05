@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `policy-generator`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import {
   afterEach,
   beforeEach,

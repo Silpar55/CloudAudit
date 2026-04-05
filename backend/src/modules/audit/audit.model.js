@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Data access: `audit`.
+ * PostgreSQL queries and row mapping for this feature.
+ */
+
 import { pool } from "#config";
 
 export const insertAuditLog = async (teamId, userId, action, details) => {

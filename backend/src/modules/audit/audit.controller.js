@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `audit`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as auditService from "./audit.service.js";
 
 export const listAuditLogs = async (req, res, next) => {

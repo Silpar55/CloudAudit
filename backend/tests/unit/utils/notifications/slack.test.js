@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `slack`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import {
   formatAnomalySlackMessage,

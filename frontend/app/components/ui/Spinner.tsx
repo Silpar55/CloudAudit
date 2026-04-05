@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Spinner.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 type SpinnerProps = {
   size?: number;
   className?: string;

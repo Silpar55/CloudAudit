@@ -1,5 +1,6 @@
 {
   "name": "frontend",
+  "description": "CloudAudit web app — React Router 7 dashboard for AWS cost optimization.",
   "private": true,
   "type": "module",
   "scripts": {

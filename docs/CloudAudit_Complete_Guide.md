@@ -1,5 +1,7 @@
 # CLOUDAUDIT - COMPLETE PROJECT GUIDE
 
+> **Public-facing quick reference:** For repository layout, default local URLs, production notes, and license, prefer the root [**README.md**](../README.md). This guide is a longer product, market, and technical narrative for builders and stakeholders.
+
 ## PART 1: PROJECT OVERVIEW & VISION
 
 ### Executive Summary

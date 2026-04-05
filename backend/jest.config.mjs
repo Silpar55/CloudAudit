@@ -1,6 +1,8 @@
 /**
- * For a detailed explanation regarding each configuration property, visit:
- * https://jestjs.io/docs/configuration
+ * CloudAudit — Jest configuration for the backend API.
+ *
+ * Drives `npm test` in `backend/`, Babel transforms, and coverage defaults.
+ * Option reference: https://jestjs.io/docs/configuration
  */
 
 /** @type {import('jest').Config} */

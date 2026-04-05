@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — AWS integration helper: `rds`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
 import {
   ModifyDBInstanceCommand,
   DescribeDBInstancesCommand,

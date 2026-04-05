@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `auth`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import crypto from "crypto";
 import {
   sendVerificationEmail,

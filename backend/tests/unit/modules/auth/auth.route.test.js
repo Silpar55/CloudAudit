@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `auth.route`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import { describe, expect, jest, it } from "@jest/globals";

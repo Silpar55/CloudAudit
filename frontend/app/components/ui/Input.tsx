@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Input.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import React, { useState } from "react";
 import PhoneInput, { parsePhoneNumber } from "react-phone-number-input";
 import "react-phone-number-input/style.css"; // Import default styles for the country select

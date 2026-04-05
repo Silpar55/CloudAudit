@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Notification helper: `email`.
+ * Email (SES), Slack, or templates for user-facing alerts.
+ */
+
 import { sendEmail } from "#utils/aws/ses.js";
 import * as teamModel from "#modules/team/team.model.js";
 import {

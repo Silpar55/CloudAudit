@@ -1,4 +1,9 @@
 /**
+ * CloudAudit — AWS integration helper: `client-factory`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
+/**
  * AWS Client Factory
  *
  * Purpose: Create AWS SDK clients with proper configuration

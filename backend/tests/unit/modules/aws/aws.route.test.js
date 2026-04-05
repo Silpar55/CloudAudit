@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `aws.route`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach, afterEach } from "@jest/globals";
 
 jest.mock("#utils/aws/client-factory.js");

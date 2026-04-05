@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `CreateTeamForm.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React, { useState } from "react";
 import { Alert, Button, Input } from "~/components/ui";
 import { X } from "lucide-react";

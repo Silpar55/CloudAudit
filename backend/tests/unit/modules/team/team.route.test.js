@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `team.route`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import request from "supertest";
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 

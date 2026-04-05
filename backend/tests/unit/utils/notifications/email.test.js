@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `email`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 import { sendWeeklyReportEmail } from "#utils/notifications/email.js";
 import { sendEmail } from "#utils/aws/ses.js";

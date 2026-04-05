@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `ses`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 import { sendEmail, sendVerificationEmail } from "#utils/aws/ses.js";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";

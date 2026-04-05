@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Auth flow route: `verify-email.tsx`.
+ * Email verification and similar post-registration steps.
+ */
+
 import { useEffect } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router";
 import { useVerifyEmail } from "~/hooks/useAuth";

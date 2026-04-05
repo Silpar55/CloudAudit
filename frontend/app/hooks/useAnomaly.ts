@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React hook: `useAnomaly`.
+ * Encapsulates data fetching or UI state for consuming components.
+ */
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { anomalyService } from "~/services/anomalyService";
 import { recommendationsQueryKey } from "~/hooks/useRecommendations";

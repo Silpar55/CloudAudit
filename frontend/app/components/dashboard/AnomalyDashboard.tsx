@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `AnomalyDashboard.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React, { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { useAwsAccount } from "~/context/AwsAccountContext";

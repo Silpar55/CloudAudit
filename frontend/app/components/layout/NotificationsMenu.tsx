@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Layout UI: `NotificationsMenu.tsx`.
+ * Navigation chrome shared across authenticated pages.
+ */
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Sparkles } from "lucide-react";
 import { Card, Spinner, Button } from "~/components/ui";

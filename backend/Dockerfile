@@ -1,3 +1,7 @@
+# CloudAudit — Backend API container image (Node.js 22).
+# Builds a minimal production image: npm ci without devDependencies, non-root user,
+# healthcheck against /api/health. Runtime expects env from compose or orchestrator
+# (PostgreSQL, JWT, FRONTEND_URL, AWS platform role, ML_SERVICE_URL, etc.).
 # Production image — tests run in CI, not in this build (faster, smaller layers).
 FROM node:22-alpine AS deps
 

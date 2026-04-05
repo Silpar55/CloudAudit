@@ -1,14 +1,8 @@
 """
-app/models/prophet_detector.py
-v2.0 — Prophet-based cost anomaly detector.
+CloudAudit — Prophet-based daily cost anomaly detector (v2).
 
-Strategy:
-  For each (service, region) segment within an account:
-    1. Fit a Prophet model on historical daily costs
-    2. Generate a forecast with uncertainty intervals
-    3. Compute residual = actual_cost - yhat_upper
-    4. Flag as anomaly if residual > 0  (cost exceeded upper confidence bound)
-    5. Score severity as % above the upper bound — cross-account comparable
+Per (service, region) segment: fit Prophet on history, compare actuals to upper confidence bound,
+flag exceedances, emit cross-account comparable severity scores.
 """
 
 import logging

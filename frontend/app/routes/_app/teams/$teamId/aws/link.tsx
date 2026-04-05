@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `link.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import { useParams, Link } from "react-router";
 
 export default function Page() {

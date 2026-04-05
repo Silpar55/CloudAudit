@@ -1,4 +1,7 @@
 {
+  "name": "cloudaudit-monorepo",
+  "private": true,
+  "description": "CloudAudit — AWS cost optimization SaaS (see README.md; app code lives in frontend/, backend/, ml-service/).",
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.1008.0"
   }

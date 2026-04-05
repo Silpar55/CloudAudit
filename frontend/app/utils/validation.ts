@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Frontend utility: `validation.ts`.
+ */
+
 import { PasswordValidator } from "password-validator-pro";
 import libphonenumber from "google-libphonenumber";
 

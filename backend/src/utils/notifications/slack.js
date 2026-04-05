@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Notification helper: `slack`.
+ * Email (SES), Slack, or templates for user-facing alerts.
+ */
+
 const isSlackEnabled = () =>
   process.env.SLACK_NOTIFICATIONS_ENABLED === "true" &&
   Boolean(process.env.SLACK_WEBHOOK_URL);

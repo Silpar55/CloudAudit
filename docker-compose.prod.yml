@@ -1,4 +1,6 @@
 # CloudAudit — production stack on a single host (e.g. EC2 + RDS).
+# Orchestrates backend (API), frontend (SSR), and ML (Flask/Gunicorn) on one Docker network.
+# There is no built-in public domain; set VITE_API_URL to the API URL browsers will call.
 # Usage:
 #   export VITE_API_URL=http://YOUR_ELASTIC_IP:3000/api
 #   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build

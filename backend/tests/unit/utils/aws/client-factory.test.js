@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `client-factory`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 // Mock the AWS SDKs

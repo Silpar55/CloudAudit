@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — React hook: `useProfile`.
+ * Encapsulates data fetching or UI state for consuming components.
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authService } from "~/services/authService";
 import { profileService, type ProfilePayload } from "~/services/profileService";

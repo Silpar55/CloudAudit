@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — AWS integration helper: `ses`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 // Initialize the SES client (picks up AWS_REGION and credentials from environment)

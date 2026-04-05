@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — In-process metrics store for request counts and latency.
+ * Consumed by the monitoring API and optional dashboards.
+ */
+
 const WINDOW_MS = 15 * 60 * 1000;
 const RECENT_MS = 60 * 1000;
 

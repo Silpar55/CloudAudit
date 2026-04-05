@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Layout UI: `PublicFooter.tsx`.
+ * Navigation chrome shared across authenticated pages.
+ */
+
 const footerLinks = [
   { label: "About the company", href: "/#about-company" },
   { label: "About what it is", href: "/#what-it-is" },

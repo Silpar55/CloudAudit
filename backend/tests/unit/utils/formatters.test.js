@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `formatters`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it } from "@jest/globals";
 import {
   parseJSONSafe,

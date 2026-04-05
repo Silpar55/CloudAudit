@@ -1,3 +1,9 @@
+/**
+ * CloudAudit — Application shell (React Router root layout).
+ *
+ * Provides global HTML shell, fonts, React Query, and authentication context. Renders
+ * child routes via `<Outlet />`; loading and error UI live here for the whole SPA.
+ */
 import {
   isRouteErrorResponse,
   Links,

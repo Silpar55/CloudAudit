@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `ImplementationSuccessModal.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React from "react";
 import { ExternalLink, CheckCircle } from "lucide-react";
 import { Button, Modal } from "~/components/ui";

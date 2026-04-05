@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express middleware: `team.middleware`.
+ * Applied to requests before route handlers; keep side effects minimal and ordered.
+ */
+
 import * as teamModel from "#modules/team/team.model.js";
 
 export async function verifyPermissions(req, res, next) {

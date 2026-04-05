@@ -1,13 +1,8 @@
 """
-app/services/anomaly_service_v2.py
-v2.0 — Orchestrates Prophet-based anomaly detection with standardized JSON output.
+CloudAudit — Anomaly pipeline v2 (Prophet-based).
 
-Key differences from v1.0 (anomaly_service.py):
-  - Segments data by (service, region) before detection
-  - Uses Prophet residual scores instead of Isolation Forest contamination
-  - Produces a fully standardized JSON schema with explainability metadata
-  - Handles all null/missing explanation cases explicitly with failure reasons
-  - Severity and deviation_pct are cross-account comparable (not locally normalized)
+Orchestrates segment-by-(service, region) detection, standardized JSON with explainability,
+and cross-account comparable severity. Preferred over v1 (`anomaly_service.py`) for new traffic.
 """
 
 import json

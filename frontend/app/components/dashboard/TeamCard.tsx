@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `TeamCard.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React from "react";
 import { Users, Cloud } from "lucide-react";
 import { getAvatarColor, getInitials } from "~/utils/format";

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — API client: `profileService.ts`.
+ * Typed calls to backend endpoints via `api/axiosClient`.
+ */
+
 import axiosClient from "~/api/axiosClient";
 
 export interface ProfilePayload {

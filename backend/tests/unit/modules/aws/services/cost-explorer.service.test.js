@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `cost-explorer.service`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 
 jest.mock("#utils/aws/sts.js", () => ({

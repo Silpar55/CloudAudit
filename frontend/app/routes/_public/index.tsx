@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Public route: `index.tsx`.
+ * Unauthenticated marketing or sign-in screens; wrapped by public layout.
+ */
+
 import { useNavigate } from "react-router";
 import { Button } from "~/components/ui";
 import { ArrowRight, Shield, Sparkles, Wallet } from "lucide-react";

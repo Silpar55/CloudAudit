@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `ChartToolTip.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import { fmtShort } from "~/utils/format";
 
 const ChartTooltip = ({ active, payload, label }: any) => {

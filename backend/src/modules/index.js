@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Backend route and domain module index.
+ *
+ * Central export point for feature routers (auth, AWS, teams, etc.) consumed by `app.js`.
+ */
 export { healthRoutes } from "./health/health.route.js";
 export { authRoutes } from "./auth/auth.route.js";
 export { awsRoutes } from "./aws/aws.route.js";

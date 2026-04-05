@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `monitoring.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import {
   Activity,
   AlertTriangle,

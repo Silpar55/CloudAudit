@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Shared UI primitive: `Textarea.tsx`.
+ * Reusable across features; keep presentation-agnostic where possible.
+ */
+
 import React from "react";
 
 /**

@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `layout.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 

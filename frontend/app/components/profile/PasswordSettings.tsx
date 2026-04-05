@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Profile settings UI: `PasswordSettings.tsx`.
+ */
+
 import React, { useState } from "react";
 import { useChangePassword } from "~/hooks/useProfile";
 import { Card, Input, Button, Spinner, Alert } from "~/components/ui";

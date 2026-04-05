@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Domain service: `anomaly`.
+ * Business rules and orchestration; callers are controllers, jobs, or other services.
+ */
+
 import * as anomalyModel from "./anomaly.model.js";
 import * as recommendationsService from "../recommendations/recommendations.service.js";
 import * as recommendationsModel from "../recommendations/recommendations.model.js";

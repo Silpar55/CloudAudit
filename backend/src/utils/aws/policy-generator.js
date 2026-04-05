@@ -1,4 +1,9 @@
 /**
+ * CloudAudit — AWS integration helper: `policy-generator`.
+ * Uses AWS SDK v3; respects platform role assumption for customer accounts.
+ */
+
+/**
  * AWS IAM Policy Generator
  *
  * Purpose: Generate IAM policies and trust policies for customer accounts

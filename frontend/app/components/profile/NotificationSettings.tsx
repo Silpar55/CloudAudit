@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Profile settings UI: `NotificationSettings.tsx`.
+ */
+
 import React, { useState, useEffect } from "react";
 import { Card, Button, Alert, Spinner } from "~/components/ui";
 import Toggle from "~/components/ui/Toggle";

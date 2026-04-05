@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — HTTP controller: `aws`.
+ * Maps Express requests to services and response shapes.
+ */
+
 import * as awsService from "./aws.service.js";
 
 export const initializePendingAccount = async (req, res, next) => {

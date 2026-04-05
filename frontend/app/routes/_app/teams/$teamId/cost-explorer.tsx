@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Authenticated app route: `cost-explorer.tsx`.
+ * Requires login; lives under the main app shell (sidebar/header).
+ */
+
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { Alert, Button, Card, SectionLoader } from "~/components/ui";

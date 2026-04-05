@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Unit tests for `profile.controller`.
+ * Run from `backend/` with `npm test`.
+ */
+
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 import * as profileController from "#modules/profile/profile.controller.js";
 import * as profileService from "#modules/profile/profile.service.js";

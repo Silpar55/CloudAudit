@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Data access: `recommendations`.
+ * PostgreSQL queries and row mapping for this feature.
+ */
+
 import { pool } from "#config";
 import { insertAuditLog } from "#modules/audit/audit.model.js";
 

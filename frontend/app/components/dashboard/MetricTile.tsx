@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Dashboard UI: `MetricTile.tsx`.
+ * Cost, anomalies, recommendations, and team overview widgets.
+ */
+
 import React from "react";
 
 interface MetricTileProps {

@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Team / AWS setup UI: `AwsServiceDetailPage.tsx`.
+ */
+
 import React, {
   useMemo,
   useState,

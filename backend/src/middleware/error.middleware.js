@@ -1,3 +1,8 @@
+/**
+ * CloudAudit — Express middleware: `error.middleware`.
+ * Applied to requests before route handlers; keep side effects minimal and ordered.
+ */
+
 import { logger } from "#utils/logger.js";
 
 export function errorHandler(err, _req, res, _next) {

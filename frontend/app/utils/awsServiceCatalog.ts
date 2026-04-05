@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Frontend utility: `awsServiceCatalog.ts`.
+ */
+
 import type { ElementType } from "react";
 import {
   Boxes,

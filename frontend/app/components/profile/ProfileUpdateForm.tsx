@@ -1,3 +1,7 @@
+/**
+ * CloudAudit — Profile settings UI: `ProfileUpdateForm.tsx`.
+ */
+
 import { useState, useEffect } from "react";
 import { useUpdateProfile } from "~/hooks/useProfile";
 import { Card, Input, Button, Spinner, Alert } from "~/components/ui";
